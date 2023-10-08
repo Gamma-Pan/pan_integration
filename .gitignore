@@ -1,0 +1,8 @@
+/wandb/
+/Testing/
+/checkpoints/
+/lightning_logs/
+/data/
+/.idea/
+*.pyc
+__pycache__/
