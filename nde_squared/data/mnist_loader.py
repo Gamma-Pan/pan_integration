@@ -11,7 +11,8 @@ def mnist_dataloaders(
         train: bool = False,
         val: bool = False,
         test: bool = False,
-        num_workers: int = 1
+        num_workers: int = 1,
+        batch_size: int = 64
 ) -> list:
     assert (val and train) or not val, "validation loader only if train loader"
     dataset_path = os.getcwd() + path
@@ -28,7 +29,7 @@ def mnist_dataloaders(
             transform=ToTensor(),
         )
         test_loader = DataLoader(
-            test_dataset, num_workers=num_workers, batch_size=64, shuffle=True
+            test_dataset, num_workers=num_workers, batch_size=batch_size, shuffle=True
         )
         out[2] = test_loader
 
@@ -39,7 +40,7 @@ def mnist_dataloaders(
 
         if not val:
             train_loader = DataLoader(
-                train_dataset, num_workers=num_workers, batch_size=64, shuffle=True
+                train_dataset, num_workers=num_workers, batch_size=batch_size, shuffle=True
             )
             out[0] = train_loader
         else:
@@ -55,9 +56,9 @@ def mnist_dataloaders(
                 generator=generator,
             )
 
-            train_loader = DataLoader(train_subset, num_workers=num_workers, batch_size=64)
+            train_loader = DataLoader(train_subset, num_workers=num_workers, batch_size=batch_size)
             val_loader = DataLoader(
-                val_subset, num_workers=num_workers, batch_size=64, shuffle=False
+                val_subset, num_workers=num_workers, batch_size=batch_size, shuffle=False
             )
             out[0] = train_loader
             out[1] = val_loader
