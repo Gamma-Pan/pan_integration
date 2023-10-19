@@ -1,182 +1,157 @@
+import math
 import torch
 from torch import nn
 from typing import List
 
+# cheeky way to make calculations more readable
+i = {"channels": 0, "kernel": 1, "stride": 2, "padding": 3}
 
-class Encoder(nn.Module):
-    def __init__(self):
+
+class _ConvEncoder(nn.Module):
+    def __init__(self, conv_layer_sizes: List, activation_fn):
         super().__init__()
-        # 1 X 28 X 28 -> 64 X 12 X 12
-        self.encoder_conv = nn.Sequential(
-            # convolutional
-            nn.Conv2d(1, 16, 5, padding=2),
-            nn.ReLU(),
-            nn.BatchNorm2d(16),
-            nn.Conv2d(16, 32, 3),
-            nn.ReLU(),
-            nn.BatchNorm2d(32),
-            nn.Conv2d(32, 64, 3),
-            nn.MaxPool2d(2, 2),
-            nn.ReLU(),
-            nn.BatchNorm2d(64),
-        )
+        self.blocks = nn.ModuleList()
+        for layer_in, layer_out in zip(conv_layer_sizes, conv_layer_sizes[1::]):
+            self.blocks.append(
+                nn.ModuleDict(
+                    {
+                        "conv": nn.Conv2d(
+                            in_channels=layer_in[i["channels"]],
+                            out_channels=layer_out[i["channels"]],
+                            kernel_size=layer_out[i["kernel"]],
+                            stride=layer_out[i["stride"]],
+                            padding=layer_out[i["padding"]],
+                        ),
+                        "bn": nn.BatchNorm2d(layer_out[i["channels"]]),
+                        "activation": activation_fn,
+                    }
+                )
+            )
 
-        self.encoder_linear = nn.Sequential(
-            # fully connected
-            nn.Linear(12 * 12 * 64, 2048),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(2048, 512),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(512, 128),
-            nn.ReLU(),
-            nn.Linear(128, 32),
-            nn.ReLU(),
-            nn.Linear(32, 8),
-            nn.ReLU(),
-            nn.Linear(8, 2),
-            nn.Tanh(),
-        )
+        self.blocks[-1]["activation"] = nn.Sigmoid()
 
     def forward(self, x):
-        x = self.encoder_conv(x)
-        x = torch.flatten(x, start_dim=1)
-        x = self.encoder_linear(x)
+        for block in self.blocks:
+            x = block["conv"](x)
+            x = block["bn"](x)
+            x = block["activation"](x)
+
         return x
 
 
-class Decoder(nn.Module):
-    def __init__(self):
+class _ConvDecoder(nn.Module):
+    def __init__(self, conv_layer_sizes, activation_fn, conv_out_sizes):
         super().__init__()
+        self.blocks = nn.ModuleList()
+        self.conv_out_sizes = conv_out_sizes
 
-        self.decoder_linear = nn.Sequential(
-            # fully connected
-            nn.Linear(2, 8),
-            nn.ReLU(),
-            nn.Linear(8, 32),
-            nn.ReLU(),
-            nn.Linear(32, 128),
-            nn.ReLU(),
-            nn.Linear(128, 2048),
-            nn.ReLU(),
-            nn.Linear(2048, 64 * 12 * 12),
-            nn.Dropout(),
-        )
+        for layer_in, layer_out in zip(
+            conv_layer_sizes[-1::-1], conv_layer_sizes[-2::-1]
+        ):
+            self.blocks.append(
+                nn.ModuleDict(
+                    {
+                        "conv": nn.ConvTranspose2d(
+                            in_channels=layer_in[i["channels"]],
+                            out_channels=layer_out[i["channels"]],
+                            kernel_size=layer_in[i["kernel"]],
+                            stride=layer_in[i["stride"]],
+                            padding=layer_in[i["padding"]],
+                        ),
+                        "bn": nn.BatchNorm2d(layer_out[i["channels"]]),
+                        "activation": activation_fn,
+                    }
+                )
+            )
 
-        self.decoder_conv_trans = nn.Sequential(
-            nn.ConvTranspose2d(64, 32, 2, stride=2, padding=1),
-            nn.ReLU(),
-            nn.BatchNorm2d(32),
-            nn.ConvTranspose2d(32, 16, 3),
-            nn.ReLU(),
-            nn.BatchNorm2d(16),
-            nn.ConvTranspose2d(16, 1, 5),
-            nn.Sigmoid(),
-        )
+        self.blocks[-1]["activation"] = nn.Sigmoid()
 
     def forward(self, x):
-        x = self.decoder_linear(x)
-        x = torch.reshape(x, (-1, 64, 12, 12))
-        x = self.decoder_conv_trans(x)
+        batch_size = x.shape[0]
+        for block, conv_out_size in zip(self.blocks, self.conv_out_sizes[-2::-1]):
+            x = block["conv"](
+                x,
+                output_size=torch.Size(
+                    (
+                        batch_size,
+                        conv_out_size["channels"],
+                        conv_out_size["width"],
+                        conv_out_size["width"],
+                    )
+                ),
+            )
+            x = block["bn"](x)
+            x = block["activation"](x)
+
         return x
 
 
 class Autoencoder(nn.Module):
     def __init__(
         self,
+        conv_dims: List = None,
+        linear_dims: List = None,
         width: int = 28,
-        height: int = 28,
         in_channels: int = 1,
         latent_dim: int = 2,
-        conv_channels: List = None,
-        kernel_sizes: List = None,
-        linear_sizes=None,
     ):
         super().__init__()
-        if linear_sizes is None:
-            linear_sizes = [2048, 128, 32]
-        if conv_channels is None:
-            conv_channels = [8, 16, 32]
-        if kernel_sizes is None:
-            kernel_sizes = [3, 3, 3]
+        self.activation = nn.ReLU()
 
-        assert len(conv_channels) == len(
-            kernel_sizes
-        ), "conv_channels must have same length with kernel_sizes"
+        if conv_dims is None:
+            conv_dims = [[16, 3, 1, 0], [64, 3, 2, 0], [128, 5, 2, 0]]
 
-        channels = [in_channels] + conv_channels
-        self.last_channel = channels[-1]
-        self.encoder_conv = nn.Sequential(
-            *[
-                self._conv_block(channels[idx], channels[idx + 1], kernel_sizes[idx])
-                for idx in range(len(conv_channels))
-            ]
-        )
+        if linear_dims is None:
+            linear_dims = [2048, 16]
 
-        # size of the output from the convolutional layers
-        self.conv_out_size = width - sum(kernel_sizes) + len(kernel_sizes)
+        self.last_channel = conv_dims[-1][i["channels"]]
 
-        all_linear_sizes = (
-            [self.conv_out_size**2 * channels[-1]] + linear_sizes + [latent_dim]
-        )
+        # calculate the size of tensor after each convolutional layer
+        conv_out_sizes = [{"channels": in_channels, "width": width}]
+
+        conv_out = width
+        for idx, dims in enumerate(conv_dims):
+            conv_out = (
+                conv_out + (2 * dims[i["padding"]]) - (dims[i["kernel"]] - 1) - 1
+            ) / dims[i["stride"]] + 1
+            conv_out = math.floor(conv_out)
+            conv_out_sizes.append({"channels": dims[i["channels"]], "width": conv_out})
+
+        self.conv_out = conv_out
+        conv_dims.insert(0, [in_channels])
+
+        first_dim = conv_out
+        linear_dims.insert(0, int(first_dim * first_dim * self.last_channel))
+        linear_dims.append(latent_dim)
+
+        self.encoder_conv = _ConvEncoder(conv_dims, self.activation)
+
         self.encoder_linear = nn.Sequential(
             *[
                 nn.Sequential(
-                    nn.Linear(all_linear_sizes[idx], all_linear_sizes[idx + 1]),
-                    nn.Dropout(),
-                    nn.ReLU(),
+                    nn.Linear(dim_in, dim_out),
+                    nn.LeakyReLU(),
+                    nn.Dropout(p=0.05),
                 )
-                for idx in range(len(all_linear_sizes) - 2)
-            ],
-            nn.Linear(all_linear_sizes[-2], all_linear_sizes[-1]),
-            nn.Dropout(),
-            nn.Tanh(),
+                for dim_in, dim_out in zip(linear_dims, linear_dims[1::])
+            ]
         )
+        # replace final activation with tanh
+        self.encoder_linear[-1][1] = nn.Tanh()
 
         self.decoder_linear = nn.Sequential(
             *[
                 nn.Sequential(
-                    nn.Linear(all_linear_sizes[idx], all_linear_sizes[idx - 1]),
-                    nn.Dropout(),
-                    nn.ReLU(),
+                    nn.Linear(dim_in, dim_out),
+                    nn.LeakyReLU(),
+                    nn.Dropout(p=0.05),
                 )
-                for idx in range(len(all_linear_sizes) - 1, 0, -1)
+                for dim_in, dim_out in zip(linear_dims[-1::-1], linear_dims[-2::-1])
             ]
         )
 
-        self.decoder_conv = nn.Sequential(
-            *[
-                self._convT_block(
-                    channels[idx], channels[idx - 1], kernel_sizes[idx - 1]
-                )
-                for idx in range(len(channels) - 1, 1, -1)
-            ],
-            nn.ConvTranspose2d(
-                channels[1], channels[0], kernel_size=kernel_sizes[0], stride=1, padding=0
-            ),  # size is reduced by 2
-            nn.BatchNorm2d(channels[0]),
-            nn.Sigmoid(),
-        )
-
-    @staticmethod
-    def _conv_block(in_channels, out_channels, kernel_size):
-        return nn.Sequential(
-            nn.Conv2d(
-                in_channels, out_channels, kernel_size=kernel_size, stride=1, padding=0
-            ),  # size is reduced by 2
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(),
-        )
-
-    @staticmethod
-    def _convT_block(in_channels, out_channels, kernel_size):
-        return nn.Sequential(
-            nn.ConvTranspose2d(
-                in_channels, out_channels, kernel_size=kernel_size, stride=1, padding=0
-            ),  # size is reduced by 2
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(),
+        self.decoder_conv = _ConvDecoder(
+            conv_dims, self.activation, conv_out_sizes
         )
 
     def encoder(self, x):
@@ -188,7 +163,7 @@ class Autoencoder(nn.Module):
     def decoder(self, h):
         x_hat = self.decoder_linear(h)
         x_hat = torch.reshape(
-            x_hat, (-1, self.last_channel, self.conv_out_size, self.conv_out_size)
+            x_hat, (-1, self.last_channel, self.conv_out, self.conv_out)
         )
         x_hat = self.decoder_conv(x_hat)
         return x_hat
@@ -199,7 +174,29 @@ class Autoencoder(nn.Module):
         return x_hat
 
 
-if __name__ == "__main__":
-    ae = Autoencoder()
-    x = torch.rand(64, 1, 28, 28)
-    print(ae(x).shape)
+# if __name__ == "__main__":
+# x = torch.rand(1, 1, 28, 28)
+# conv_dims = [[4, 3, 1, 0], [16, 3, 1, 0], [32, 5, 1, 0]]
+#
+# in_channels = 1
+# width = 28
+# # calculate the size of tensor after each convolutional layer
+# conv_out_sizes = [{"channels": in_channels, "width": width}]
+#
+# conv_out = width
+# for idx, dims in enumerate(conv_dims):
+#     conv_out = (
+#         conv_out + (2 * dims[i["padding"]]) - (dims[i["kernel"]] - 1) - 1
+#     ) / dims[i["stride"]] + 1
+#     conv_out = math.floor(conv_out)
+#     conv_out_sizes.append({"channels": dims[i["channels"]], "width": conv_out})
+#
+# conv_dims.insert(0, [in_channels])
+#
+# m = _ConvEncoder(conv_dims, nn.ReLU())
+# mt = _ConvDecoder(conv_dims, nn.ReLU(), conv_out_sizes)
+# y = m(x)
+# print(y.shape)
+#
+# k = mt(y)
+# print(k.shape)

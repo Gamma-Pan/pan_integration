@@ -1,9 +1,10 @@
 import torch
 import lightning.pytorch as pl
 from nde_squared.data import mnist_dataloaders
-from nde_squared.models.auto_encoders import Encoder, Decoder, Autoencoder
+from nde_squared.models.auto_encoders import Autoencoder
 from nde_squared.utils import VizEmbeddings, VizComparison
 import matplotlib as mpl
+
 mpl.use("TkAgg")
 
 
@@ -14,7 +15,7 @@ class LitVAE(pl.LightningModule):
         self.encoder = model.encoder
         self.decoder = model.decoder
         self.loss_fn = torch.nn.BCELoss()
-        self.lr = 3e-4
+        self.lr = 1e-4
 
     def forward(self, x):
         return model(x)
@@ -27,16 +28,16 @@ class LitVAE(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=3e-4)
+        return torch.optim.Adam(self.parameters(), lr=self.lr)
 
 
 if __name__ == "__main__":
     train_loader, validation_loader, _ = mnist_dataloaders(
         train=True, val=True, num_workers=1, batch_size=64
     )
-    model = Autoencoder(conv_channels=[])
+    model = Autoencoder()
     lit_vae = LitVAE(model)
     callbacks = [VizEmbeddings(50), VizComparison(50)]
 
-    trainer = pl.Trainer(max_epochs=50, callbacks=callbacks, fast_dev_run=False)
+    trainer = pl.Trainer(max_epochs=50, callbacks=callbacks, fast_dev_run=False, enable_checkpointing=False)
     trainer.fit(lit_vae, train_dataloaders=train_loader)
