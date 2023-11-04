@@ -120,8 +120,7 @@ class Autoencoder(nn.Module):
         self.conv_out = conv_out
         conv_dims.insert(0, [in_channels])
 
-        first_dim = conv_out
-        linear_dims.insert(0, int(first_dim * first_dim * self.last_channel))
+        linear_dims.insert(0, int(conv_out * conv_out * self.last_channel))
         linear_dims.append(latent_dim)
 
         self.encoder_conv = _ConvEncoder(conv_dims, self.activation)
@@ -150,9 +149,7 @@ class Autoencoder(nn.Module):
             ]
         )
 
-        self.decoder_conv = _ConvDecoder(
-            conv_dims, self.activation, conv_out_sizes
-        )
+        self.decoder_conv = _ConvDecoder(conv_dims, self.activation, conv_out_sizes)
 
     def encoder(self, x):
         x = self.encoder_conv(x)
@@ -174,29 +171,149 @@ class Autoencoder(nn.Module):
         return x_hat
 
 
-# if __name__ == "__main__":
-# x = torch.rand(1, 1, 28, 28)
-# conv_dims = [[4, 3, 1, 0], [16, 3, 1, 0], [32, 5, 1, 0]]
-#
-# in_channels = 1
-# width = 28
-# # calculate the size of tensor after each convolutional layer
-# conv_out_sizes = [{"channels": in_channels, "width": width}]
-#
-# conv_out = width
-# for idx, dims in enumerate(conv_dims):
-#     conv_out = (
-#         conv_out + (2 * dims[i["padding"]]) - (dims[i["kernel"]] - 1) - 1
-#     ) / dims[i["stride"]] + 1
-#     conv_out = math.floor(conv_out)
-#     conv_out_sizes.append({"channels": dims[i["channels"]], "width": conv_out})
-#
-# conv_dims.insert(0, [in_channels])
-#
-# m = _ConvEncoder(conv_dims, nn.ReLU())
-# mt = _ConvDecoder(conv_dims, nn.ReLU(), conv_out_sizes)
-# y = m(x)
-# print(y.shape)
-#
-# k = mt(y)
-# print(k.shape)
+class VariationalAE(nn.Module):
+    def __init__(
+        self,
+        conv_dims: List = None,
+        linear_dims_encoder: List = None,
+        width: int = 28,
+        in_channels: int = 1,
+        latent_dim: int = 2,
+    ):
+        super().__init__()
+        self.activation = nn.ReLU()
+
+        if conv_dims is None:
+            conv_dims = [[16, 3, 1, 0], [64, 3, 2, 0], [128, 5, 2, 0]]
+
+        if linear_dims_encoder is None:
+            linear_dims_encoder = [[2048, 64], [64, 16]]
+
+
+        self.last_channel = conv_dims[-1][i["channels"]]
+
+        # calculate the size of tensor after each convolutional layer
+        conv_out_sizes = [{"channels": in_channels, "width": width}]
+
+        conv_out = width
+        for idx, dims in enumerate(conv_dims):
+            conv_out = (
+                conv_out + (2 * dims[i["padding"]]) - (dims[i["kernel"]] - 1) - 1
+            ) / dims[i["stride"]] + 1
+            conv_out = math.floor(conv_out)
+            conv_out_sizes.append({"channels": dims[i["channels"]], "width": conv_out})
+
+        self.conv_out = conv_out
+        conv_dims.insert(0, [in_channels])
+
+        # the first list in linear_dims in the common fc network the second the individuals for mean and variance
+        linear_dims_encoder[0].insert(0, int(conv_out * conv_out * self.last_channel))
+        linear_dims_encoder[1].append(latent_dim)
+
+        self.encoder_conv = _ConvEncoder(conv_dims, self.activation)
+
+        self.encoder_linear_common = nn.Sequential(
+            *[
+                nn.Sequential(
+                    nn.Linear(dim_in, dim_out),
+                    nn.LeakyReLU(),
+                    nn.Dropout(p=0.05),
+                )
+                for dim_in, dim_out in zip(linear_dims_encoder[0], linear_dims_encoder[0][1::])
+            ]
+        )
+
+        self.encoder_linear_mean = nn.Sequential(
+            *[
+                nn.Sequential(
+                    nn.Linear(dim_in, dim_out),
+                    nn.LeakyReLU(),
+                    nn.Dropout(p=0.05),
+                )
+                for dim_in, dim_out in zip(linear_dims_encoder[1], linear_dims_encoder[1][1::])
+            ]
+        )
+
+        # restrict means in [-1, 1]
+        self.encoder_linear_mean[-1][1] = nn.Tanh()
+
+        self.encoder_linear_log_var = nn.Sequential(
+            *[
+                nn.Sequential(
+                    nn.Linear(dim_in, dim_out),
+                    nn.LeakyReLU(),
+                    nn.Dropout(p=0.05),
+                )
+                for dim_in, dim_out in zip(linear_dims_encoder[1], linear_dims_encoder[1][1::])
+            ]
+        )
+
+        linear_dims_decoder = linear_dims_encoder[0] + linear_dims_encoder[1]
+        self.decoder_linear = nn.Sequential(
+            *[
+                nn.Sequential(
+                    nn.Linear(dim_in, dim_out),
+                    nn.LeakyReLU(),
+                    nn.Dropout(p=0.05),
+                )
+                for dim_in, dim_out in zip(linear_dims_decoder[-1::-1], linear_dims_decoder[-2::-1])
+            ]
+        )
+
+        self.decoder_conv = _ConvDecoder(conv_dims, self.activation, conv_out_sizes)
+
+    def encoder(self, x):
+        conv_out = self.encoder_conv(x)
+        lin_common_out = self.encoder_linear_common(conv_out)
+
+        mu = self.encoder_linear_mean(lin_common_out)
+        log_var = self.encoder_linear_log_var(lin_common_out)
+
+        return mu, log_var
+
+    def reparametrize(self, mu, log_var):
+        # sigma = e^(log(sigma^2)/2) = e^(log(sigma)) = sigma
+        sigma = torch.exp(log_var/2)
+        # sample from normal distribution
+        eps = torch.randn_like(sigma)
+        z = mu + sigma
+        return z
+
+    def decoder(self,z):
+        lin_out = self.decoder_linear(z)
+        x_hat = self.decoder_conv(lin_out)
+        return x_hat
+
+    def forward(self, x):
+        mu, log_var = self.encoder(x)
+        z = self.reparametrize(mu, log_var)
+        x_hat = self.decoder(z)
+        return x_hat, z, mu, log_var
+
+
+if __name__ == "__main__":
+    x = torch.rand(1, 1, 28, 28)
+    conv_dims = [[4, 3, 1, 0], [16, 3, 1, 0], [32, 5, 1, 0]]
+
+    in_channels = 1
+    width = 28
+    # calculate the size of tensor after each convolutional layer
+    conv_out_sizes = [{"channels": in_channels, "width": width}]
+
+    conv_out = width
+    for idx, dims in enumerate(conv_dims):
+        conv_out = (
+            conv_out + (2 * dims[i["padding"]]) - (dims[i["kernel"]] - 1) - 1
+        ) / dims[i["stride"]] + 1
+        conv_out = math.floor(conv_out)
+        conv_out_sizes.append({"channels": dims[i["channels"]], "width": conv_out})
+
+    conv_dims.insert(0, [in_channels])
+
+    m = _ConvEncoder(conv_dims, nn.ReLU())
+    mt = _ConvDecoder(conv_dims, nn.ReLU(), conv_out_sizes)
+    y = m(x)
+    print(y.shape)
+
+    k = mt(y)
+    print(k.shape)

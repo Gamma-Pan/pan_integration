@@ -122,7 +122,6 @@ class VizComparison(pl.Callback):
 
     def on_train_epoch_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
         # get 9 random images from testing trainer
-        # TODO: use a variable amount of plotted images
         dataset = trainer.train_dataloader.dataset
         random_sampler = RandomSampler(dataset)
         random_dataloader = DataLoader(dataset, batch_size=10, sampler=random_sampler)
