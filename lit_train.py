@@ -318,4 +318,4 @@ def train_model(model, epochs: int, log: bool = False) -> None:
 
 if __name__ == "__main__":
     my_model = MyModel()
-    train_model(my_model, epochs=50, log=True)
+    train_model(my_model, epochs=10, log=True)
