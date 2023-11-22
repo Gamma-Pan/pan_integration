@@ -85,7 +85,7 @@ def keep_extrema(delta: np.ndarray, extrema_indices: np.ndarray, num_params: int
         if indices.size == num_params + 1:
             return indices
         elif indices.size == num_params + 2:
-            if abs(delta[indices[0]]) >= (delta[indices[-1]]):
+            if abs(delta[indices[0]]) >= abs(delta[indices[-1]]):
                 return np.delete(indices, -1)
             else:
                 return np.delete(indices, 0)
