@@ -100,7 +100,7 @@ def remez(true_f: torch.Tensor, num_params: int = 9):
 
 
 def f_generator():
-    p = torch.randn(5) * 5
+    p = torch.randn(5) * 3
     def f(t):
         return p[0] * t * sin(PI * p[1] * t * t) * p[2] + p[3] * t + p[4]
 
@@ -162,12 +162,6 @@ def choose_new_control(error: torch.Tensor, num_points: int):
 
     return _recursive_delete(indices_init)
 
-
-
-
-
-
-
 plotting = True
 
 if __name__ == "__main__":
@@ -176,7 +170,7 @@ if __name__ == "__main__":
     f_all = f(t_all)
 
     # initial control points
-    num_coeffs = 4
+    num_coeffs = 9
     t_control = torch.linspace(0.1, 0.9, num_coeffs + 1)
 
     for i in range(10):
@@ -202,7 +196,6 @@ if __name__ == "__main__":
         error = f_all - reconstruction
 
         control_idx = choose_new_control(error, num_coeffs+1)
-        t_control = t_all[control_idx]
 
         if plotting:
             fig, (ax, ax_delta) = plt.subplots(1, 2, figsize=(12, 8))
@@ -233,5 +226,8 @@ if __name__ == "__main__":
 
             while True:
                 if plt.waitforbuttonpress():
+                    plt.close(fig)
                     break
+
+            t_control = t_all[control_idx]
 
