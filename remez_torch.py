@@ -61,25 +61,6 @@ def plot_vf(ax):
     ax.plot(sol.t, sol.y[0, :], "r-o", markersize=4)
 
 
-def make_vector(input: torch.Tensor, type: str):
-    input_dims = input.shape
-    if len(input_dims) == 1:
-        input_dims = input_dims[0]
-    elif len(input_dims) == 2:
-        if input_dims[0] == 1 or input_dims[1] == 1:
-            input_dims = input_dims[0] * input_dims[1]
-        else:
-            raise Exception("tensor must be a vector-like")
-    else:
-        raise Exception("tensor must be a vector-like")
-
-    if type == "row":
-        return input.reshape(1, input_dims), input_dims
-    elif type == "column":
-        return input.reshape(input_dims, 1), input_dims
-    else:
-        raise Exception("invalid type")
-
 
 def Phi_t(t: torch.Tensor):
     # important for broadcasting
