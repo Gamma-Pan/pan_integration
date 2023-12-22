@@ -85,7 +85,7 @@ class VfPlotter:
             y_init.squeeze(),
             **ivp_kwargs
         )
-        print(sol.nfev)
+        print(f"Conventional solver num evals: {sol.nfev}")
         trajectory = tensor(sol.y)
         self.ax.plot(
             trajectory[0, :], trajectory[1, :], "-o", color="forestgreen", markersize=4

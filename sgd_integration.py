@@ -95,22 +95,18 @@ if __name__ == "__main__":
     hessian = jacfwd(jacobian)
 
     steps = int(num_coeff / dims + 2)
-    traj_euler = coarse_euler(y_init, f, steps)
-
-    print("Euler solution")
-    vf_plot.approximation(torch.cat([y_init, traj_euler]))
+    traj_euler = coarse_euler(y_init, f, steps*2)
 
     # solve a least squares problem to init betas near euler solution
     t_euler = torch.linspace(0, 1, steps)[:, None]  # column vector
     exponents = torch.arange(1, steps)[None, :]  # row vector
     Phi_y = torch.pow(t_euler, exponents)
-    b_lstsq = torch.linalg.lstsq(Phi_y, traj_euler - y_init).solution
+    b_lstsq = torch.linalg.lstsq(Phi_y, traj_euler[::2] - y_init).solution
 
     t_plot = torch.linspace(0, 1, 100)[:, None]  # column vector
     Phi_y = torch.pow(t_plot, exponents)
     Phi_dy = torch.pow(t_plot, exponents - 1) * exponents  # broadcasting
 
-    print("Least squares")
     vf_plot.approximation(
         (Phi_y @ b_lstsq) + y_init, Phi_y @ b_lstsq, f
     )
@@ -121,12 +117,14 @@ if __name__ == "__main__":
         Jb = jacobian(b)
         Hb = hessian(b)
 
-        Hnp = Hb.numpy()
+        print(f"is Hb positive definite? {(torch.linalg.eigvals(Hb).real>0).all()}")
+
         Hb_inv = torch.linalg.inv(Hb)
 
         p = -Hb_inv @ Jb
 
         b = line_search(obj_f, jacobian, b, p)
+        print(f"b: {b}")
 
         with torch.no_grad():
             if i == 0:
