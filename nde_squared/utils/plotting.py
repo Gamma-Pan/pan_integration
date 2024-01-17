@@ -18,6 +18,12 @@ quiver_args = {
 }
 
 
+def wait():
+    while True:
+        if plt.waitforbuttonpress():
+            break
+
+
 class VfPlotter:
     def __init__(
         self,
@@ -28,6 +34,7 @@ class VfPlotter:
         fig_kwargs: dict = None,
         ax_kwargs: dict = None,
         ivp_kwargs: dict = None,
+        show=False,
     ):
         plt.ion()
 
@@ -56,7 +63,8 @@ class VfPlotter:
 
         self._grid_values()
 
-        self.fig.canvas.draw()
+        if show:
+            wait()
 
     @torch.no_grad()
     def _grid_values(self):
@@ -83,14 +91,14 @@ class VfPlotter:
             lambda t, x: self.f(torch.tensor(np.array([x], dtype=np.float32))),
             [0, 1],
             y_init.squeeze(),
-            **ivp_kwargs
+            **ivp_kwargs,
         )
         print(f"Conventional solver num evals: {sol.nfev}")
         trajectory = tensor(sol.y)
         self.ax.plot(
             trajectory[0, :], trajectory[1, :], "-o", color="forestgreen", markersize=4
         )
-        self.ax.plot(trajectory[0, 0], trajectory[1, 0], "o", color="forestgreen")
+        self.ax.plot(trajectory[0, 0], trajectory[1, 0], "o", color="lime")
 
         return torch.min(trajectory, dim=1)[0], torch.max(trajectory, dim=1)[0]
 
@@ -101,6 +109,7 @@ class VfPlotter:
         d_traj: torch.Tensor = None,
         f: Callable = None,
         arrows_every_n: int = 10,
+        show=False,
     ):
         n = arrows_every_n
 
@@ -108,7 +117,7 @@ class VfPlotter:
         self.approx_line.set_data(y0, y1)
 
         if self.f_points_arrows is not None:
-            self.f_points_arrows.remove()
+                self.f_points_arrows.remove()
 
         if f is not None:
             f0, f1 = f(traj).split(1, dim=1)
@@ -119,11 +128,11 @@ class VfPlotter:
                 f1[::n],
                 color="dimgray",
                 zorder=10,
-                **quiver_args
+                **quiver_args,
             )
 
         if self.Phi_point_arrows is not None:
-            self.Phi_point_arrows.remove()
+                self.Phi_point_arrows.remove()
 
         if d_traj is not None:
             dy0, dy1 = d_traj.split(1, dim=1)
@@ -134,9 +143,8 @@ class VfPlotter:
                 dy1[::n],
                 color="blue",
                 zorder=11,
-                **quiver_args
+                **quiver_args,
             )
 
-        while True:
-            if plt.waitforbuttonpress():
-                break
+        if show:
+            wait()

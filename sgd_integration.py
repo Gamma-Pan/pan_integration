@@ -8,8 +8,12 @@ import numpy as np
 from functools import partial
 from nde_squared.utils.plotting import VfPlotter
 from nde_squared.optim.line_search import line_search
+from nde_squared.optim.factor import mod_chol
 import matplotlib.pyplot as plt
 from typing import Callable
+
+torch.manual_seed(30)
+# 66, 68
 
 
 def f_generator():
@@ -25,7 +29,7 @@ def f_generator():
         y = y.reshape((-1, 2, 1))
         l1 = tanh(W1 @ y + b1)
         l2 = tanh((W2 @ l1 + b2))
-        out = sin(0.7 *2 * torch.pi * W3 @ l2 + b3)
+        out = sin(1.7 * 2 * torch.pi * W3 @ l2 + b3)
         return out.reshape((-1, 2))
 
     return f
@@ -84,54 +88,75 @@ def coarse_euler(y_init, f, steps):
 
 if __name__ == "__main__":
     f = f_generator()
-    y_init = torch.rand(1, 2)
-    f_init = f(y_init)
-    vf_plot = VfPlotter(f, y_init)
-    dims = torch.numel(y_init)
+    y = torch.rand(1, 2)
 
+    # ivp_kwargs = dict({"method": "RK45"} )
+    # vf_plot = VfPlotter(f, y, ivp_kwargs=ivp_kwargs,show=True)
+    vf_plot = VfPlotter(f, y, show=True)
+    # vf_plot.ivp(y)
+
+    dims = torch.numel(y)
     num_coeff = 10  # total
-    obj_f = partial(objective_f, f=f, y_init=y_init, vf_plotter=vf_plot)
-    jacobian = jacrev(obj_f)
-    hessian = jacfwd(jacobian)
+    obj_f = partial(objective_f, f=f, y_init=y, vf_plotter=vf_plot)
 
-    steps = int(num_coeff / dims + 2)
-    traj_euler = coarse_euler(y_init, f, steps*2)
+    grad = jacrev(obj_f)
+    hessian = jacfwd(grad)
 
-    # solve a least squares problem to init betas near euler solution
-    t_euler = torch.linspace(0, 1, steps)[:, None]  # column vector
-    exponents = torch.arange(1, steps)[None, :]  # row vector
-    Phi_y = torch.pow(t_euler, exponents)
-    b_lstsq = torch.linalg.lstsq(Phi_y, traj_euler[::2] - y_init).solution
+    step = 1
+    num_steps = int(1 / step)
 
-    t_plot = torch.linspace(0, 1, 100)[:, None]  # column vector
-    Phi_y = torch.pow(t_plot, exponents)
-    Phi_dy = torch.pow(t_plot, exponents - 1) * exponents  # broadcasting
+    exponents = torch.arange(1, int(num_coeff / dims + 2))[None, :]  # row vector
 
-    vf_plot.approximation(
-        (Phi_y @ b_lstsq) + y_init, Phi_y @ b_lstsq, f
-    )
+    for idx in range(num_steps):
+        print(f"from y = {y} \n")
 
-    b = b_lstsq[1:, :].reshape(-1).detach()
+        # linear step along descent direction
+        t_l = torch.linspace(0, step, int(num_coeff / dims + 1))[:, None]
+        # y_l = y + step * t_l * f(y)
 
-    for i in range(100):
-        Jb = jacobian(b)
-        Hb = hessian(b)
+        Phi_y = torch.pow(t_l, exponents)
+        Phi_dy = torch.pow(t_l, exponents - 1) * exponents  # broadcasting
 
-        print(f"is Hb positive definite? {(torch.linalg.eigvals(Hb).real>0).all()}")
+        traj_euler = coarse_euler(y, f, int(num_coeff / dims + 1))
 
-        Hb_inv = torch.linalg.inv(Hb)
-
-        p = -Hb_inv @ Jb
-
-        b = line_search(obj_f, jacobian, b, p)
-        print(f"b: {b}")
+        # solve a least squares problem to init b for this step
+        b_lstsq = torch.linalg.lstsq(Phi_y, traj_euler - y).solution
+        # b_lstsq = torch.linalg.lstsq(Phi_y, y_l - y).solution
 
         with torch.no_grad():
-            if i == 0:
-                print("Starting Newton")
+            t_plot = torch.linspace(0, step, 100)[:, None]
+            Phi_y_plot = torch.pow(t_plot, exponents)
+            Phi_dy_plot = torch.pow(t_plot, exponents - 1) * exponents  # broadcasting
+            traj_lstsq = Phi_y_plot @ b_lstsq + y
+            traj_d_lstsq = Phi_dy_plot @ b_lstsq
+            vf_plot.approximation(traj_lstsq, traj_d_lstsq, f, show=True)
 
-            beta = b.reshape(-1, dims)
-            beta = torch.cat([f_init, beta], dim=0)
+        tol = 1e-4
+        b = b_lstsq[1:, :].reshape(-1).detach()
+        for i in range(50):
+            # minimize error for n points along line
+            Db = grad(b)[:,None]
+            print(torch.norm(Db))
+            if (torch.norm(Db)) < tol:
+                y = y_approx[-1, :]
+                break
 
-            y_approx = y_init + Phi_y @ beta
-            vf_plot.approximation(y_approx, Phi_dy@beta, f=f)
+            Hb = hessian(b)
+            # make hessian positive definite
+            LD = mod_chol(Hb)
+
+            pivots = torch.arange(1, num_coeff+1)
+            d = -torch.linalg.ldl_solve(LD, pivots, Db)
+
+            b = line_search(obj_f, grad, b, d[:,0])
+
+            with torch.no_grad():
+                beta = b.reshape(-1, dims)
+                beta = torch.cat([f(y), beta], dim=0)
+
+                y_approx = y + Phi_y @ beta
+                vf_plot.approximation(
+                    y_approx, Phi_dy @ beta, f=f, show=True, arrows_every_n=1
+                )
+
+    plt.show()

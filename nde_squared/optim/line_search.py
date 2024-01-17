@@ -1,5 +1,5 @@
 import torch
-from torch import sign, sqrt, abs
+from torch import sign, sqrt, abs, tensor, Tensor
 import matplotlib.pyplot as plt
 
 
@@ -25,6 +25,9 @@ def min_cubic_interp(a0, phi0, D_phi0, a1, phi1, D_phi1):
     """
     Nocedal, Wright - Numerical Optimization 2006, pg. 59
     """
+    if a0 == a1:
+        return a0
+
     d1 = D_phi0 + D_phi1 - 3 * (phi0 - phi1) / (a0 - a1)
 
     "check if sqrt of negative"
@@ -65,7 +68,7 @@ def zoom(
 
     i = 0
     while i < max_iters:
-        print(a_lo, a_hi)
+        # print(a_lo, a_hi)
 
         if plotting:
             li_lo.set_data([a_lo, a_lo], [phi(a_lo) - 50.0, phi(a_lo) + 50.0])
@@ -172,7 +175,7 @@ def line_search(f, Df, b, p, plot=False):
         wait()
 
     a = strong_wolfe(phi, D_phi)
-    print(f"step = {a}")
+    # print(f"step = {a}")
 
     if plotting:
         plt.close(fig)
