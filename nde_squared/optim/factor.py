@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 def mod_chol(
     A: Tensor, delta=tensor(1e-3), beta_sq=tensor(10)) -> Tensor :
     """
-    return the LDL^T Cholesky decomposition form of the input matrix A
-    if A is positive definite or a positive definite approximation
+    return the LDL^T Cholesky decomposition form of the input matrix A, if A is positive definite
+    or a positive definite approximation if A is not positive definite
     """
     n = A.shape[-1]  # row (= column) dimension
     L = torch.zeros((n, n))

@@ -207,7 +207,7 @@ if __name__ == "__main__":
 
             while True:
                 if plt.waitforbuttonpress():
-                    plt.close(fig)
+                    #plt.close(fig)
                     break
 
             t_control = t_all[control_idx]
