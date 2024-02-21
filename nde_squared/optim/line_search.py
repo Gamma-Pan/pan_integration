@@ -70,25 +70,15 @@ def zoom(
     if Dphi_lo is None:
         Dphi_lo = Dphi(a_lo)
 
-    if plotting:
-        (li_lo,) = ax.plot([], [], "--", color="dodgerblue")
-        (li_hi,) = ax.plot([], [], "--", color="dodgerblue")
-        (art_min,) = ax.plot([], [], "o", color="red")
-
     i = 0
     while i < max_iters:
-        # print(a_lo, a_hi)
-
         if plotting:
-            li_lo.set_data([a_lo, a_lo], [phi(a_lo) - 50.0, phi(a_lo) + 50.0])
-            li_hi.set_data([a_hi, a_hi], [phi(a_hi) - 50.0, phi(a_hi) + 50.0])
+            ax.plot(a_lo, phi_lo, color="green", marker="o")
+            ax.plot(a_hi, phi_hi, color="blue", marker="o")
+            wait()
 
         i = i + 1
         a_i = min_cubic_interpol(a_lo, phi_lo, Dphi_lo, a_hi, phi_hi, Dphi_hi)
-
-        if plotting:
-            art_min.set_data(a_i, phi(a_i))
-            wait()
 
         # evaluate phi at candidate min
         phi_i = phi(a_i)
@@ -106,7 +96,6 @@ def zoom(
     return (a_lo + a_hi) / 2
 
 
-
 def find_step_length(
     f: Callable,
     grad_f: Callable,
@@ -118,32 +107,19 @@ def find_step_length(
     max_iters=10,
     phi_0=None,
     Dphi_0=None,
-    plot= False
+    plot=False,
 ):
     """
     Algorithm 3.6 from Nocedal, Wright - Numerical Approximation pg.62; returns
     an approximation of the step length a, along direction p, that minimises f(x + a*p)
     using strong Wolfe conditions
 
-    :param f: the function we wish to minimise
-    :param grad_f: the derivative of this function df/dx
-    :param x: B1xB2x...xBnx2 the state wrt which we minimise
-    :param p: the decrease direction
-    :param phi_0: if available the function evaluated at x
-    :return: the step length along direction p
     """
 
-    global plotting
-    plotting = plot
-    if plotting:
-        global ax
-        fig, ax = plt.subplots()
+    phi = lambda a: f(x + a * p)
+    Dphi = lambda a: p.T @ grad_f(x + a * p)
 
-
-    phi = lambda a: f((x + a * p)[None])
-    Dphi = lambda a: grad_f((x + a * p)[None]) @ p[:,None]
-
-    if phi_0 is None or Dphi_0 in None:
+    if phi_0 is None or Dphi_0 is None:
         phi_0 = phi(0)
         Dphi_0 = Dphi(0)
 
@@ -151,13 +127,37 @@ def find_step_length(
     a_cur = tensor(1)
     phi_prev = phi_0
     Dphi_prev = Dphi_0
+
+    global plotting
+    plotting = plot
+    if plotting:
+        global ax
+        fig, ax = plt.subplots()
+
+        a_plot = torch.linspace(0, 5, 100)[:, None]
+        ax.plot(a_plot.squeeze(), phi(a_plot).squeeze(), color="red", label="\phi (a)")
+        (art_slope0,) = ax.plot(a_plot, torch.zeros(*a_plot.shape), linestyle="--")
+        (art_point,) = ax.plot([], [], color="green", marker="o")
+        (art_slopei,) = ax.plot([], [], linestyle="-.", color="red")
+        (art_slopeiabs,) = ax.plot([], [], linestyle="-.", color="seagreen")
+        (art_slopei0,) = ax.plot([], [], linestyle="-.", color="lime")
+
     i = 1
     while i < max_iters and a_cur < a_max:
         # evaluate f at trial step (1 evaluation per loop)
         phi_cur = phi(a_cur)
 
+        if plotting:
+            art_slope0.set_ydata(phi_0 + c1 * a_plot * Dphi_0)
+            art_point.set_data(a_cur, phi_cur)
+            wait()
+
         # if sufficient decrease is violated at new point find min with zoom
-        if (i == 1 and phi_cur > phi_0 + c1 * a_cur * Dphi_0) or phi_cur >= phi_prev:
+        if phi_cur > phi_0 + c1 * a_cur * Dphi_0 or (phi_cur >= phi_prev and i > 1):
+            if plotting:
+                art_slope0.set_data([], [])
+                art_point.set_data([], [])
+
             return zoom(
                 a_prev,
                 a_cur,
@@ -166,22 +166,42 @@ def find_step_length(
                 c1,
                 c2,
                 max_iters=5,
-
                 phi_0=phi_0,
                 Dphi_0=Dphi_0,
-
                 phi_lo=phi_prev,
                 Dphi_lo=Dphi_prev,
             )
 
         # evaluate grad f at trial step (~2 evaluations per loop)
         Dphi_cur = Dphi(a_cur)
+
+        if plotting:
+            art_slopeiabs.set_data(
+                [a_cur - 1, a_cur + 1],
+                [phi_cur - torch.abs(Dphi_cur), phi_cur + torch.abs(Dphi_cur)],
+            )
+            art_slopei.set_data(
+                [a_cur - 1, a_cur + 1],
+                [phi_cur - Dphi_cur, phi_cur + Dphi_cur],
+            )
+            art_slopei0.set_data(
+                [a_cur - 1, a_cur + 1], [phi_cur + c2 * Dphi_0, phi_cur - c2 * Dphi_0]
+            )
+            wait()
+
         # if sufficient decrease holds and curvature hold return this a
         if abs(Dphi_cur) <= -c2 * Dphi_0:
+            if plotting:
+                plt.close(fig)
             return a_cur
 
-        # TODO: explanation of this step
-        if Dphi_cur >= 0:
+        if plotting:
+            art_slopei.set_data([], [])
+            art_slopeiabs.set_data([], [])
+            art_slopei0.set_data([], [])
+
+        # TODO: explain this step
+        if abs(Dphi_cur) >= 0:
             return zoom(
                 a_cur,
                 a_prev,
@@ -190,13 +210,10 @@ def find_step_length(
                 c1,
                 c2,
                 max_iters=5,
-
                 phi_0=(phi_0,),
                 Dphi_0=Dphi_0,
-
                 phi_lo=phi_cur,
                 Dphi_lo=Dphi_cur,
-
                 phi_hi=phi_prev,
                 Dphi_hi=Dphi_prev,
             )
