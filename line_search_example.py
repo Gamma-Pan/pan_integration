@@ -2,7 +2,7 @@ import torch
 from torch import tensor, abs, norm, squeeze, tensor, Tensor
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from nde_squared.optim.line_search import find_step_length
+from nde_squared.optim.minimize import _line_search
 from nde_squared.utils.plotting import wait
 from torch.func import jacfwd, jacrev, hessian
 
@@ -78,7 +78,7 @@ if __name__ == "__main__":
         art_line.set_data_3d(*[torch.squeeze(x) for x in torch.split(al, 1, dim=1)], Za)
         wait()
 
-        alpha = find_step_length(f, Df, b, d, c2=0.99, plot=True)
+        alpha = _line_search(f, Df, b, d, c2=0.99, plot=True)
         b = b + alpha * d
         print(f"new b : {b}")
 

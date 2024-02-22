@@ -2,8 +2,10 @@ from typing import Callable
 
 import torch
 from torch import sign, sqrt, abs, tensor, Tensor
+from torch.func import jacfwd, jacrev
 import matplotlib.pyplot as plt
 from nde_squared.utils.plotting import wait
+from .factor import mod_chol
 
 
 def backtracking(f, y, grad_y, direction, tau=0.5, alpha=1.0, c1=1e-3, max_iter=100):
@@ -42,7 +44,7 @@ def min_cubic_interpol(a0, phi0, D_phi0, a1, phi1, D_phi1):
     return torch.squeeze(a_min)
 
 
-def zoom(
+def _zoom(
     a_lo,
     a_hi,
     phi,
@@ -96,7 +98,7 @@ def zoom(
     return (a_lo + a_hi) / 2
 
 
-def find_step_length(
+def _line_search(
     f: Callable,
     grad_f: Callable,
     x: Tensor,
@@ -116,8 +118,13 @@ def find_step_length(
 
     """
 
-    phi = lambda a: f(x + a * p)
-    Dphi = lambda a: p.T @ grad_f(x + a * p)
+    # phi = lambda a: f(x + a * p)
+    # Dphi = lambda a: p[None] @ grad_f(x + a * p)
+
+    def phi(a):
+        return f(x+a*p)
+    def Dphi(a):
+        return p[None] @ grad_f(x+a*p)
 
     if phi_0 is None or Dphi_0 is None:
         phi_0 = phi(0)
@@ -158,7 +165,7 @@ def find_step_length(
                 art_slope0.set_data([], [])
                 art_point.set_data([], [])
 
-            return zoom(
+            return _zoom(
                 a_prev,
                 a_cur,
                 phi,
@@ -202,7 +209,7 @@ def find_step_length(
 
         # TODO: explain this step
         if abs(Dphi_cur) >= 0:
-            return zoom(
+            return _zoom(
                 a_cur,
                 a_prev,
                 phi,
@@ -210,7 +217,7 @@ def find_step_length(
                 c1,
                 c2,
                 max_iters=5,
-                phi_0=(phi_0,),
+                phi_0=phi_0,
                 Dphi_0=Dphi_0,
                 phi_lo=phi_cur,
                 Dphi_lo=Dphi_cur,
@@ -226,3 +233,70 @@ def find_step_length(
         i = i + 1
 
     return a_cur
+
+
+def newton(
+    f: Callable,
+    b_init: Tensor,
+    max_steps=50,
+    metrics=True,
+    tol: float = 1e-4,
+    callback: Callable = None,
+):
+    """
+    :param f: scalar function to minimize
+    :param b_init: tensor of parameters (tested only for 2d tensor)
+    :param max_steps: max amount of iterations to perform
+    :param metrics: whether to print number of function evaluations
+    :param tol: tolerance for termination
+    :param callback: a function to call at end of each iteration
+    :return: a b that is a local minimum of f
+    """
+    num_coeff = torch.numel(b_init)
+
+    # TODO: utilize jit
+    def ff(x):
+        res = f(x)
+        return res, res
+
+    grad = jacrev(ff, has_aux=True)
+    hessian = jacfwd(lambda x: grad(x)[0])
+
+    b = b_init
+    for step in range(max_steps):
+        # calculate forward pass and
+        Df_k, f_k = grad(b)
+
+        # check if gradient is within tolerance and if so return
+        if torch.norm(Df_k) < tol:
+            print()
+            return b
+
+        # calculate Hessian
+        Hf_k = hessian(b)
+        # make hessian positive definite if not using modified Cholesky factorisation
+        LD_compat = mod_chol(Hf_k)
+
+        # pivots for solving LDL problem,
+        # since factorisation doesn't use permutations just use a range
+        pivots = torch.arange(1, num_coeff + 1)
+        # Df_k is 1d, make it a column vector to solve linear system
+        d_k = -torch.linalg.ldl_solve(LD_compat, pivots, Df_k[:, None])
+
+        alpha = _line_search(
+            lambda x: ff(x)[0],
+            lambda x: grad(x)[0],
+            b,
+            # local derivative is a batch of column vectors,
+            d_k[:, 0],  # pass it to lineseach as a batch of 1d vectors
+            phi_0=f_k,
+            Dphi_0=(d_k.T @ Df_k).squeeze(),
+        )
+
+        b = b + alpha * d_k[:,0]
+
+        if callback is not None:
+            callback(b, d_k)
+
+    print("Max iterations reached")
+    return b

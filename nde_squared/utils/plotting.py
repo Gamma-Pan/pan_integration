@@ -64,13 +64,9 @@ class VfPlotter:
         raise NotImplementedError
 
     def solve_ivp(
-        self, y_init: torch.tensor, method, color, ivp_kwargs=None, plot_kwargs=None
+        self, y_init: torch.tensor, ivp_kwargs, plot_kwargs=None
     ):
-        if method:
-            ivp_kwargs["method"] = method
-
-        if color:
-            plot_kwargs["color"] = color
+        plot_kwargs = plot_kwargs or {}
 
         ivp_sol = solve_ivp(
             lambda t, x: self.f(x),

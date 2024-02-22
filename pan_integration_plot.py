@@ -1,15 +1,18 @@
+from typing import Callable
+
 import torch
 from torch import linspace, meshgrid, tensor, Tensor, cos, sin
 from nde_squared.utils.plotting import wait
-from nde_squared.optim.newton import minimize
+from nde_squared.optim import newton
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+torch.manual_seed(234)
 mpl.use("TkAgg")
 
 
-def rosenbrock(batch) -> tensor:
+def rosenbrock(batch) -> Tensor:
     a = 1
     b = 100
 
@@ -19,7 +22,22 @@ def rosenbrock(batch) -> tensor:
     return (a - x) ** 2 + b * (y - x ** 2) ** 2
 
 
-if __name__ == "__main__":
+def quadratic_gen(n) -> Callable:
+    L = torch.diag(torch.rand(n)*5)
+    Q = torch.rand(n,n)*5
+
+    print(torch.diagonal(L))
+    print(torch.sort(torch.real(torch.linalg.eigvals(Q @ L @ Q.T )  ))[0])
+
+    def f(batch) -> Tensor:
+       x = batch[:,None]
+       res = x.T @ (Q @ L @ Q.T) @ x
+       return res.squeeze()
+
+    return f
+
+
+def rosenexample():
     f = rosenbrock
     grid_def = (100, 100)
     y1_lims = [0.4, 1.6]
@@ -39,9 +57,13 @@ if __name__ == "__main__":
     ax_3d.set_xlim(y1_lims[0], y1_lims[1])
     ax_3d.set_ylim(y2_lims[0], y2_lims[1])
 
-    b_init = torch.tensor([[0.45, 0.45]])
-    b_min = minimize(f, b_init)
+    b_init = torch.tensor([0.45, 0.45])
+    b_min = newton(f, b_init)
     print(b_min)
-
     ax_3d.plot3D(b_min[0], b_min[1], f(b_min))
-    wait()
+
+
+if __name__ == "__main__":
+    rosenexample()
+
+
