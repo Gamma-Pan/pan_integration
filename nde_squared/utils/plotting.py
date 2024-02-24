@@ -82,16 +82,28 @@ class VfPlotter:
 
     def pol_approx(
         self,
-        traj,
-        b,
+        approx,
+        time,
         arrows_every_n: int = 10,
-        show=False,
+        show=True,
+        **kwargs
     ):
         """
-        Plot the polynomial approximation of the ode solution using the PAN algorithm
-        :param traj:
-        :param b:
+        Plot the trigonometric polynomial approximation of the ode solution
         :param arrows_every_n:
         :param show:
         :return:
         """
+
+        if time != self.time:
+            self.time = time
+            self.ax.plot(approx[0,0],approx[0,0], 'o')
+            self.approx_art, = self.ax.plot(*approx, **kwargs)
+        else:
+            self.approx_art.set_data(*approx)
+
+        if show:
+            wait()
+
+
+

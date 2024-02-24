@@ -122,9 +122,10 @@ def _line_search(
     # Dphi = lambda a: p[None] @ grad_f(x + a * p)
 
     def phi(a):
-        return f(x+a*p)
+        return f(x + a * p)
+
     def Dphi(a):
-        return p[None] @ grad_f(x+a*p)
+        return p[None] @ grad_f(x + a * p)
 
     if phi_0 is None or Dphi_0 is None:
         phi_0 = phi(0)
@@ -242,7 +243,7 @@ def newton(
     metrics=True,
     tol: float = 1e-4,
     callback: Callable = None,
-):
+)-> Tensor:
     """
     :param f: scalar function to minimize
     :param b_init: tensor of parameters (tested only for 2d tensor)
@@ -250,6 +251,7 @@ def newton(
     :param metrics: whether to print number of function evaluations
     :param tol: tolerance for termination
     :param callback: a function to call at end of each iteration
+    :param has_aux, whether the error function returns auxiliary outputs, error should be the first
     :return: a b that is a local minimum of f
     """
     num_coeff = torch.numel(b_init)
@@ -293,7 +295,7 @@ def newton(
             Dphi_0=(d_k.T @ Df_k).squeeze(),
         )
 
-        b = b + alpha * d_k[:,0]
+        b = b + alpha * d_k[:, 0]
 
         if callback is not None:
             callback(b, d_k)

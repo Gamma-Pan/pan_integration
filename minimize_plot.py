@@ -36,8 +36,8 @@ def quadratic_gen(n) -> Callable:
 
     return f
 
+if __name__ == "__main__":
 
-def rosenexample():
     f = rosenbrock
     grid_def = (100, 100)
     y1_lims = [0.4, 1.6]
@@ -61,9 +61,4 @@ def rosenexample():
     b_min = newton(f, b_init)
     print(b_min)
     ax_3d.plot3D(b_min[0], b_min[1], f(b_min))
-
-
-if __name__ == "__main__":
-    rosenexample()
-
 
