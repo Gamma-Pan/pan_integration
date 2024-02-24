@@ -1,3 +1,3 @@
 import torch
-from nde_squared.solvers.pan_int import pan_int
+from pan_integration.solvers.pan_int import pan_int
 

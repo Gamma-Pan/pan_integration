@@ -4,7 +4,7 @@ import torch
 from torch import sign, sqrt, abs, tensor, Tensor
 from torch.func import jacfwd, jacrev
 import matplotlib.pyplot as plt
-from nde_squared.utils.plotting import wait
+from pan_integration.utils.plotting import wait
 from .factor import mod_chol
 
 

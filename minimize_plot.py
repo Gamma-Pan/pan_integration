@@ -2,8 +2,8 @@ from typing import Callable
 
 import torch
 from torch import linspace, meshgrid, tensor, Tensor, cos, sin
-from nde_squared.utils.plotting import wait
-from nde_squared.optim import newton
+from pan_integration.utils.plotting import wait
+from pan_integration.optim import newton
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt

@@ -1,8 +1,8 @@
 import torch
 import lightning.pytorch as pl
-from nde_squared.data import mnist_dataloaders
-from nde_squared.models.auto_encoders import Autoencoder
-from nde_squared.utils import VizEmbeddings, VizComparison
+from pan_integration.data import mnist_dataloaders
+from pan_integration.models.auto_encoders import Autoencoder
+from pan_integration.utils import VizEmbeddings, VizComparison
 import matplotlib as mpl
 
 mpl.use("TkAgg")

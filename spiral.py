@@ -1,6 +1,6 @@
 import torch
 from torch import tensor, squeeze, sin
-from nde_squared.utils.plotting import VfPlotter, wait
+from pan_integration.utils.plotting import VfPlotter, wait
 
 
 def f(batch, a=0.2):

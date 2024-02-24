@@ -2,8 +2,8 @@ import torch
 from torch import tensor, abs, norm, squeeze, tensor, Tensor
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from nde_squared.optim.minimize import _line_search
-from nde_squared.utils.plotting import wait
+from pan_integration.optim.minimize import _line_search
+from pan_integration.utils.plotting import wait
 from torch.func import jacfwd, jacrev, hessian
 
 mpl.use("TkAgg")

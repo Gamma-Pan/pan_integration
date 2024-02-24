@@ -12,7 +12,7 @@ from lightning.pytorch.loggers import WandbLogger
 from torchmetrics.classification import Accuracy
 from torchdyn.core import NeuralODE
 from torchdyn.datasets import ToyDataset
-from nde_squared.data import mnist_dataloaders
+from pan_integration.data import mnist_dataloaders
 from typing import List, Any
 
 mpl.use("TkAgg")

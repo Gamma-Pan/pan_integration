@@ -6,9 +6,9 @@ from torch.linalg import inv
 from scipy.integrate import solve_ivp
 import numpy as np
 from functools import partial
-from nde_squared.utils.plotting import VfPlotter
-from nde_squared.optim.line_search import line_search
-from nde_squared.optim.factor import mod_chol
+from pan_integration.utils.plotting import VfPlotter
+from pan_integration.optim.line_search import line_search
+from pan_integration.optim.factor import mod_chol
 import matplotlib.pyplot as plt
 from typing import Callable
 
