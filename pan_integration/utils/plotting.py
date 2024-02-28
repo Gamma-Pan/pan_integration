@@ -9,9 +9,9 @@ from torch import tensor, Tensor
 mpl.use("TkAgg")
 
 quiver_args = {
-    "headwidth": 1,
+    "headwidth": 2,
     "headlength": 1,
-    "headaxislength": 1,
+    "headaxislength": 1.5,
     "linewidth": 0.1,
     "angles": "xy",
 }
@@ -27,17 +27,22 @@ class VfPlotter:
     def __init__(
         self,
         f: Callable,
-        y_init: torch.Tensor = None,
+        y_init: torch.Tensor,
         grid_definition: tuple = (40, 40),
         existing_axes: plt.Axes = None,
         ax_kwargs: dict = None,
         show=False,
     ):
+        self.y_init = y_init
+
         if existing_axes is None:
             self.fig, self.ax = plt.subplots()
             self.ax.set(**ax_kwargs)
         else:
             self.ax = existing_axes
+
+        self.ax.plot(*y_init, "ro")
+        self.approx_art = None
 
         self.grid_definition = grid_definition
         self.f = f
@@ -47,7 +52,6 @@ class VfPlotter:
         if show:
             wait()
 
-    @torch.no_grad()
     def _plot_vector_field(self):
         xs = torch.linspace(*self.ax.get_xlim(), self.grid_definition[0])
         ys = torch.linspace(*self.ax.get_ylim(), self.grid_definition[1])
@@ -64,13 +68,15 @@ class VfPlotter:
         raise NotImplementedError
 
     def solve_ivp(
-        self, y_init: torch.tensor, ivp_kwargs, plot_kwargs=None
+        self, interval, y_init: torch.tensor = None, ivp_kwargs=None, plot_kwargs=None
     ):
         plot_kwargs = plot_kwargs or {}
+        ivp_kwargs = ivp_kwargs or {}
+        y_init = y_init or self.y_init
 
         ivp_sol = solve_ivp(
             lambda t, x: self.f(x),
-            [0, 200],
+            interval,
             y_init,
             **ivp_kwargs,
         )
@@ -80,14 +86,8 @@ class VfPlotter:
 
         (self.trajectory,) = self.ax.plot(*trajectory, **plot_kwargs)
 
-    def pol_approx(
-        self,
-        approx,
-        time,
-        arrows_every_n: int = 10,
-        show=True,
-        **kwargs
-    ):
+    @torch.no_grad()
+    def pol_approx(self, approx ,arrows_every_n: int = 10, **kwargs):
         """
         Plot the trigonometric polynomial approximation of the ode solution
         :param arrows_every_n:
@@ -95,15 +95,13 @@ class VfPlotter:
         :return:
         """
 
-        if time != self.time:
-            self.time = time
-            self.ax.plot(approx[0,0],approx[0,0], 'o')
-            self.approx_art, = self.ax.plot(*approx, **kwargs)
+        if self.approx_art is None:
+            self.approx_art, = self.ax.plot([], [], **kwargs)
+
+        if not torch.equal(approx[0, :], self.y_init):
+            self.y_init = approx[0, :]
+            self.ax.plot(approx[0, 0], approx[0, 1], "o")
+            (self.approx_art,) = self.ax.plot(approx[:,0], approx[:,1], **kwargs)
         else:
-            self.approx_art.set_data(*approx)
-
-        if show:
-            wait()
-
-
-
+            self.approx_art.set_xdata(approx[:,0])
+            self.approx_art.set_ydata(approx[:,1])

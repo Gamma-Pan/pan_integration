@@ -7,7 +7,7 @@ from scipy.integrate import solve_ivp
 import numpy as np
 from functools import partial
 from pan_integration.utils.plotting import VfPlotter
-from pan_integration.optim.line_search import line_search
+from pan_integration.optim.minimize import _line_search
 from pan_integration.optim.factor import mod_chol
 import matplotlib.pyplot as plt
 from typing import Callable
