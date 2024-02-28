@@ -40,8 +40,12 @@ def mod_chol(G: torch.Tensor, delta=torch.tensor(1e-3)) -> tuple:
     """
 
     n = G.shape[0]
+
+    L = torch.eye(n,n)
+    d = torch.diag(G)
+
     nu = max(1., sqrt(n ** 2 - 1.))
-    gamma = max(torch.diag(G))
+    gamma = torch.max(torch.diag(G))
     # G is symmetric so the max of the off diagonal elements is also the max
     # of the lower triangular part excluding the diagonal
     xi = torch.max(torch.tril(G,-1))
@@ -51,27 +55,28 @@ def mod_chol(G: torch.Tensor, delta=torch.tensor(1e-3)) -> tuple:
 
     for j in range(n):
         # find the index of the largest element on the diagonal
-        q = torch.argmax(torch.diag(G)[j:]).item()
-        # interchange rows and columns of submatrix
+        q = torch.argmax(d).item()
+        # interchange rows and columns of G
         temp = P[j].clone()
-        P[j] = q + j
+        P[j] = P[q + j]
         P[q + j] = temp
 
-        temp = G[j:, j:][0, :].clone()
-        G[j:, j:][0, :] = G[j:, j:][q, :]
-        G[j:, j:][q, :] = temp
+        temp = G[j, :].clone()
+        G[j, :] = G[q+j, :]
+        G[q+j, :] = temp
 
-        temp = G[j:, j:][:, 0].clone()
-        G[j:, j:][:, 0] = G[j:, j:][:, q]
-        G[j:, j:][:, q] = temp
+        temp = G[:, j].clone()
+        G[:, j] = G[:, q+j]
+        G[:, q+j] = temp
 
         # compute the j-th row of L
-        G[j, :j] = G[j, :j] / torch.diagonal(G)[:j]
-        # compute the j-th column of C and caclculate theta_j
-        G[j + 1:, j] = G[j + 1:, j] - torch.sum(G[j, :j] * G[j + 1:, :j], dim=1)
-        theta_j = torch.max(torch.abs(G[j + 1:, j])) if j < n - 1 else 0
+        L[j, :j] = L[j, :j] / d[:j]
+        # compute the j-th column of C and calculate theta_j
+        L[j + 1:, j] = G[j + 1:, j] - torch.sum(L[j, :j] * L[j + 1:, :j], dim=1)
+        theta_j = torch.max(torch.abs(L[j + 1:, j])) if j < n - 1 else 0
         # compute the j-th diagonal element
-        torch.diagonal(G)[j] = torch.max(torch.stack((delta, torch.abs(G[j, j]), theta_j ** 2 / beta_sq)))
-        torch.diagonal(G)[j + 1:] -= G[j + 1:, j] / torch.diagonal(G)[j]
+        d[j] = torch.max(torch.stack((delta, d[j], theta_j ** 2 / beta_sq)))
+        if j==n-1: break
+        d[j + 1:] -= L[j+1:,j]**2 / d[j]
 
-    return torch.tril(G).fill_diagonal_(1), torch.diagonal(G), P
+    return L, d, P
