@@ -5,6 +5,8 @@ from torch import tensor, Tensor, cos, sin
 from ..utils.plotting import VfPlotter
 from ..optim import newton
 
+from torch import pi as PI
+
 
 def pan_int(
         f,
@@ -15,7 +17,7 @@ def pan_int(
         step: float = None,
         etol=1e-3,
         callback: callable = None,
-) -> tuple[Tensor, Tensor]:
+) -> Tensor:
     """
 
     :param f:
@@ -38,56 +40,81 @@ def pan_int(
     cur_interval = [t_lims[0], t_lims[0] + step]
 
     freqs = torch.arange(num_coeff_per_dim // 2, dtype=torch.float)[None, :]
-    last_step = False
+
     # two rows of b are not learnable but defined from y_init
-    B_size = (num_coeff_per_dim - 2) * dims
-    B = torch.rand(B_size)
+    # one row is defined from f(y_init)
+    B = torch.rand((num_coeff_per_dim-3)*dims)
+
+    cur_interval = [t_lims[0], t_lims[0] + step]
+    approx = torch.tensor([])
     while True:
-        if cur_interval[1] >= t_lims[1]:
+
+        if cur_interval[1] > t_lims[1]:
             cur_interval[1] = t_lims[1]
-            last_step = True
 
         t_points = torch.linspace(
             cur_interval[0], cur_interval[1], num_points, dtype=torch.float
         )[:, None]
         # broadcast product is NxM
-        grid = t_points * freqs
+        grid = (t_points * freqs)
 
         # caclulate the polynomial time variables and their derivatives
         Phi_cT = cos(grid)
         Phi_sT = sin(grid)
-        D_Phi_cT = -grid * sin(grid)
-        D_Phi_sT = grid * cos(grid)
+        D_Phi_cT = -freqs * sin(grid)
+        D_Phi_sT = freqs * cos(grid)
 
-        def error_func(B_vec: Tensor, y_init: tensor) -> tuple:
-            # convert vector back to matrices
-            B_c = B_vec[: B_size // 2].reshape(num_coeff_per_dim // 2 - 1, dims)
-            B_s = B_vec[B_size // 2:].reshape(num_coeff_per_dim // 2 - 1, dims)
+        def error_func(B_vec: Tensor) -> tuple:
+            t_0 = torch.tensor(cur_interval[0])
+            # CONVERT VECTOR BACK TO MATRICES
 
-            # calculate the first row of B_c
-            B_c0 = y_init[None] - Phi_cT[0:1, 1:] @ B_c - Phi_sT[0:1, 1:] @ B_s
-            B_c = torch.vstack((B_c0, B_c))
+            #  the first half of B comprises the Bc matrix minus the first row
+            Bc_m1 = B_vec[:(num_coeff_per_dim // 2 - 1) * dims].reshape(num_coeff_per_dim // 2 - 1, dims)
+            # the rest comprises the Bs matrix minus the first two rows
+            Bs_m2 = B_vec[(num_coeff_per_dim // 2 - 1) * dims:].reshape(num_coeff_per_dim // 2 - 2, dims)
 
-            # the first row B_s doesn't contribute
-            B_s = torch.vstack((torch.zeros(1, dims), B_s))
+            # calculate the 1-index row of Bs
+            Bs_1 = ((f(y_init[None])
+                     + sin(t_0) * Bc_m1[0:1, :]
+                     - D_Phi_cT[0, 2:] @ Bc_m1[1:, :]
+                     - D_Phi_sT[0, 2:] @ Bs_m2)
+                    / cos(t_0))
 
-            approx = Phi_cT @ B_c + Phi_sT @ B_s
+            # calculate the 1-index row of Bs
+            Bs_m1 = torch.vstack((Bs_1, Bs_m2))
+
+            # calculate the first row of Bc
+            Bc_0 = y_init[None] - Phi_cT[0:1, 1:] @ Bc_m1 - Phi_sT[0:1, 1:] @ Bs_m1
+            Bc = torch.vstack((Bc_0, Bc_m1))
+
+            # the first row Bs doesn't contribute
+            Bs = torch.vstack((torch.zeros(1, dims), Bs_m1))
+            approx = Phi_cT @ Bc + Phi_sT @ Bs
 
             # f treats each row independently (rows = batch dimension)
             f_approx = f(approx)  # <--- PARALLELIZE HERE
-            D_approx = D_Phi_cT @ B_c + D_Phi_sT @ B_s
+            D_approx = D_Phi_cT @ Bc + D_Phi_sT @ Bs
 
-            error = torch.sum((f_approx - D_approx) ** 2)
+            error = torch.sum((f_approx - D_approx) ** 2) / num_points
 
             return error, approx
 
-        B = newton(error_func, B, f_args=(y_init,), has_aux=True, tol=etol,
-                   callback=lambda x: callback(x, Phi_cT, Phi_sT, y_init, cur_interval, num_coeff_per_dim, dims)),
+        # initialize B to linear approximation of solution
+        # t_lstsq = torch.linspace(*cur_interval, num_coeff_per_dim)[:,None]
+        # grid_ls = t_lstsq * freqs
+        # Phi_cT_ls = cos(grid_ls)
+        # Phi_sT_ls = sin(grid_ls)
+        # Phi_all = torch.hstack( (Phi_cT_ls, Phi_sT_ls) )
 
-        _, approx = error_func(B, y_init)
-        y_init = approx[-1, :]
+        B = newton(error_func, B, has_aux=True, tol=etol,
+                   callback=lambda x: callback(x, y_init, cur_interval, num_coeff_per_dim, dims))
 
-        cur_interval = [cur_interval[-1], cur_interval[-1] + step]
+        # TODO: make newton return the aux of error_func instead of recalculating
+        (error, local_approx) = error_func(B)
+        y_init = local_approx[-1, :]
 
-        if last_step or cur_interval[-1] == t_lims[-1]:
+        torch.cat((approx, local_approx))
+        if cur_interval[1] == t_lims[1]:
             return approx
+        else:
+            cur_interval = [cur_interval[1], cur_interval[1]+step]

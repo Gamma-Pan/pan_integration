@@ -256,7 +256,7 @@ def newton(
     :param max_steps: max amount of iterations to perform
     :param metrics: whether to print number of function evaluations
     :param tol: tolerance for termination
-    :param callback: a function to call at end of each iteration
+    :param callback: a function to call at end f each iteration
     :return: a b that is a local minimum of f
     """
     f_args = f_args or []
@@ -275,7 +275,8 @@ def newton(
     for step in range(max_steps):
 
         if callback is not None:
-            callback(b)
+            with torch.no_grad():
+                callback(b.clone())
 
         # calculate forward pass and
         Df_k, f_k = grad(b)
@@ -287,17 +288,26 @@ def newton(
 
         # calculate Hessian
         Hf_k = hessian(b)[0]
+
+        eig = torch.real(torch.linalg.eigvals(Hf_k))
+
         # make hessian positive definite if not using modified Cholesky factorisation
-        LD_compat = mod_chol(Hf_k)
+        LD_compat = mod_chol(Hf_k, pivoting=False)
 
-        # IS THE HESSIAN POSITIVE DEFINITE?
-        Hessian = LD_compat.tril().fill_diagonal_(1) @ torch.diag(torch.diagonal(LD_compat)) @ LD_compat.tril().fill_diagonal_(1).T
+        d = torch.diag(torch.diag(LD_compat))
+        L = torch.tril(LD_compat.clone(), -1).fill_diagonal_(1)
+        eigchol = torch.real(torch.linalg.eigvals( L@d@L.T ))
 
-        # pivots for solving LDL problem,
-        # since factorisation doesn't use permutations just use a range
+        # if not torch.all(eigchol >0):
+        #     raise Exception('NEGATIVE EIGENVALUES')
+
+        # pivots for solving LDL problem, just define as range
         pivots = torch.arange(1, num_coeff + 1)
         # Df_k is 1d, make it a column vector to solve linear system
         d_k = -torch.linalg.ldl_solve(LD_compat, pivots, Df_k[:, None])
+
+        # if f_k < ff(b+0.001*d_k[:,0])[0] :
+        #     raise Exception("NOT A DESCENT DIRECTION")
 
         alpha = _line_search(
             lambda x: ff(x)[0],
@@ -310,7 +320,6 @@ def newton(
             plot=False
         )
 
-        print(alpha)
         b = b + alpha * d_k[:, 0]
 
     print("Max iterations reached")

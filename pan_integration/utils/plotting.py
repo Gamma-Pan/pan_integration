@@ -5,6 +5,7 @@ from scipy.integrate import solve_ivp
 import torch
 import numpy as np
 from torch import tensor, Tensor
+from itertools import cycle
 
 mpl.use("TkAgg")
 
@@ -28,12 +29,16 @@ class VfPlotter:
         self,
         f: Callable,
         y_init: torch.Tensor,
+        t_init: float,
         grid_definition: tuple = (40, 40),
         existing_axes: plt.Axes = None,
         ax_kwargs: dict = None,
         show=False,
     ):
+
+        self.cycol = cycle('bg')
         self.y_init = y_init
+        self.t_init = t_init
 
         if existing_axes is None:
             self.fig, self.ax = plt.subplots()
@@ -87,7 +92,7 @@ class VfPlotter:
         (self.trajectory,) = self.ax.plot(*trajectory, **plot_kwargs)
 
     @torch.no_grad()
-    def pol_approx(self, approx ,arrows_every_n: int = 10, **kwargs):
+    def pol_approx(self, approx, t_init, arrows_every_n: int = 10,  **kwargs):
         """
         Plot the trigonometric polynomial approximation of the ode solution
         :param arrows_every_n:
@@ -98,10 +103,11 @@ class VfPlotter:
         if self.approx_art is None:
             self.approx_art, = self.ax.plot([], [], **kwargs)
 
-        if not torch.equal(approx[0, :], self.y_init):
-            self.y_init = approx[0, :]
+        if self.t_init != t_init:
+            self.t_init= t_init
             self.ax.plot(approx[0, 0], approx[0, 1], "o")
             (self.approx_art,) = self.ax.plot(approx[:,0], approx[:,1], **kwargs)
         else:
             self.approx_art.set_xdata(approx[:,0])
             self.approx_art.set_ydata(approx[:,1])
+            self.approx_art.set_color(next(self.cycol))
