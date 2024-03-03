@@ -3,8 +3,7 @@ from typing import Callable
 import torch
 from torch import sign, sqrt, abs, tensor, Tensor
 from torch.func import jacfwd, jacrev
-import matplotlib.pyplot as plt
-from pan_integration.utils.plotting import wait
+from pan_integration.utils.plotting import LsPlotter
 from .factor import mod_chol
 
 
@@ -74,10 +73,6 @@ def _zoom(
 
     i = 0
     while i < max_iters:
-        if plotting:
-            ax.plot(a_lo, phi_lo, color="green", marker="o")
-            ax.plot(a_hi, phi_hi, color="blue", marker="o")
-            wait()
 
         i = i + 1
         a_i = min_cubic_interpol(a_lo, phi_lo, Dphi_lo, a_hi, phi_hi, Dphi_hi)
@@ -89,12 +84,14 @@ def _zoom(
         else:
             Dphi_i = Dphi(a_i)
             if abs(Dphi_i) <= c2 * Dphi_0:
+                if plotting: plotter.close_all()
                 return a_i
 
             if Dphi_i * (a_hi - a_lo) >= 0:
                 a_hi = a_lo
             a_lo = a_i
 
+    if plotting: plotter.close_all()
     return (a_lo + a_hi) / 2
 
 
@@ -136,35 +133,16 @@ def _line_search(
     global plotting
     plotting = plot
     if plotting:
-        with torch.no_grad():
-            global ax
-            fig, ax = plt.subplots()
-
-            a_plot = torch.linspace(0, 5, 100)
-            ax.plot(a_plot, torch.stack([phi(a) for a in a_plot]), color="red", label="\phi (a)")
-            (art_slope0,) = ax.plot(a_plot, torch.zeros(*a_plot.shape), linestyle="--")
-            (art_point,) = ax.plot([], [], color="green", marker="o")
-            (art_slopei,) = ax.plot([], [], linestyle="-.", color="red")
-            (art_slopeiabs,) = ax.plot([], [], linestyle="-.", color="seagreen")
-            (art_slopei0,) = ax.plot([], [], linestyle="-.", color="lime")
+        global plotter
+        plotter = LsPlotter(phi)
 
     i = 1
     while i < max_iters and a_cur < a_max:
         # evaluate f at trial step (1 evaluation per loop)
         phi_cur = phi(a_cur)
-
-        if plotting:
-            with torch.no_grad():
-                art_slope0.set_ydata(phi_0 + c1 * a_plot * Dphi_0)
-                art_point.set_data(a_cur, phi_cur)
-                wait()
-
+        if plotting : plotter.line_search(a_cur)
         # if sufficient decrease is violated at new point find min with zoom
         if phi_cur > phi_0 + c1 * a_cur * Dphi_0 or (phi_cur >= phi_prev and i > 1):
-            if plotting:
-                with torch.no_grad():
-                    art_slope0.set_data([], [])
-                    art_point.set_data([], [])
 
             return _zoom(
                 a_prev,
@@ -183,31 +161,10 @@ def _line_search(
         # evaluate grad f at trial step (~2 evaluations per loop)
         Dphi_cur = Dphi(a_cur)
 
-        if plotting:
-            with torch.no_grad():
-                art_slopeiabs.set_data(
-                    [a_cur - 1, a_cur + 1],
-                    [phi_cur - torch.abs(Dphi_cur), phi_cur + torch.abs(Dphi_cur)],
-                )
-                art_slopei.set_data(
-                    [a_cur - 1, a_cur + 1],
-                    [phi_cur - Dphi_cur, phi_cur + Dphi_cur],
-                )
-                art_slopei0.set_data(
-                    [a_cur - 1, a_cur + 1], [phi_cur + c2 * Dphi_0, phi_cur - c2 * Dphi_0]
-                )
-                wait()
-
         # if sufficient decrease holds and curvature hold return this a
         if abs(Dphi_cur) <= -c2 * Dphi_0:
-            if plotting:
-                plt.close(fig)
+            if plotting: plotter.close_all()
             return a_cur
-
-        if plotting:
-            art_slopei.set_data([], [])
-            art_slopeiabs.set_data([], [])
-            art_slopei0.set_data([], [])
 
         # TODO: explain this step
         if abs(Dphi_cur) >= 0:
@@ -234,6 +191,7 @@ def _line_search(
         a_cur = 2 * a_cur
         i = i + 1
 
+    if plotting: plotter.close_all()
     return a_cur
 
 
@@ -289,17 +247,20 @@ def newton(
         # calculate Hessian
         Hf_k = hessian(b)[0]
 
-        eig = torch.real(torch.linalg.eigvals(Hf_k))
-
         # make hessian positive definite if not using modified Cholesky factorisation
         LD_compat = mod_chol(Hf_k, pivoting=False)
 
+        eig = torch.real(torch.linalg.eigvals(Hf_k))
         d = torch.diag(torch.diag(LD_compat))
         L = torch.tril(LD_compat.clone(), -1).fill_diagonal_(1)
-        eigchol = torch.real(torch.linalg.eigvals( L@d@L.T ))
+        eigchol = torch.real(torch.linalg.eigvals(L @ d @ L.T))
 
-        # if not torch.all(eigchol >0):
-        #     raise Exception('NEGATIVE EIGENVALUES')
+        if not torch.all(eigchol > 0):
+            print("Warning: negative eigenvalues")
+            print(eigchol[eigchol < 0], '\n')
+            print("unmodified eigenvalues:")
+            print(eig[eig < 0])
+            # raise Exception('NEGATIVE EIGENVALUES')
 
         # pivots for solving LDL problem, just define as range
         pivots = torch.arange(1, num_coeff + 1)
@@ -317,7 +278,7 @@ def newton(
             d_k[:, 0],  # pass it to lineseach as a batch of 1d vectors
             phi_0=f_k,
             Dphi_0=(d_k.T @ Df_k).squeeze(),
-            plot=False
+            plot=True
         )
 
         b = b + alpha * d_k[:, 0]

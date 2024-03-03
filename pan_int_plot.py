@@ -81,7 +81,6 @@ if __name__ == "__main__":
         plotter.pol_approx(approx, t_0)
         plotting.wait()
 
-
     approx = pan_int(
         spiral,
         y_init,

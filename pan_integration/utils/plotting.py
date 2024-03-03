@@ -8,7 +8,6 @@ from torch import tensor, Tensor
 from itertools import cycle
 
 mpl.use("TkAgg")
-
 quiver_args = {
     "headwidth": 2,
     "headlength": 1,
@@ -26,14 +25,14 @@ def wait():
 
 class VfPlotter:
     def __init__(
-        self,
-        f: Callable,
-        y_init: torch.Tensor,
-        t_init: float,
-        grid_definition: tuple = (40, 40),
-        existing_axes: plt.Axes = None,
-        ax_kwargs: dict = None,
-        show=False,
+            self,
+            f: Callable,
+            y_init: torch.Tensor,
+            t_init: float,
+            grid_definition: tuple = (40, 40),
+            existing_axes: plt.Axes = None,
+            ax_kwargs: dict = None,
+            show=False,
     ):
 
         self.cycol = cycle('bg')
@@ -73,7 +72,7 @@ class VfPlotter:
         raise NotImplementedError
 
     def solve_ivp(
-        self, interval, y_init: torch.tensor = None, ivp_kwargs=None, plot_kwargs=None
+            self, interval, y_init: torch.tensor = None, ivp_kwargs=None, plot_kwargs=None
     ):
         plot_kwargs = plot_kwargs or {}
         ivp_kwargs = ivp_kwargs or {}
@@ -92,7 +91,7 @@ class VfPlotter:
         (self.trajectory,) = self.ax.plot(*trajectory, **plot_kwargs)
 
     @torch.no_grad()
-    def pol_approx(self, approx, t_init, arrows_every_n: int = 10,  **kwargs):
+    def pol_approx(self, approx, t_init, arrows_every_n: int = 10, **kwargs):
         """
         Plot the trigonometric polynomial approximation of the ode solution
         :param arrows_every_n:
@@ -104,10 +103,41 @@ class VfPlotter:
             self.approx_art, = self.ax.plot([], [], **kwargs)
 
         if self.t_init != t_init:
-            self.t_init= t_init
+            self.t_init = t_init
             self.ax.plot(approx[0, 0], approx[0, 1], "o")
-            (self.approx_art,) = self.ax.plot(approx[:,0], approx[:,1], **kwargs)
+            (self.approx_art,) = self.ax.plot(approx[:, 0], approx[:, 1], **kwargs)
         else:
-            self.approx_art.set_xdata(approx[:,0])
-            self.approx_art.set_ydata(approx[:,1])
+            self.approx_art.set_xdata(approx[:, 0])
+            self.approx_art.set_ydata(approx[:, 1])
             self.approx_art.set_color(next(self.cycol))
+
+
+class LsPlotter:
+
+    def __init__(self, func, plot_res=100, alpha_max = 10):
+        self.fig, self.ax = plt.subplots()
+        self.phi = func
+        self.plot_res = plot_res
+        self.alpha_max = alpha_max
+
+        self.alpha_line_art, = self.ax.plot([], [], color='#EE2233', label='$\phi(a)$')
+        self.curpoint, = self.ax.plot([],[], color= '#FF5566', label='$a_i$', marker='o')
+
+    def line_search(self, a_cur):
+        a = torch.linspace(0, a_cur + 1, self.plot_res)
+        phi_a = torch.stack([self.phi(a) for a in a])
+        self.alpha_line_art.set_xdata(a)
+
+        self.alpha_line_art.set_ydata(phi_a)
+        self.ax.set_xlim(-0.1, a_cur+1)
+        self.ax.set_ylim([0.9 * torch.min(phi_a), self.phi(a_cur+1)*1.1 ] )
+
+        self.curpoint.set_xdata([a_cur])
+        self.curpoint.set_ydata([self.phi(a_cur)])
+        wait()
+
+    def zoom(self):
+        raise NotImplementedError
+
+    def close_all(self):
+        plt.close(self.fig)

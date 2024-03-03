@@ -89,22 +89,32 @@ def pan_int(
 
             # the first row Bs doesn't contribute
             Bs = torch.vstack((torch.zeros(1, dims), Bs_m1))
+
+
+
+
             approx = Phi_cT @ Bc + Phi_sT @ Bs
 
             # f treats each row independently (rows = batch dimension)
             f_approx = f(approx)  # <--- PARALLELIZE HERE
             D_approx = D_Phi_cT @ Bc + D_Phi_sT @ Bs
 
-            error = torch.sum((f_approx - D_approx) ** 2) / num_points
+            error = torch.sum((f_approx - D_approx) ** 2) / (num_points*num_coeff_per_dim)
 
             return error, approx
 
         # initialize B to linear approximation of solution
-        # t_lstsq = torch.linspace(*cur_interval, num_coeff_per_dim)[:,None]
-        # grid_ls = t_lstsq * freqs
-        # Phi_cT_ls = cos(grid_ls)
-        # Phi_sT_ls = sin(grid_ls)
-        # Phi_all = torch.hstack( (Phi_cT_ls, Phi_sT_ls) )
+        t_ls = torch.linspace(*cur_interval, num_coeff_per_dim)[:,None]
+        grid_ls = t_ls * freqs
+        Phi_cT_ls = cos(grid_ls)
+        Phi_sT_ls = sin(grid_ls)
+        Phi_ls = torch.hstack( (Phi_cT_ls, Phi_sT_ls) )
+        y_ls = y_init + f(y_init[None])*t_ls
+        B_init = torch.linalg.lstsq( Phi_ls, y_ls ).solution
+        mask = torch.ones_like(B_init)
+        mask[0,:] = 0
+        mask[num_coeff_per_dim//2: num_coeff_per_dim//2+2, :] = 0
+        B = B_init[mask.bool()]
 
         B = newton(error_func, B, has_aux=True, tol=etol,
                    callback=lambda x: callback(x, y_init, cur_interval, num_coeff_per_dim, dims))
