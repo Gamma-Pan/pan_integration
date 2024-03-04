@@ -16,6 +16,13 @@ quiver_args = {
     "angles": "xy",
 }
 
+stream_kwargs = {
+    'color': '#555555',
+    'density': 0.7,
+    'arrowsize': 0.6,
+    'linewidth': 0.6
+}
+
 
 def wait():
     while True:
@@ -66,7 +73,9 @@ class VfPlotter:
         derivatives = self.f(batch)
         Us, Vs = derivatives.unbind(dim=-1)
 
-        self.ax.quiver(Xs, Ys, Us, Vs, **quiver_args)
+        self.ax.streamplot(Xs.numpy().astype(float), Ys.numpy().astype(float),
+                           Us.numpy().astype(float), Vs.numpy().astype(float),
+                           **stream_kwargs)
 
     def update(self):
         raise NotImplementedError
@@ -79,7 +88,7 @@ class VfPlotter:
         y_init = y_init or self.y_init
 
         ivp_sol = solve_ivp(
-            lambda t, x: self.f(x),
+            lambda t, x: self.f(x.astype(float)),
             interval,
             y_init,
             **ivp_kwargs,
@@ -114,14 +123,14 @@ class VfPlotter:
 
 class LsPlotter:
 
-    def __init__(self, func, plot_res=100, alpha_max = 10):
+    def __init__(self, func, plot_res=100, alpha_max=10):
         self.fig, self.ax = plt.subplots()
         self.phi = func
         self.plot_res = plot_res
         self.alpha_max = alpha_max
 
         self.alpha_line_art, = self.ax.plot([], [], color='#EE2233', label='$\phi(a)$')
-        self.curpoint, = self.ax.plot([],[], color= '#FF5566', label='$a_i$', marker='o')
+        self.curpoint, = self.ax.plot([], [], color='#FF5566', label='$a_i$', marker='o')
 
     def line_search(self, a_cur):
         a = torch.linspace(0, a_cur + 1, self.plot_res)
@@ -129,8 +138,8 @@ class LsPlotter:
         self.alpha_line_art.set_xdata(a)
 
         self.alpha_line_art.set_ydata(phi_a)
-        self.ax.set_xlim(-0.1, a_cur+1)
-        self.ax.set_ylim([0.9 * torch.min(phi_a), self.phi(a_cur+1)*1.1 ] )
+        self.ax.set_xlim(-0.1, a_cur + 1)
+        self.ax.set_ylim([0.9 * torch.min(phi_a), self.phi(a_cur + 1) * 1.1])
 
         self.curpoint.set_xdata([a_cur])
         self.curpoint.set_ydata([self.phi(a_cur)])

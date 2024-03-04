@@ -22,7 +22,7 @@ def mod_chol(G: torch.Tensor, delta=torch.tensor(1e-3), pivoting=False) -> Union
     # G is symmetric so the max of the off diagonal elements is also the max
     # of the lower triangular part excluding the diagonal
     xi = torch.max(torch.tril(G, -1))
-    eps =  torch.tensor(1e-8)  #torch.tensor(sys.float_info.epsilon)
+    eps =  torch.tensor(1e-10)  # torch.tensor(sys.float_info.epsilon)
     beta_sq = torch.max(torch.stack((gamma, xi / nu, eps)))
     P = torch.arange(n)
 
@@ -65,7 +65,7 @@ def mod_chol(G: torch.Tensor, delta=torch.tensor(1e-3), pivoting=False) -> Union
         theta_j = torch.max(torch.abs(L[j + 1:, j])) if j < n - 1 else 0
         # compute the j-th diagonal element
         d[j] = torch.max(torch.stack((delta, torch.abs(d[j]), theta_j ** 2 / beta_sq)))
-        if j == n - 1: break
+
         d[j + 1:] -= L[j + 1:, j] ** 2 / d[j]
 
     torch.diagonal(L)[:] = d

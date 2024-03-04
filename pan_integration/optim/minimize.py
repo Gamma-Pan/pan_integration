@@ -140,10 +140,9 @@ def _line_search(
     while i < max_iters and a_cur < a_max:
         # evaluate f at trial step (1 evaluation per loop)
         phi_cur = phi(a_cur)
-        if plotting : plotter.line_search(a_cur)
+        if plotting: plotter.line_search(a_cur)
         # if sufficient decrease is violated at new point find min with zoom
         if phi_cur > phi_0 + c1 * a_cur * Dphi_0 or (phi_cur >= phi_prev and i > 1):
-
             return _zoom(
                 a_prev,
                 a_cur,
@@ -229,6 +228,7 @@ def newton(
     grad = jacrev(ff, has_aux=True)
     hessian = jacfwd(grad, has_aux=True)
 
+    prev_norm = 0
     b = b_init
     for step in range(max_steps):
 
@@ -240,34 +240,32 @@ def newton(
         Df_k, f_k = grad(b)
 
         # check if gradient is within tolerance and if so return
-        print(f"norm of grad: {torch.norm(Df_k)}")
-        if torch.norm(Df_k) < tol:
+        norm = torch.norm(Df_k)
+        print(f"norm of grad: {norm} \t norms diff: {torch.abs(norm - prev_norm)}")
+        if norm < tol or torch.abs(norm - prev_norm) < 1e-6:
             return b
+        prev_norm = norm
 
         # calculate Hessian
         Hf_k = hessian(b)[0]
 
         # make hessian positive definite if not using modified Cholesky factorisation
         LD_compat = mod_chol(Hf_k, pivoting=False)
+        D_ch = torch.diag(LD_compat)[:, None].clone()
+        L_ch = torch.tril(LD_compat, -1).fill_diagonal_(1)
 
-        eig = torch.real(torch.linalg.eigvals(Hf_k))
-        d = torch.diag(torch.diag(LD_compat))
-        L = torch.tril(LD_compat.clone(), -1).fill_diagonal_(1)
-        eigchol = torch.real(torch.linalg.eigvals(L @ d @ L.T))
+        # SOLVE LDL^T d_k = -Df_k
+        #  first solve uni-triangular system 1
+        Z = torch.linalg.solve_triangular(L_ch, -Df_k[:, None], upper=False, unitriangular=True)
+        # then solve diagonal system 2
+        Y = Z / D_ch  # + 1e-5) # for numerical stability
+        # then sole uni-triangular system 1
+        d_k = torch.linalg.solve_triangular(L_ch.T, Y, upper=True, unitriangular=True)
 
-        if not torch.all(eigchol > 0):
-            print("Warning: negative eigenvalues")
-            print(eigchol[eigchol < 0], '\n')
-            print("unmodified eigenvalues:")
-            print(eig[eig < 0])
-            # raise Exception('NEGATIVE EIGENVALUES')
-
-        # pivots for solving LDL problem, just define as range
-        pivots = torch.arange(1, num_coeff + 1)
         # Df_k is 1d, make it a column vector to solve linear system
-        d_k = -torch.linalg.ldl_solve(LD_compat, pivots, Df_k[:, None])
+        # d_k = -torch.linalg.ldl_solve(LD_compat, torch.arange(1,num_coeff+1), Df_k[:, None])
 
-        # if f_k < ff(b+0.001*d_k[:,0])[0] :
+        # if f_k < ff(b+0.00000001*d_k[:,0])[0] :
         #     raise Exception("NOT A DESCENT DIRECTION")
 
         alpha = _line_search(
@@ -278,7 +276,7 @@ def newton(
             d_k[:, 0],  # pass it to lineseach as a batch of 1d vectors
             phi_0=f_k,
             Dphi_0=(d_k.T @ Df_k).squeeze(),
-            plot=True
+            plot=False
         )
 
         b = b + alpha * d_k[:, 0]

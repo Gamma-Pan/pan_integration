@@ -1,37 +1,60 @@
 import torch
-from torch import tensor, sin, cos
+from torch import tensor, sin, cos, tanh
 from pan_integration.solvers import pan_int
 from pan_integration.utils import plotting
 import matplotlib.pyplot as plt
 
 from torch import pi as PI
 
-
 def spiral(batch, a=0.2):
     P = tensor([[-a, 1.0], [-1.0, -a]])[None, None]
 
     xy = batch[..., None]
-    derivative = P @ xy
+    derivative = (P @ xy)
     return torch.squeeze(derivative)
 
 
-if __name__ == "__main__":
-    NUM_POINTS = 40
+def voltera_lotka(batch):
+    x = batch[...,0]
+    y = batch[...,1]
+    a = 0.4
+    b = 0.9
+    c = 1.3
+    d = 0.2
 
-    y_init = tensor([-3, -3], dtype=torch.float)
+    derivative = torch.stack( (a*x - b*x*y ,d*x*y -c*y ) )
+    return torch.squeeze(derivative)
+
+if __name__ == "__main__":
+    global COUNTER
+
+    NUM_POINTS = 30
+    f = spiral
+
+    y_init = tensor([-1.2, -3.4], dtype=torch.float)
     ax_kwargs = {"xlim": (-5, 5), "ylim": (-5, 5)}
     plotter = plotting.VfPlotter(
-        spiral,
+        f,
         y_init,
         t_init=0.,
         ax_kwargs=ax_kwargs,
     )
 
+    # plotter.solve_ivp(
+    #     [0, 20], ivp_kwargs={"method": "BDF"}, plot_kwargs={"color": "red", 'label': 'BDF'}
+    # )
+    # plotter.solve_ivp(
+    #     [0, 20], ivp_kwargs={"method": "RK45"}, plot_kwargs={"color": "brown", 'label': 'RK45'}
+    # )
+    # plotter.solve_ivp(
+    #     [0, 3], ivp_kwargs={"method": "RK23"}, plot_kwargs={"color": "lime", 'label': 'RK23'}
+    # )
+    # plotter.solve_ivp(
+    #     [0, 3], ivp_kwargs={"method": "Radau"}, plot_kwargs={"color": "salmon", 'label': 'Radau'}
+    # )
     plotter.solve_ivp(
-        [0, 2], ivp_kwargs={"method": "LSODA"}, plot_kwargs={"color": "red"}
+        [0, 20], ivp_kwargs={"method": "LSODA"}, plot_kwargs={"color": "salmon", 'label': 'LSODA'}
     )
-
-    f = spiral
 
 
     @torch.no_grad()
@@ -81,15 +104,16 @@ if __name__ == "__main__":
         plotter.pol_approx(approx, t_0)
         plotting.wait()
 
+
     approx = pan_int(
         spiral,
         y_init,
         callback=callback,
-        t_lims=[0, 2],
-        step=0.5,
+        t_lims=[0, 20],
+        step=5.,
         num_points=NUM_POINTS,
         num_coeff_per_dim=20,
-        etol=1e-2
+        etol=1e-3
     )
 
     print("FIN")

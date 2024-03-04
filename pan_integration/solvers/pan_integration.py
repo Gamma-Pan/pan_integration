@@ -33,6 +33,9 @@ def pan_int(
     :return:
     """
 
+    global COUNTER
+    COUNTER = 0
+
     if step is None:
         step = t_lims[1] - t_lims[0]
 
@@ -65,6 +68,10 @@ def pan_int(
         D_Phi_sT = freqs * cos(grid)
 
         def error_func(B_vec: Tensor) -> tuple:
+            with torch.no_grad():
+                global COUNTER
+                COUNTER+= 1
+
             t_0 = torch.tensor(cur_interval[0])
             # CONVERT VECTOR BACK TO MATRICES
 
@@ -77,7 +84,7 @@ def pan_int(
             Bs_1 = ((f(y_init[None])
                      + sin(t_0) * Bc_m1[0:1, :]
                      - D_Phi_cT[0, 2:] @ Bc_m1[1:, :]
-                     - D_Phi_sT[0, 2:] @ Bs_m2)
+                    - D_Phi_sT[0, 2:] @ Bs_m2)
                     / cos(t_0))
 
             # calculate the 1-index row of Bs
@@ -89,9 +96,6 @@ def pan_int(
 
             # the first row Bs doesn't contribute
             Bs = torch.vstack((torch.zeros(1, dims), Bs_m1))
-
-
-
 
             approx = Phi_cT @ Bc + Phi_sT @ Bs
 
@@ -110,6 +114,7 @@ def pan_int(
         Phi_sT_ls = sin(grid_ls)
         Phi_ls = torch.hstack( (Phi_cT_ls, Phi_sT_ls) )
         y_ls = y_init + f(y_init[None])*t_ls
+        COUNTER += 1
         B_init = torch.linalg.lstsq( Phi_ls, y_ls ).solution
         mask = torch.ones_like(B_init)
         mask[0,:] = 0
@@ -125,6 +130,7 @@ def pan_int(
 
         torch.cat((approx, local_approx))
         if cur_interval[1] == t_lims[1]:
+            print(f"PAN Integration took {COUNTER} function evaluations")
             return approx
         else:
             cur_interval = [cur_interval[1], cur_interval[1]+step]
