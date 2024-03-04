@@ -1,11 +1,12 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from typing import Callable
+
+from matplotlib.animation import PillowWriter
 from scipy.integrate import solve_ivp
 import torch
-import numpy as np
-from torch import tensor, Tensor
 from itertools import cycle
+
 
 mpl.use("TkAgg")
 quiver_args = {
@@ -40,9 +41,10 @@ class VfPlotter:
             existing_axes: plt.Axes = None,
             ax_kwargs: dict = None,
             show=False,
+            animation=False
     ):
 
-        self.cycol = cycle('bg')
+        self.cycol = cycle('b')
         self.y_init = y_init
         self.t_init = t_init
 
@@ -59,6 +61,13 @@ class VfPlotter:
         self.f = f
 
         self._plot_vector_field()
+
+        self.animation = animation
+        if animation:
+            self.writer = PillowWriter(fps=4, metadata={'artist': 'Yiorgos Pan'})
+            self.writer.setup(self.fig, 'test.gif', 100)
+            self.writer.frame_format = 'png'
+
 
         if show:
             wait()
@@ -95,9 +104,10 @@ class VfPlotter:
         )
 
         trajectory = ivp_sol.y
-        print(f"Method {ivp_kwargs['method']} took {ivp_sol.nfev} function evaluations")
+        print(f"Method {ivp_kwargs['method']} took {ivp_sol.nfev} function evaluations, y(T) = ({trajectory[0][-1]:.6},{trajectory[1][-1]:.6} )")
 
-        (self.trajectory,) = self.ax.plot(*trajectory, **plot_kwargs)
+        (self.trajectory,) = self.ax.plot(*trajectory, **plot_kwargs, label=f"{ivp_kwargs['method']} - {ivp_sol.nfev} NFE")
+        return trajectory[:, -1]
 
     @torch.no_grad()
     def pol_approx(self, approx, t_init, arrows_every_n: int = 10, **kwargs):
@@ -109,7 +119,7 @@ class VfPlotter:
         """
 
         if self.approx_art is None:
-            self.approx_art, = self.ax.plot([], [], **kwargs)
+            self.approx_art, = self.ax.plot([], [], **kwargs, label="pan")
 
         if self.t_init != t_init:
             self.t_init = t_init
@@ -119,6 +129,10 @@ class VfPlotter:
             self.approx_art.set_xdata(approx[:, 0])
             self.approx_art.set_ydata(approx[:, 1])
             self.approx_art.set_color(next(self.cycol))
+
+    def grab_frame(self):
+        self.fig.canvas.draw()
+        self.writer.grab_frame()
 
 
 class LsPlotter:

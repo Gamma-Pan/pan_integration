@@ -108,18 +108,18 @@ def pan_int(
             return error, approx
 
         # initialize B to linear approximation of solution
-        t_ls = torch.linspace(*cur_interval, num_coeff_per_dim)[:,None]
-        grid_ls = t_ls * freqs
-        Phi_cT_ls = cos(grid_ls)
-        Phi_sT_ls = sin(grid_ls)
-        Phi_ls = torch.hstack( (Phi_cT_ls, Phi_sT_ls) )
-        y_ls = y_init + f(y_init[None])*t_ls
-        COUNTER += 1
-        B_init = torch.linalg.lstsq( Phi_ls, y_ls ).solution
-        mask = torch.ones_like(B_init)
-        mask[0,:] = 0
-        mask[num_coeff_per_dim//2: num_coeff_per_dim//2+2, :] = 0
-        B = B_init[mask.bool()]
+        # t_ls = torch.linspace(*cur_interval, num_coeff_per_dim)[:,None]
+        # grid_ls = t_ls * freqs
+        # Phi_cT_ls = cos(grid_ls)
+        # Phi_sT_ls = sin(grid_ls)
+        # Phi_ls = torch.hstack( (Phi_cT_ls, Phi_sT_ls) )
+        # y_ls = y_init + f(y_init[None])*t_ls
+        # COUNTER += 1
+        # B_init = torch.linalg.lstsq( Phi_ls, y_ls ).solution
+        # mask = torch.ones_like(B_init)
+        # mask[0,:] = 0
+        # mask[num_coeff_per_dim//2: num_coeff_per_dim//2+2, :] = 0
+        # B = B_init[mask.bool()]
 
         B = newton(error_func, B, has_aux=True, tol=etol,
                    callback=lambda x: callback(x, y_init, cur_interval, num_coeff_per_dim, dims))
@@ -128,7 +128,7 @@ def pan_int(
         (error, local_approx) = error_func(B)
         y_init = local_approx[-1, :]
 
-        torch.cat((approx, local_approx))
+        approx = torch.cat((approx, local_approx))
         if cur_interval[1] == t_lims[1]:
             print(f"PAN Integration took {COUNTER} function evaluations")
             return approx

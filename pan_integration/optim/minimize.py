@@ -201,7 +201,7 @@ def newton(
         f_kwargs: dict = None,
         has_aux=False,
         max_steps=50,
-        metrics=True,
+        metrics=False,
         tol: float = 1e-4,
         callback: Callable = None,
 ) -> Tensor:
@@ -241,7 +241,8 @@ def newton(
 
         # check if gradient is within tolerance and if so return
         norm = torch.norm(Df_k)
-        print(f"norm of grad: {norm} \t norms diff: {torch.abs(norm - prev_norm)}")
+        if metrics:
+            print(f"norm of grad: {norm} \t norms diff: {torch.abs(norm - prev_norm)}")
         if norm < tol or torch.abs(norm - prev_norm) < 1e-6:
             return b
         prev_norm = norm
