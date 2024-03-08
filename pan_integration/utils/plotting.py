@@ -18,10 +18,10 @@ quiver_args = {
 }
 
 stream_kwargs = {
-    'color': '#555555',
+    'color': '#555555aa',
     'density': 0.7,
     'arrowsize': 0.6,
-    'linewidth': 0.6
+    'linewidth': 0.6,
 }
 
 
@@ -97,7 +97,7 @@ class VfPlotter:
         y_init = y_init or self.y_init
 
         ivp_sol = solve_ivp(
-            lambda t, x: self.f(x.astype(float)),
+            lambda t, x: self.f(torch.tensor(x,dtype=torch.float32)).numpy(),
             interval,
             y_init,
             **ivp_kwargs,
@@ -107,10 +107,10 @@ class VfPlotter:
         print(f"Method {ivp_kwargs['method']} took {ivp_sol.nfev} function evaluations, y(T) = ({trajectory[0][-1]:.6},{trajectory[1][-1]:.6} )")
 
         (self.trajectory,) = self.ax.plot(*trajectory, **plot_kwargs, label=f"{ivp_kwargs['method']} - {ivp_sol.nfev} NFE")
-        return trajectory[:, -1]
+        return trajectory
 
     @torch.no_grad()
-    def pol_approx(self, approx, t_init, arrows_every_n: int = 10, **kwargs):
+    def approx(self, approx, t_init, arrows_every_n: int = 10, **kwargs):
         """
         Plot the trigonometric polynomial approximation of the ode solution
         :param arrows_every_n:
