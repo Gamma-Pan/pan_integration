@@ -5,6 +5,9 @@ from ..optim import newton
 from torch import pi as PI
 
 
+def cheby_pol(t, n, t0, t1):
+    return None
+
 def _phis_init_cond(step, num_points, num_coeff_per_dim):
     freqs = torch.arange(1, (num_coeff_per_dim // 2) + 1, dtype=torch.float)[None, :] * (2*PI/step)
 
