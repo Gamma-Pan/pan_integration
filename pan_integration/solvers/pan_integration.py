@@ -17,7 +17,7 @@ def Dcheby_pol(t, n, t0, t1):
 
 def _phis_init_cond(t_lims, num_points, num_coeff_per_dim):
     t = torch.linspace(*t_lims, num_points)[1:-1]
-    n = torch.arange(1, num_coeff_per_dim + 1, dtype=torch.float)
+    n = torch.arange(0, num_coeff_per_dim, dtype=torch.float)
 
     ts, ns = torch.meshgrid(t, n, indexing='ij')
 
