@@ -1,41 +1,39 @@
 import torch
-from torch import tensor, Tensor, cos, sin, ones, arange
+from torch import tensor, Tensor, cos, sin, ones, arange, arccos, sqrt, cosh, arccosh
 from ..utils.plotting import VfPlotter, wait
 from ..optim import newton
 from torch import pi as PI
 
 
 def cheby_pol(t, n, t0, t1):
+    t_scl = 2 * (t - t0) / (t1 - t0) - 1
+    return cos(n * arccos(t_scl))
+
+
+def Dcheby_pol(t, n, t0, t1):
+    t_scl = 2 * (t + t0) / (t1 - t0) - 1
+    return 2 * n * sin(n * arccos(t_scl)) / ((t1 - t0) * sqrt(1 - t_scl ** 2))
+
+
+def _phis_init_cond(t_lims, num_points, num_coeff_per_dim):
+    t = torch.linspace(*t_lims, num_points)[1:-1]
+    n = torch.arange(1, num_coeff_per_dim + 1, dtype=torch.float)
+
+    ts, ns = torch.meshgrid(t, n, indexing='ij')
+
+    _Phi_head = (-1) ** torch.arange(1, num_coeff_per_dim + 1)[None]
+    _Phi_tail = torch.ones(1, num_coeff_per_dim, dtype=torch.float)
+    _Phi = torch.vstack([_Phi_head, cheby_pol(ts, ns, *t_lims), _Phi_tail])
+    _DPhi_head = torch.arange(1, num_coeff_per_dim + 1) ** 2 * (-1) ** torch.arange(num_coeff_per_dim)[None]
+    _DPhi_tail = torch.arange(1, num_coeff_per_dim + 1, dtype=torch.float)[None] ** 2
+    _DPhi = torch.vstack([_DPhi_head, Dcheby_pol(ts, ns, *t_lims), _DPhi_tail])
+
     return None
-
-def _phis_init_cond(step, num_points, num_coeff_per_dim):
-    freqs = torch.arange(1, (num_coeff_per_dim // 2) + 1, dtype=torch.float)[None, :] * (2*PI/step)
-
-    t_points = torch.linspace(
-        0, step, num_points, dtype=torch.float
-    )[:, None]
-
-    # broadcast product is NxM
-    grid = (t_points * freqs)
-
-    # calculate the polynomial time variables and their derivatives
-    _Phi_c = cos(grid)
-    _Phi_s = sin(grid)
-    _DPhi_c = -freqs * sin(grid)
-    _DPhi_s = freqs * cos(grid)
-
-    Phi_c = -_Phi_c[:, :1] @ ones(1, num_coeff_per_dim // 2 - 1) + _Phi_c[:, 1:]
-    Phi_s = -_Phi_s[:, :1] @ arange(2, num_coeff_per_dim // 2 + 1, dtype=torch.float)[None] + _Phi_s[:, 1:]
-
-    DPhi_c = -_DPhi_c[:, :1] @ ones(1, num_coeff_per_dim // 2 - 1) + _DPhi_c[:, 1:]
-    DPhi_s = -_DPhi_s[:, :1] @ arange(2, num_coeff_per_dim // 2 + 1, dtype=torch.float)[None] + _DPhi_s[:, 1:]
-
-    return Phi_c, Phi_s, _Phi_s[:, :1], DPhi_c, DPhi_s, _DPhi_s[:, :1]
 
 
 def _coarse_euler_lstsq(f, y_init, num_solver_steps, step, num_coeff_per_dim):
     dims = y_init.shape[0]
-    step_size = step / num_solver_steps
+    step_size = step / (num_solver_steps - 1)
 
     y_eul = torch.zeros(num_solver_steps, dims)
     y_eul[0, :] = y_init
@@ -76,6 +74,8 @@ def pan_int(
     global COUNTER
     COUNTER = 0
 
+    wait()
+
     if step is None:
         step = t_lims[1] - t_lims[0]
 
@@ -83,13 +83,14 @@ def pan_int(
     cur_interval = [t_lims[0], t_lims[0] + step]
 
     approx = torch.tensor([])
+    B = torch.rand((num_coeff_per_dim - 2) * dims)
     while True:
 
         if cur_interval[1] > t_lims[1]:
             cur_interval[1] = t_lims[1]
             step = cur_interval[1] - cur_interval[0]
 
-        Phi_c, Phi_s, Phi_s_1, DPhi_c, DPhi_s, DPhi_s_1 = _phis_init_cond(step, num_points, num_coeff_per_dim)
+        Phi_c, Phi_s, Phi_s_1, DPhi_c, DPhi_s, DPhi_s_1 = _phis_init_cond(t_lims, num_points, num_coeff_per_dim)
 
         def error_func(B_vec: Tensor) -> tuple:
             with torch.no_grad():
@@ -110,7 +111,7 @@ def pan_int(
 
             return error, approx
 
-        B = _coarse_euler_lstsq(f, y_init, 5, step, num_coeff_per_dim)
+        B = _coarse_euler_lstsq(f, y_init, 10, step, num_coeff_per_dim)
         COUNTER += 5
 
         B = newton(error_func, B, has_aux=True, tol=etol,
@@ -118,6 +119,7 @@ def pan_int(
 
         # TODO: make newton return the aux of error_func instead of recalculating
         (error, local_approx) = error_func(B)
+        COUNTER -= 1
         y_init = local_approx[-1, :]
 
         approx = torch.cat((approx, local_approx))

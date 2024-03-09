@@ -8,24 +8,21 @@ from torch import pi as PI
 
 
 def spiral(batch):
-    a = 0.2
+    a = 1
     P = tensor([[-a, 1.0], [-1.0, -a]])[None, None]
     xy = batch[..., None]
-    derivative = tanh(-P @ sin(0.5 * P @ tanh(P @ xy))) + 0.2
+    derivative = tanh(-P @ sin(0.5 * P @ tanh(P @ xy))) + 0.1
+    # derivative = P@xy+a
     return torch.squeeze(derivative)
 
 
 if __name__ == "__main__":
     global COUNTER
 
-    num_points = 30
-    t_lims = [0, 10]
+    t_lims = [0, 5]
     y_init = tensor([-2, -2], dtype=torch.float)
     f = spiral
 
-    # a = 0.3
-    # P = tensor([[-a, 1.0], [-1.0, -a]])[None, None]
-    # y_T_true = torch.matrix_exp(t_lims[1] * P) @ y_init[:, None]
     ax_kwargs = {"xlim": (-3, 3), "ylim": (-3, 3)}
     plotter = plotting.VfPlotter(
         f,
@@ -35,12 +32,12 @@ if __name__ == "__main__":
         animation=True
     )
 
-    plotter.solve_ivp(t_lims, ivp_kwargs={"method": "LSODA", "atol": 1e-6},
-                      plot_kwargs={"color": "brown", "alpha": 0.5})
-    plotter.solve_ivp(t_lims, ivp_kwargs={"method": "RK45", "atol": 1e-6},
+    plotter.solve_ivp(t_lims, ivp_kwargs={"method": "LSODA", "atol": 1e-9, "max_step":1e-2},
+                      plot_kwargs={"color": "brown", "alpha": 0.8},)
+    plotter.solve_ivp(t_lims, ivp_kwargs={"method": "RK45" },
                       plot_kwargs={"color": "lime", "alpha": 0.5})
-    plotter.solve_ivp(t_lims, ivp_kwargs={"method": "DOP853", "atol": 1e-6},
-                      plot_kwargs={"color": "turquoise", 'alpha': 0.5})
+    # plotter.solve_ivp(t_lims, ivp_kwargs={"method": "DOP853", "atol": 1e-6},
+    #                   plot_kwargs={"color": "turquoise", 'alpha': 0.5})
 
     # plot the legend
     plotter.ax.legend(loc='upper right')
@@ -60,12 +57,12 @@ if __name__ == "__main__":
         Bs = B_vec[(num_coeff_per_dim // 2 - 1) * dims:].reshape(num_coeff_per_dim // 2 - 1, dims)
 
         # FOR PLOTTING
-        Phi_c , Phi_s,  Phi_s_1, _ ,_ ,_ = _phis_init_cond(step, num_points, num_coeff_per_dim)
+        Phi_c , Phi_s,  Phi_s_1, _ ,_ ,_ = _phis_init_cond(step, 300, num_coeff_per_dim)
 
         approx = Phi_c @ Bc + Phi_s @ Bs + Phi_s_1 @ f(y_init)[None] + y_init
 
         plotter.approx(approx, t_0, alpha=0.7)
-        plotting.wait()
+        # plotting.wait()
         plotter.fig.canvas.draw()
         plotter.fig.canvas.flush_events()
 
@@ -79,9 +76,9 @@ if __name__ == "__main__":
         callback=callback,
         t_lims=t_lims,
         step=None,
-        num_points=num_points,
-        num_coeff_per_dim=16,
-        etol=1e-3,
+        num_points=30,
+        num_coeff_per_dim=5,
+        etol=1e-9,
         plotter=plotter
     )
 
