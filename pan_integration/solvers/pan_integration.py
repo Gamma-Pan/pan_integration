@@ -1,63 +1,82 @@
 import torch
-from torch import tensor, Tensor, cos, sin, ones, arange, arccos, sqrt, cosh, arccosh
+from torch import Tensor, tensor, vstack, hstack
+from torch.linalg import inv
 from ..utils.plotting import VfPlotter, wait
 from ..optim import newton
 from torch import pi as PI
 
 
-def cheby_pol(t, n, t0, t1):
-    t_scl = 2 * (t - t0) / (t1 - t0) - 1
-    return cos(n * arccos(t_scl))
+def T_grid(num_points, num_coeff_per_dim):
+    t = torch.linspace(-1, 1, num_points)[:, None]
+
+    out = torch.empty(num_points, num_coeff_per_dim)
+    out[:, [0]] = torch.ones(num_points, 1, dtype=torch.float)
+    out[:, [1]] = t
+
+    for i in range(2, num_coeff_per_dim):
+        out[:, [i]] = 2 * t * out[:, [i - 1]] - out[:, [i - 2]]
+
+    return out
 
 
-def Dcheby_pol(t, n, t0, t1):
-    t_scl = 2 * (t + t0) / (t1 - t0) - 1
-    return 2 * n * sin(n * arccos(t_scl)) / ((t1 - t0) * sqrt(1 - t_scl ** 2))
+def U_grid(num_points, num_coeff_per_dim):
+    t = torch.linspace(-1, 1, num_points)[:, None]
+
+    out = torch.empty(num_points, num_coeff_per_dim)
+    out[:, [0]] = torch.ones(num_points, 1, dtype=torch.float)
+    out[:, [1]] = 2 * t
+
+    for i in range(2, num_coeff_per_dim):
+        out[:, [i]] = 2 * t * out[:, [i - 1]] - out[:, [i - 2]]
+
+    return out
 
 
-def _phis_init_cond(t_lims, num_points, num_coeff_per_dim):
-    t = torch.linspace(*t_lims, num_points)[1:-1]
-    n = torch.arange(0, num_coeff_per_dim, dtype=torch.float)
-
-    ts, ns = torch.meshgrid(t, n, indexing='ij')
-
-    _Phi_head = (-1) ** torch.arange(1, num_coeff_per_dim + 1)[None]
-    _Phi_tail = torch.ones(1, num_coeff_per_dim, dtype=torch.float)
-    _Phi = torch.vstack([_Phi_head, cheby_pol(ts, ns, *t_lims), _Phi_tail])
-    _DPhi_head = torch.arange(1, num_coeff_per_dim + 1) ** 2 * (-1) ** torch.arange(num_coeff_per_dim)[None]
-    _DPhi_tail = torch.arange(1, num_coeff_per_dim + 1, dtype=torch.float)[None] ** 2
-    _DPhi = torch.vstack([_DPhi_head, Dcheby_pol(ts, ns, *t_lims), _DPhi_tail])
-
-    return None
+def _B_init_cond(B_tail, y_init, f_init,  Phi, DPhi):
+    B_01 =  inv(vstack( [Phi[0,[0,1]] , DPhi[0,[0,1]] ] )) @ (
+                vstack([y_init, f_init]) - vstack([Phi[[0], 2:], DPhi[[0], 2:]]) @ B_tail)
+    return torch.vstack([B_01, B_tail])
 
 
-def _coarse_euler_lstsq(f, y_init, num_solver_steps, step, num_coeff_per_dim):
+def _cheb_phis(num_points, num_coeff_per_dim, t_lims):
+    step = t_lims[1] - t_lims[0]
+    Phi = T_grid(num_points, num_coeff_per_dim)
+    DPhi = (2/step)*torch.hstack([torch.zeros(num_points, 1, dtype=torch.float),
+                         torch.arange(1, num_coeff_per_dim, dtype=torch.float) * U_grid(num_points,
+                                                                                        num_coeff_per_dim - 1)])
+    return Phi, DPhi
+
+
+def _coarse_euler_lstsq(f, y_init, num_solver_steps, t_lims, num_coeff_per_dim, plotter):
     dims = y_init.shape[0]
-    step_size = step / (num_solver_steps - 1)
+    step = (t_lims[1] - t_lims[0])
+    step_size = step / (num_solver_steps)
 
     y_eul = torch.zeros(num_solver_steps, dims)
     y_eul[0, :] = y_init
-    f_y_eul = torch.zeros(num_solver_steps, dims)
-    f_y_eul[0, :] = f(y_init)
+    f_eul = torch.zeros(num_solver_steps, dims)
+    f_eul[0, :] = f(y_init)
 
     # forward euler
     for i in range(1, num_solver_steps):
         y_cur = y_eul[i - 1, :]
-        f_y_eul[i, :] = f(y_cur)
+        f_eul[i, :] = f(y_cur)
         f_cur = f(y_cur)
         y_eul[i, :] = y_cur + step_size * f_cur
+    Phi, DPhi = _cheb_phis(num_solver_steps, num_coeff_per_dim, t_lims)
 
-    # least squares to get Bs of euler
-    Phi_c, Phi_s, Phi_s_1, DPhi_c, DPhi_s, DPhi_s_1 = _phis_init_cond(step, num_solver_steps, num_coeff_per_dim)
-    PHI = torch.vstack([torch.hstack([Phi_c, Phi_s]),
-                        torch.hstack([DPhi_c, DPhi_s])])
+    inv0 = inv(vstack([Phi[0, [0, 1]], DPhi[0, [0, 1]]]))
+    PHI = (-vstack([Phi[:, [0, 1]], DPhi[:, [0, 1]]]) @ inv0 @ vstack(
+        [Phi[[0], 2:], DPhi[[0], 2:]]) + vstack([Phi[:, 2:], DPhi[:, 2:]]))
+    Y = vstack([y_eul, f_eul]) - vstack([Phi[:, [0, 1]], DPhi[:, [0, 1]]]) @ inv0 @ vstack([y_init, f_eul[[0], :]])
 
-    Y = torch.vstack([y_eul, f_y_eul]) - torch.vstack([Phi_s_1, DPhi_s_1]) @ f_y_eul[:1, :] - torch.vstack(
-        [torch.ones(num_solver_steps, 1), torch.zeros(num_solver_steps, 1)]) * y_init
+    B_ls = torch.linalg.lstsq(PHI, Y).solution
+    B = _B_init_cond(B_ls, y_init, f(y_init),  Phi, DPhi)
 
-    B_els = torch.linalg.lstsq(PHI, Y).solution
+    plotter.approx(Phi @ B, t_init=t_lims[0])
+    wait()
 
-    return B_els.reshape(-1)
+    return B_ls.T.reshape(-1)
 
 
 def pan_int(
@@ -90,7 +109,7 @@ def pan_int(
             cur_interval[1] = t_lims[1]
             step = cur_interval[1] - cur_interval[0]
 
-        Phi_c, Phi_s, Phi_s_1, DPhi_c, DPhi_s, DPhi_s_1 = _phis_init_cond(t_lims, num_points, num_coeff_per_dim)
+        Phi, DPhi = _cheb_phis(num_points, num_coeff_per_dim, cur_interval)
 
         def error_func(B_vec: Tensor) -> tuple:
             with torch.no_grad():
@@ -98,20 +117,15 @@ def pan_int(
                 COUNTER += 1
                 print(COUNTER)
 
-            # CONVERT VECTOR BACK TO MATRICES
-            #  the first half of B comprises the Bc matrix minus the first row
-            Bc = B_vec[:(num_coeff_per_dim // 2 - 1) * dims].reshape(num_coeff_per_dim // 2 - 1, dims)
-            # the rest comprises the Bs matrix minus the first row
-            Bs = B_vec[(num_coeff_per_dim // 2 - 1) * dims:].reshape(num_coeff_per_dim // 2 - 1, dims)
+            B = _B_init_cond(B_vec.reshape(dims, num_coeff_per_dim - 2).T, y_init, f(y_init), Phi, DPhi)
 
-            approx = Phi_c @ Bc + Phi_s @ Bs + Phi_s_1 @ f(y_init)[None] + y_init
-            Dapprox = DPhi_c @ Bc + DPhi_s @ Bs + DPhi_s_1 @ f(y_init)[None]
+            approx = Phi @ B
+            Dapprox = DPhi @ B
 
-            error = torch.sum((f(approx) - Dapprox) ** 2) / (num_points * dims)
-
+            error = torch.sum((Dapprox - f(approx)) ** 2) / (num_points * num_coeff_per_dim)
             return error, approx
 
-        B = _coarse_euler_lstsq(f, y_init, 10, step, num_coeff_per_dim)
+        B = _coarse_euler_lstsq(f, y_init, 5, cur_interval, num_coeff_per_dim, plotter)
         COUNTER += 5
 
         B = newton(error_func, B, has_aux=True, tol=etol,

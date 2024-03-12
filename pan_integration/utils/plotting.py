@@ -7,7 +7,6 @@ from scipy.integrate import solve_ivp
 import torch
 from itertools import cycle
 
-
 mpl.use("TkAgg")
 quiver_args = {
     "headwidth": 2,
@@ -56,6 +55,7 @@ class VfPlotter:
 
         self.ax.plot(*y_init, "ro")
         self.approx_art = None
+        self.Dapprox_art = None
 
         self.grid_definition = grid_definition
         self.f = f
@@ -67,7 +67,6 @@ class VfPlotter:
             self.writer = PillowWriter(fps=4, metadata={'artist': 'Yiorgos Pan'})
             self.writer.setup(self.fig, 'test.gif', 100)
             self.writer.frame_format = 'png'
-
 
         if show:
             wait()
@@ -97,26 +96,22 @@ class VfPlotter:
         y_init = y_init or self.y_init
 
         ivp_sol = solve_ivp(
-            lambda t, x: self.f(torch.tensor(x,dtype=torch.float32)).numpy(),
+            lambda t, x: self.f(torch.tensor(x, dtype=torch.float32)).numpy(),
             interval,
             y_init,
             **ivp_kwargs,
         )
 
         trajectory = ivp_sol.y
-        print(f"Method {ivp_kwargs['method']} took {ivp_sol.nfev} function evaluations, y(T) = ({trajectory[0][-1]:.6},{trajectory[1][-1]:.6} )")
+        print(
+            f"Method {ivp_kwargs['method']} took {ivp_sol.nfev} function evaluations, y(T) = ({trajectory[0][-1]:.6},{trajectory[1][-1]:.6} )")
 
-        (self.trajectory,) = self.ax.plot(*trajectory, **plot_kwargs, label=f"{ivp_kwargs['method']} - {ivp_sol.nfev} NFE")
+        (self.trajectory,) = self.ax.plot(*trajectory, **plot_kwargs,
+                                          label=f"{ivp_kwargs['method']} - {ivp_sol.nfev} NFE")
         return trajectory
 
     @torch.no_grad()
-    def approx(self, approx, t_init, arrows_every_n: int = 10, **kwargs):
-        """
-        Plot the trigonometric polynomial approximation of the ode solution
-        :param arrows_every_n:
-        :param show:
-        :return:
-        """
+    def approx(self, approx, t_init, Dapprox=None, num_arrows: int = 10, **kwargs):
 
         if self.approx_art is None:
             self.approx_art, = self.ax.plot([], [], **kwargs, label="pan")
@@ -124,11 +119,23 @@ class VfPlotter:
         if self.t_init != t_init:
             self.t_init = t_init
             self.ax.plot(approx[0, 0], approx[0, 1], "o")
-            (self.approx_art,) = self.ax.plot(approx[:, 0], approx[:, 1], **kwargs)
-        else:
-            self.approx_art.set_xdata(approx[:, 0])
-            self.approx_art.set_ydata(approx[:, 1])
-            self.approx_art.set_color(next(self.cycol))
+
+        if Dapprox is not None:
+            sz = approx.shape[0]
+            idxs = torch.arange(0, sz, sz // num_arrows).tolist()
+
+            if self.Dapprox_art is not None:
+                self.Dapprox_art.remove()
+
+            self.Dapprox_art = self.ax.quiver(approx[idxs, 0],
+                                              approx[idxs, 1],
+                                              Dapprox[idxs, 0],
+                                              Dapprox[idxs, 1],
+                                              angles= 'xy')
+
+        self.approx_art.set_xdata(approx[:, 0])
+        self.approx_art.set_ydata(approx[:, 1])
+        self.approx_art.set_color(next(self.cycol))
 
     def grab_frame(self):
         self.fig.canvas.draw()

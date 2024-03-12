@@ -2,16 +2,16 @@ import torch
 from torch import tensor, sin, cos, tanh, ones, arange, sigmoid
 from pan_integration.solvers import pan_int
 from pan_integration.utils import plotting
-from pan_integration.solvers.pan_integration import _phis_init_cond
+from pan_integration.solvers.pan_integration import _B_init_cond, _cheb_phis
 import matplotlib.pyplot as plt
 from torch import pi as PI
 
 
 def spiral(batch):
-    a = 1
+    a = 0.3
     P = tensor([[-a, 1.0], [-1.0, -a]])[None, None]
     xy = batch[..., None]
-    derivative = tanh(-P @ sin(0.5 * P @ tanh(P @ xy))) + 0.1
+    derivative = torch.exp(-P @ sin(0.5 * P @ tanh(P @ xy)))
     # derivative = P@xy+a
     return torch.squeeze(derivative)
 
@@ -19,7 +19,7 @@ def spiral(batch):
 if __name__ == "__main__":
     global COUNTER
 
-    t_lims = [0, 5]
+    t_lims = [0, 10]
     y_init = tensor([-2, -2], dtype=torch.float)
     f = spiral
 
@@ -32,9 +32,9 @@ if __name__ == "__main__":
         animation=True
     )
 
-    plotter.solve_ivp(t_lims, ivp_kwargs={"method": "LSODA", "atol": 1e-9, "max_step":1e-2},
-                      plot_kwargs={"color": "brown", "alpha": 0.8},)
-    plotter.solve_ivp(t_lims, ivp_kwargs={"method": "RK45" },
+    plotter.solve_ivp(t_lims, ivp_kwargs={"method": "LSODA", "atol": 1e-9, "max_step": 1e-2},
+                      plot_kwargs={"color": "brown", "alpha": 0.8}, )
+    plotter.solve_ivp(t_lims, ivp_kwargs={"method": "RK45", "atol": 1e-9 },
                       plot_kwargs={"color": "lime", "alpha": 0.5})
     # plotter.solve_ivp(t_lims, ivp_kwargs={"method": "DOP853", "atol": 1e-6},
     #                   plot_kwargs={"color": "turquoise", 'alpha': 0.5})
@@ -46,23 +46,18 @@ if __name__ == "__main__":
     @torch.no_grad()
     def callback(B_vec, y_init, cur_interval):
         t_0 = cur_interval[0]
-        step = cur_interval[1] - cur_interval[0]
         dims = y_init.shape[0]
         num_coeff_per_dim = (B_vec.shape[0] + 2 * dims) // dims
 
-        # CONVERT VECTOR BACK TO MATRICES
-        #  the first half of B comprises the Bc matrix minus the first row
-        Bc = B_vec[:(num_coeff_per_dim // 2 - 1) * dims].reshape(num_coeff_per_dim // 2 - 1, dims)
-        # the rest comprises the Bs matrix minus the first row
-        Bs = B_vec[(num_coeff_per_dim // 2 - 1) * dims:].reshape(num_coeff_per_dim // 2 - 1, dims)
+        # plotting points
+        Phi,DPhi = _cheb_phis(100, num_coeff_per_dim, cur_interval)
+        B = _B_init_cond(B_vec.reshape(dims, num_coeff_per_dim - 2).T, y_init, f(y_init),  Phi, DPhi)
 
-        # FOR PLOTTING
-        Phi_c , Phi_s,  Phi_s_1, _ ,_ ,_ = _phis_init_cond(step, 300, num_coeff_per_dim)
+        approx = Phi @ B
+        Dapprox = DPhi @ B
 
-        approx = Phi_c @ Bc + Phi_s @ Bs + Phi_s_1 @ f(y_init)[None] + y_init
-
-        plotter.approx(approx, t_0, alpha=0.7)
-        # plotting.wait()
+        plotter.approx(approx, t_0, Dapprox=Dapprox, alpha=0.7)
+        plotting.wait()
         plotter.fig.canvas.draw()
         plotter.fig.canvas.flush_events()
 
@@ -76,8 +71,8 @@ if __name__ == "__main__":
         callback=callback,
         t_lims=t_lims,
         step=None,
-        num_points=30,
-        num_coeff_per_dim=5,
+        num_points=100,
+        num_coeff_per_dim=30,
         etol=1e-9,
         plotter=plotter
     )
@@ -86,6 +81,6 @@ if __name__ == "__main__":
     if plotter.animation:
         plotter.writer.finish()
 
-    plotter.ax.plot(approx[-1, 0], approx[-1, 1], 'o', color='green' )
+    plotter.ax.plot(approx[-1, 0], approx[-1, 1], 'o', color='green')
     plotting.wait()
     print("FIN")
