@@ -1,0 +1,1242 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{cancel}
+\usepackage{algorithm}
+\usepackage[noEnd=false,indLines=false]{algpseudocodex}
+\usepackage[left=3.5cm, right=3.5cm]{geometry}
+\usepackage{tikz}
+\usepackage{tabu}
+\usetikzlibrary{shapes,positioning,backgrounds, calc}
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest }
+\usepgfplotslibrary{external}
+\tikzexternalize
+\usepackage[style=ieee]{biblatex} %Imports biblatex package
+\addbibresource{references.bib} %Import the bibliography file
+
+\title{Polynomial approximation integration  \\ \large{Speeding up Neural Ordinary Differential Equations thought Parallelism} \\ v0.7}
+
+\author{Yiorgos Panagiotopoulos}
+\date{January 2023}
+
+\begin{document}
+
+    \maketitle
+
+    \section{Introduction}
+    The machine learning scene in 2023 is dominated by gargantuan models with billions of parameters.
+    Even though they have demonstrated impressive results the compute and energy requirements of such models are a
+    concern.
+    It's the authors opinion that we ought to transition to analog or hybrid models of computation to reduce energy
+    usage and increase speed.
+    Even though digital computers are not going away any time soon studying alternative learning frameworks could ease
+    the transition.
+
+    Neural differential equations re-emerged in the recent years after~\cite{chen2018neural}.
+    We believe they have great potential especially in modelling physical phenomena governed by differential equations,
+    irregularly sampled time series and generative models like continuous normalising flows and stochastic differential
+    equations.
+    More importantly, in out opinion, they highlight a connection between deep learning and dynamical systems.
+    Even thought we still operate in the discrete domain to use them in our current systems they offer an opportunity
+    to close the gap between continuous time models and machine learning.
+
+    We provide a quick overview of Neural ODES and propose a novel numerical integration method to tackle some of
+    them limitations.
+
+
+    \section{Residual Networks}
+    In order to understand the intuition behind neural ordinary differential equations one should have a basic knowledge
+    of residual networks.
+    Residual networks, also known as ResNets, were introduced by He and others in their seminal
+    paper~\cite{He_2016_CVPR}, to address the problem of \textit{degradation} in very deep architectures.
+    It had become apparent by state of the art models of that time like~\cite{simonyan2014very} that depth plays a very
+    important role in vision tasks, including classification.
+    Stacking layers (depth) allows for the integration of low/mid/high level features in the learning process.
+    The immediate obstacle in deep learning is the notorious vanishing gradient problem, but this has been largely
+    solved through batch/group normalisation~\cite{ioffe2015batch}.
+
+    It had been noticed though~\cite{srivastava2015highway}, that while stacking more layers, accuracy is initially saturated, unsurprisingly, but then it degrades rapidly.
+    This degradation phenomenon is not caused by overfitting as the training error increases with the number of layers.
+    ResNets solved this problem by utilising a residual learning framework.
+
+    \subsection{Residual Learning}
+    One can prove, by construction, that a deep architecture can be as accurate as a corresponding shallower one.
+    This is achieved by adding identity layers in-between the layers of the shallower model.
+    In more detail, consider a network that converges with some accuracy.
+    Adding more layers to it would achieve the exact same accuracy if the extra layers learned to map their inputs straight to their outputs effectively making them identity mappings.
+    The existence of this artificially deep network suggests that deep networks shouldn't produce higher error that the shallower ones.
+    But the empirical evidence show that optimisers can't find this solution, at least in sensible time limits.
+
+    \begin{center}
+    \begin{tikzpicture}[
+        every path/.style={ultra thick},
+        scale=3,
+        block/.style={
+            rectangle,
+            rounded corners,
+            thick,
+            minimum size = 1.5cm,
+            inner sep = 0pt,
+            node distance = 3.5cm,
+            draw=black!80
+        },
+        shallow/.style={
+            block,
+        },
+        deep/.style={
+            block,
+            dashed,
+            thick
+        },
+        darkgreen/.style={
+            green!80!black!90
+        },
+        >= stealth,
+    ]
+
+        \begin{scope}[local bounding box = net1]
+            \node[shallow] (A) at (0,0) {};
+            \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+
+            \node[shallow] (B) [right= of A] {};
+            \node[below right=0cm of B.north west] {$f_{k}(x)$};
+
+            \node[shallow] (C) [right= of B] {};
+            \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+
+            \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+            \draw[->] (A.east) -- (B.west);
+            \draw[->] (B.east) -- (C.west);
+            \draw[dashed] (C.east) -- +(0.1cm,0);
+
+            \node[above] at (current bounding box.north) {A section of the starting neural net.};
+
+        \end{scope}
+
+        \begin{scope}[local bounding box = scope1, yshift = -0.8cm]
+            \node[shallow] (A) at (0,0) {};
+            \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+
+            \node[shallow] (B) [right= of A] {};
+            \node[below right=0cm of B.north west] {$f_{k}(x)$};
+
+            \node[shallow] (C) [right= of B] {};
+            \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+
+            \node[deep] (AB) at ($(A)!0.5!(B)$) {};
+            \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
+
+            \node[deep] (BC) at ($(B)!0.5!(C)$) {};
+            \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
+
+            \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+            \draw[->] (A.east) -- (AB.west);
+            \draw[->] (AB.east) -- (B.west);
+            \draw[->] (B.east) -- (BC.west);
+            \draw[->] (BC.east) -- (C.west);
+            \draw[dashed] (C.east) -- +(0.1cm,0);
+
+            \node[above] at (scope1.north) {Increase its depth by adding more layers.};
+        \end{scope}
+
+        \begin{scope}[local bounding box = scope2,yshift=-1.8cm]
+            \node[shallow] (A) at (0,0) {};
+            \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+
+            \node[shallow] (B) [right= of A] {};
+            \node[below right=0cm of B.north west] {$f_{k}(x)$};
+
+            \node[shallow] (C) [right= of B] {};
+            \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+
+            \node[deep,darkgreen] (AB) at ($(A)!0.5!(B)$) {};
+            \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
+            \node[above left=0cm of AB.south east, darkgreen] {$\mathbf I$};
+
+            \node[deep,darkgreen] (BC) at ($(B)!0.5!(C)$) {};
+            \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
+            \node[above left=0cm of BC.south east, darkgreen] {$ \mathbf I$};
+
+            \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+            \draw (A.east) -- (AB.west);
+            \draw[darkgreen] (AB.west) -- (AB.east);
+            \draw (AB.east) -- (B.west);
+            \draw[->] (AB.east) -- (B.west);
+            \draw (B.east) -- (BC.west);
+            \draw[darkgreen] (BC.west) -- (BC.east);
+            \draw[->] (BC.east) -- (C.west);
+            \draw[dashed] (C.east) -- +(0.1cm,0);
+
+            \node[above,align=left] at (scope2.north) {If the extra layers learned to be identity mappings the\\
+            deeper network would function identically to the original.};
+        \end{scope}
+
+        \begin{scope}[local bounding box = scope3,yshift=-3.1cm]
+            ;
+            \node[shallow] (A) at (0,0) {};
+            \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+
+            \node[shallow] (B) [right= of A] {};
+            \node[below right=0cm of B.north west] {$f_{k}(x)$};
+
+            \node[shallow] (C) [right= of B] {};
+            \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+
+            \node[deep, yshift=1cm] (AB) at ($(A)!0.5!(B)$) {};
+            \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
+            \node[above left=0cm of AB.south east] {};
+
+            \node[deep, yshift=1cm] (BC) at ($(B)!0.5!(C)$) {};
+            \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
+            \node[above left=0cm of BC.south east] {};
+
+            \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+            \draw[->, rounded corners] (A.east) +(0.1cm,0) -- ($(AB.west) - (0.1cm,0)$)  -- (AB.west);
+            \draw[->, rounded corners] (AB.east) -- ++(0.1cm,0) -- ($(B.west) + (-0.15cm,0)$);
+            \draw[->, rounded corners] (B.east) +(0.1cm,0) -- ($(BC.west) - (0.1cm,0)$)  -- (BC.west);
+            \draw[->, rounded corners] (BC.east) -- ++(0.1cm,0) -- ($(C.west) + (-0.15cm,0)$);
+            \draw[dashed] (C.east) -- +(0.1cm,0);
+
+            \draw[->,darkgreen, rounded corners] (B.west) +(-0.3cm,0) -- ++(0.05cm, -0.37cm) -- ++(0.42cm, 0cm) -- ($(B.east) + (0.25cm,0)$);
+            \draw[->,darkgreen] (A.east) -- (B.west);
+            \draw[->,darkgreen] (B.east) -- (C.west);
+
+            \node[above,align=left] at (scope3.north) {Shortcut connections precondition the deep network \\ to identity mappings and train the residual };
+        \end{scope}
+    \end{tikzpicture}
+    \end{center}
+
+    In order to incorporate this observation into the network, so called \textit{shortcut connections} are introduced to the layers.
+    Basically, the input to a block of stacked layers is added back to it's output.
+    This way the network instead of learning the direct mapping $\mathcal{H}(x) = \mathcal{F}(x)$, it learns the residual mapping $\mathcal{H}(x) = \mathcal{R}(x)+x$.
+    The optimiser can then push the residual mappings to $0$ leading to identity connections.
+    Even though identity mappings are unlikely to be optimum, experiments showed that the residual connections have generally small responses, meaning identities are good pre-conditioners for deep architectures.
+
+    Since their conception Residual Networks have revolutionised deep learning allowing for much deeper architectures than previously used.
+    Furthermore, the idea of residual learning has found vast appeal in many other architectures.
+    Transformers for example, employ residual connections, allowing many such layers to be stacked creating large expressive models~\cite{vaswani2017attention}.
+
+
+    \section{Neural ODEs}
+    There exist examples in the literature of combining neural networks and dynamical systems, even since the 1990s~\cite{rico1992discrete}.
+    Interest began to increase after the publication of ResNet~\cite{weinan2018mean}.
+    But the field of Neural Differential Equations really became prominent with~\cite{chen2018neural}.
+
+    \subsection{A continuous time network}
+    Let's revisit Residual Networks and how they work.
+    The input-output relationship of the $k$-th ResNet block is given by:
+    \begin{equation}
+        \pmb{y}_{k+1} = \pmb{y}_{k} + f(\pmb{y}_{k}; \pmb{\theta}_k) \label{resnet}
+    \end{equation}
+    where $\pmb{y}_{k+1} \in \mathbb{R}^{N_y}$ is the output of the block, $\pmb{y}^{k} \in \mathbb{R}^{N_y}$ is its input and $f$ is a fully connected layer with parameters $\pmb{\theta}_k \in \mathbb{R}^{N_\theta}$.
+    Notice that we refer to ResNet blocks, not layers, since residual connections are generally not between the input and output of a single linear layer but a stack of them; from now on we will use the terms interchangeably.
+
+    The update in the \textit{hidden state} $\pmb{y}$ in~\eqref{resnet} resembles the formula of the forward Euler iteration for solving ordinary differential equations.
+    This observation led the authors of~\cite{lu2018beyond} [CITE MORE] to make a connection between some neural network architectures and differential equations.
+    Suppose that we could keep increasing the depth of the ResNet in~\eqref{resnet} while the time of the forward pass remained bounded, meaning each layer would take less and less time.
+    In the limit we get a differential equation governed by the dynamics defined by a neural network $f$.
+    \begin{equation}
+        \frac{ \pmb{y}(t)}{dt} = f(\pmb{y}(t); \pmb{\theta}) \label{diffeq}
+    \end{equation}
+    Instead of a discrete sequence of hidden states, $\pmb{y}(t)$ is a continuous flow $\pmb{y} : [0,T] \to \mathbb{R}^{N_y}$ defined be the vector field parameterised by $\pmb{\theta}$.
+
+    One important issue we haven't addressed is that the weights in~\eqref{resnet} change at each layer but at~\eqref{diffeq} they are the same for the entire trajectory.
+    For notations sake we could define $f$ as $f(\pmb{y}(t), t, \pmb{\theta})$ meaning at certain ``depths'' different sections of the weights vector $\pmb{\theta}$ are used, maybe in a piecewise constant fashion~\cite{kidger2022neural}.
+    Alternatively, the weights could be time dependant which complicates the model but leads to \textit{Galerkin} Neural ODEs, a more suitable continuous time equivalent of ResNet~\cite{massaroli2020dissecting}.
+    For our purposes we consider the weights constant for the rest of this paper.
+
+    \subsection{Inference}
+    Under this new machine learning framework depth is replaced by time.
+    Inference is performed by solving an initial value problem from initial time $t=0$ to terminal time $t=T$.
+    \begin{equation}
+        \pmb{y}(T) = \pmb{y}(0) + \int_{0}^{T} f(\pmb{y}(\tau); \pmb{\theta}) \, d\tau \label{ivp}
+    \end{equation}
+
+    Obviously,~\eqref{ivp} is a continuous time problem while our computers work in discrete time \textit{(for now)}.
+    In order to solve it we employ a numerical method for solving \textit{Initial Value Problems}, .
+    If we were to use forward Euler, an explicit method, we would get a recurrence relation of the form
+    \begin{equation}
+        \pmb{y}(t_k + h) = \pmb{y}(t_k) + h \left. \frac{d\pmb{y}(t)}{dt} \right|_{t = t_k}
+        \label{forwaredEu}
+    \end{equation}
+    By considering that $\frac{d \pmb{y}(t)}{dt} = f(\pmb{y}(t);\pmb{\theta})$ eq. \eqref{forwaredEu} can be written as:
+    \begin{equation}
+        \pmb{y}(t_k + h) = \pmb{y}(t_k) + h f(\pmb{y}(t_k); \pmb{\theta} )
+        \label{res2eul}
+    \end{equation}
+    which coincides with the ResNet formula.
+    Many other neural network architectures can be interpreted as solving a neural ODE using different methods~\cite{chen2019ordinary}.
+    The field of numerical differential equation solvers is quite vast meaning one could choose one that fits his specifications.
+    A notable case is that of adaptive solvers like Runge-Kutta-Fehlberg (RKF45), that use varying step sizes.
+    This way to obtain  $\pmb{y}(T)$ the solver may require different number of $f$ evaluations depending on the input and the complexity of the vector field at that input.
+    For simple dynamics the solver can ``decide'' to use large step sizes meaning fewer function evaluations.
+    Otherwise when the the vector field is more complex, a smaller step size will be used -to reduce error- leading to more function evaluations.
+    We could interpret this behaviour as a network of ``variable depth''.
+
+    It's important to clarify here that there are effectively two networks at play.
+    Firstly, there is $f$, inherited from a block or layer of the original formulation of the problem.
+    It is a neural network in the classical sense comprised of matrix vector multiplications and non-linearities.
+    Secondly, there is the outlining model, the neural differential equation, which receives input $\pmb{y}_0$ and produced output $\pmb{y}(T)$; $f$ is to neural ODE what a layer is to ResNet.
+    Internally, depending on the solver, $f$ will be evaluated for many values of $\pmb{y}(t)$.
+    As disguised above, in contrast to ResNet $f$ contains all the learnable parameters of the model, which in out case are independent of depth.
+    In conclusion the Neural ODE is comprised of: a neural network $f$ -that defines a \textit{learnable} vector field- parameterised by $\pmb{\theta}$,  some input $y_0$ and a numerical solver that applies $f$ until it reaches $\pmb{y}(T)$.
+
+    \begin{figure}[h]
+        \begin{center}
+            \input{resnet_to_node_plot.pgf}
+        \end{center}
+        \label{fig:enter-label}
+    \end{figure}
+
+    \subsection{Training}
+    Optimising any model through gradient descent, in a supervised learning setting, requires acquiring the gradient of some loss function $L(\pmb{\theta})$ with respect to (wrt.) the model's parameters $\pmb{\theta}$.
+    Usually, the loss for each sample in the dataset is calculated using a cost, or distance, function between the output of the network and the desired or ideal output.
+    Sometimes, the loss function may be dependent on the state on multiple times.
+    But for simplicity's sake we will examine the case where it only depends on the state at time $t=T$, which as is is apparent, depends indirectly on parameters $\theta$.
+    \begin{equation}
+        L(\pmb{y}(T)) = L \left( \pmb{y}(0) +\int_{0}^{T} f(\pmb{y}(\tau), \tau, \pmb{\theta}) \,d\tau \right) \label{ode_loss}
+    \end{equation}
+    One could naively solve the initial value problem using any numerical ODE solver and try to backpropagate the gradients through the steps of the solver.
+    This approach may be possible with the help of modern automatic differentiation software but its highly memory inefficient [CITATION NEEDED]. In order to overcome this problem we are going to follow a different approach.
+    To this end let's first define the gradient of $L$ wrt.
+    the hidden state at some time $t$.
+    \begin{equation}
+        \pmb a(t) = \frac{\partial L}{\partial \pmb{y}(t) }
+    \end{equation}
+    The above quantity is called the \textit{adjoint state}.
+    It can be proven that for its derivative [PONTRYAGIN], the following equation holds:
+    \begin{equation}
+        \left.
+        \frac
+        {d \pmb{a}(t)}
+        {dt}
+        \right|_{t=t_k}
+        =
+        - \pmb{a}(t)^T
+        \left.
+        \frac
+        {\partial f( \pmb{y}(t), t, \pmb{\theta} )}
+        {\partial \pmb{y}(t) }
+        \right|_{t=t_k}
+        \label{adjoint}
+    \end{equation}
+
+    Notice that we can easily compute $\pmb{a}(T)$ as we know the form of the loss function eg.
+    mean square error loss.
+    Having this initial condition $\pmb{a}(T)$ we can solve the differential equation~\eqref{adjoint} backwards in time to find $\pmb{a}(t)$ for any $t$.
+    As we solve the equation, values of $\pmb{y}(t)$ may be required.
+    We can get them by solving the initial differential equation~\eqref{ivp} starting from $\pmb{y}(t)$ and again moving from time $T$ to time $0$.
+
+    Our goal is to calculate $\frac{dL}{d\pmb{\theta}}$ which can be done by solving another differential equation or equivalently by evaluating the following integral:
+    \begin{equation}
+        \frac{dL}{d\pmb{\theta}}
+        = \int_T^0
+        \pmb{a}(t)^T
+        \frac
+        {\partial f(\pmb{y}(\tau), \pmb{\theta})}
+        {\partial \theta}
+        \, d\tau
+        \label{dldtheta}
+    \end{equation}
+    All these results stem from optimal control theory and more specifically consist specialised cases of Pontryagin's Maximum Principle.
+    A discussion on how to prove~\eqref{adjoint} and~\eqref{dldtheta} in a simpler way is made on appendix~\ref{adjoint_proof}.
+
+    \subsection{Applications, benefits and limitations}
+    There are examples in the literature where researchers have used Neural ODEs to physical problems as the continuous time dynamics fit such problems well.
+    Recently the authors of~\cite{chiu2023exploiting} showed Neural CDEs, a variant of neural ODEs, lend themselves well to video modelling tasks, with performance comparable to classical neural nets.
+    Other applications include modelling for irregularly sampled time series and continuous normalising flows.
+    More generally Neural ODEs could be seen as a drop in replacement for ResNets.
+
+    Despite the scientific interest in the last years continuous time models have mostly remained in the lab.
+    One major cause for this is the speed of inference and training.
+    Neural ODEs typically require more function evaluations than classical models.
+    Furthermore, one subtle limitation is that as the vector fields becomes more and more complex to fit the data the harder and more expensive it gets to solve them numerically.
+    For those reasons Neural ODEs tend to become computationally intractable for large datasets.
+    Work is been done though to tackle these problems like hypersolvers~\cite{poli2020hypersolvers} and algebraically reversible solvers~\cite{kidger2021efficient}~\cite{zhuang2021mali}.
+    Another way to speed up continuous time networks is to speed up the numerical solver through parallelism.
+
+
+    \section{Parallelism in Time}
+    It is apparent that Moore's law is crumbling.
+    In the last decades focus has shifted to parallel computation to increase performance rather than increasing single
+    threaded frequencies [CITATION?].
+    In the field of deep learning, massive parallelisation of training and inference workloads have led to major
+    breakthroughs like~\cite{vaswani2017attention}.
+    Differential equations solvers have intrinsic serial characteristics.
+    Each iteration of a time stepping algorithm depends on the previous steps.
+    Nevertheless, after the seminal work presented in~\cite{nievergelt1964parallel}, several methods have been proposed
+    for parallel in time, numerical integration.
+    Recent advances include the parareal algorithm~\cite{maday2002parareal} and PFASST~\cite{emmett2012toward} algorithm.
+    Massaroli et al. \cite{massaroli2021differentiable} used principles of multiple shooting layers,
+    a subcategory of parallel in time methods, and root finding algorithms, to accelerate neural ODES.
+    In the next subsection a new parallel in time algorithm based on refining a polynomial approximation of the solution
+    using a Newton-Raphson iteration is proposed.
+
+    \subsection{Polynomial approximation}
+    Let us consider the following initial value problem that we wish to solve in some time interval
+    $t \in [0,T]$ with $\pmb{y} (t_0)= \pmb{y}_0$.
+    We will examine the scalar case first where $y : \mathbb{R} \to \mathbb{R}$:
+    \begin{equation}
+        \frac{d y(t)}{dt} = f(y(t)) \label{dydt}
+    \end{equation}
+    We define a polynomial approximation  $\hat{y}(t)=\sum_{n=0}^{N-1} \phi_n(t) b_n$   where $ \phi_n(t) $ are basis functions
+    for a vector space of polynomials and $b_n$ are coefficients we wish to find.
+    We can also express $\hat{y}$ as the dot product $\hat{y}(t)= \left[ \pmb{\phi}(t)\right]^T \textbf b$ where
+    $\pmb{\phi} : [0,T] \to \mathbb{R}^N$ and $\pmb{b} \in \mathbb{R}^N$.
+
+    By substituting $\hat{y}$ in~\eqref{dydt} we get:
+    \begin{align}
+        \frac{d}{dt} \left[ \pmb{\phi}(t) \right]^T \pmb{b} &\approx f( \left[ \pmb{\phi}(t) \right]^T \pmb{b} ) \label{dPhidt}
+        \\
+        \left[ \pmb{\phi}'(t) \right]^T \, \pmb{b} &\approx f(  \left[ \pmb{\phi}(t) \right]^T \pmb{b} ) \label{dphi_fphi}
+    \end{align}
+    We define an approximation error (in the mean square error sense) that we wish to minimise in the interval of interest.
+    \begin{equation}
+        e(\pmb{b}) = \int_0^T
+        \left(
+        \left[ \pmb{\phi}'(\tau) \right]^T \, \pmb{b} - f( \left[ \pmb{\phi}(\tau) \right]^T \pmb{b} )
+        \right)^2
+        d\tau
+    \end{equation}
+
+    Depending on the choice of basis functions, the derivative of $\pmb{\phi}(t)$ with respect to time can be trivial to obtain analytically.
+    Were we to use trigonometric polynomials for example:
+
+    \begin{equation*}
+        \pmb{\phi}(t)
+        =
+        \left[  \cos(0 \cdot t) \; \cos(1  \cdot t) \; \dots \; \cos(\frac{N-1}{2} \cdot t)
+        \; \dots \;
+        \sin(0  \cdot t) \; \sin(1 \cdot t) \dots \; \sin(\frac{N-1}{2}  \cdot t) \right]^T
+    \end{equation*}
+    or equivalently
+    \begin{equation*}
+        \pmb{\phi}(t) = \left[ \left[ \pmb{\phi}_c(t) \right]^T \left[ \pmb{\phi}_s(t) \right]^T ] \right]^T
+    \end{equation*}
+    where $\pmb{\phi}_c$ contains the cosine terms and $\pmb{\phi}_s$ contains the sin terms.
+    Taking the derivative with respect to time we get:
+    \begin{align}
+        \pmb{\phi}_s'(t) &= \left[ -1 \cdot  \sin(1\cdot t ) \quad  -2 \cdot \sin(2\cdot t ) \  \dots \  -\frac{N}{2} \sin(\frac{N}{2}  t ) \right]^T \label{phis_dot}
+        \\
+        \pmb{\phi}_c'(t) &= \left[ \ \ 1 \cdot  \cos(1\cdot t ) \quad  \ \ 2 \cdot \cos(2\cdot t ) \ \  \dots \ \   \frac{N}{2} \cos(\frac{N}{2}  t ) \right]^T \label{phic_dot}
+    \end{align}
+
+    We instead opt to use Chebyshev polynomials as the basis functions of our approximation which are known for their
+    properties in approximation theory [CITATION].
+    They form an orthonormal basis for functions in $[-1,1]$ but we can use them in our desired interval through a
+    simple change of variables while being mindful of the differential in $\frac{d}{dt} \pmb{\phi}(t) $.
+    Chebyshev polynomials of the first kind $T_n(t)$ can be defined by:
+    \begin{equation}
+        T_n(\cos \theta) = \cos(n \theta)
+    \end{equation}
+    While Chebyshev polynomials of the second kind can be defined by:
+    \begin{equation}
+        U_n(\cos \theta) \sin \theta = \sin( (n+1)\theta )
+    \end{equation}
+    Alternatively, they can be obtained through the recurrence relationships:
+    \begin{equation}
+        \label{eq:cheb_rec}
+        \begin{aligned}[c]
+            T_0(t) &= 1 \\
+            T_1(t) &= x \\
+            T_n(t) &= 2tT_{n-1}(t) - T_{n-1}(t)
+        \end{aligned}
+        \qquad \quad
+        \begin{aligned}[c]
+            U_0(t) &= 1 \\
+            U_1(t) &= 2t\\
+            U_n(t) &= 2tU_{n-1}(t) - U_{n-1}(t)\\
+        \end{aligned}
+    \end{equation}
+    It can also be shown that for the derivative of $T_n$ it holds that:
+    \begin{equation}
+        \frac{dT_n}{dt} = n U_{n-1}
+        \label{Dcheb}
+    \end{equation}
+    Since we operate in discrete time we define a grid of $M$ points $\pmb{t} = [t_0 \; t_1 \; \dots \; t_{M-1}]^T$
+    where we calculate the error.
+    For simplicity's sake let's assume that the time variable has been rescaled to be in $[-1,1]$.
+    In this case $\left[ \pmb{\phi}(\pmb{t}) \right]^T$ would be written as a $M \times N$ matrix.
+    \begin{equation}
+        \left[ \pmb{\phi}(\pmb{t})  \right]^T = \left[ \Phi \right]^T =
+        \begin{bmatrix}
+            T_0(t_0)     & T_1(t_0)     & \dots & T_{N-1}(t_{0})   \\
+            T_0(t_1)     & T_1(t_1)     & \dots & T_{N-1}(t_1)     \\
+            & & \vdots \\
+            T_0(t_{M-1}) & T_1(t_{M-1}) & \dots & T_{N-1}(t_{M-1}) \\
+        \end{bmatrix}\label{eq:cheb_mat}
+    \end{equation}
+    Similarly, the derivative of $\Phi$ at the defined grid of points is found be differentiating each element of~\eqref{PHI} wrt.
+    the grid points and by utilising~\eqref{Dcheb}.
+    \begin{equation}
+        \label{PHI}
+        \left[ \Phi' \right]^T =
+        \begin{bmatrix}
+            0 & 1 \cdot U_0(t_0)     & \dots & (N-1) \cdot U_{N-2}(t_{0})   \\
+            0 & 1 \cdot U_0(t_1)     & \dots & (N-1) \cdot U_{N-2}(t_1)     \\
+            & & \vdots \\
+            0 & 1 \cdot U_0(t_{M-1}) & \dots & (N-1) \cdot U_{N-2}(t_{M-1}) \\
+        \end{bmatrix}
+    \end{equation}
+
+    Generalising to a vector valued $\pmb{y} : [0,T] \to \mathbb{R}^L$ the collection of coefficients becomes a matrix $B\in \mathbb{R}^{N \times L}$.
+    Another way of thinking about this is stacking $L$ coefficient vectors, one for each dimension next to each other, forming the coefficient matrix $B$.
+    The error function is then reformulated as
+    \begin{align}
+        e(B) &= \sum \left(
+        \left[ \Phi' \right]^T B -
+        \pmb{f} \left( \pmb{y}_0 + \left[ \Phi B \right]^T \right)
+        \right)^2
+        \label{approx_error}
+    \end{align}
+
+    \begin{figure}[h]
+        \begin{center}
+            \input{sol_regression.pgf}
+        \end{center}
+        \label{fig:reg_sol}
+    \end{figure}
+
+    We can use an optimisation algorithm on the error function to find the coefficients matrix that minimises it.
+    A simple choice is the Newton-Raphson algorithm with Hessian modification.
+    An version of the algorithm is showcased in Appendix~\ref{newtonalgo}, where line-search is used for the learning
+    rate or step size of the update ~\ref{alg:linesearh}.
+    Combining polynomial approximation with the Newton algorithm we arrive at algorithm \ref{alg:intapprox}.
+
+    \begin{algorithm}
+        \caption{Polynomial approximation numerical integration}
+        \begin{algorithmic}
+            \State choose $\epsilon_{tol}$, $B^{[0]}$, $k_{max}$
+            \State $\pmb{t} \gets [t_0 \; t_1 \; t_2 \; \dots \; t_{M-1} ]^T$
+            \State $k \gets 1$
+            \State calculate $\Phi, \Phi'$ at $\pmb{t}$
+            \Repeat
+                \State calculate $e(B^{[k]})$
+                \If { $e(B^{[k]})< \epsilon_{tol}$ }
+                    \State \textbf{return} $B^{[k]}$
+                \EndIf
+                \State $ \pmb{d}^{[k]} \gets -\left[ \nabla^2 e(B^{[k]}) \right]^{-1} \nabla e(B^{[k]})$
+                \State $ \alpha^{[k]} \gets \text{lineseach}(e, B^{[k]}, \pmb{d}^{[k]}) $
+                \State $ B^{[k+1]} \gets B^{[k]} + \alpha \pmb{d}^{[k]}$
+                \State $k \gets k+1$
+            \Until{$k>k_{max}$}
+            \label{alg:intapprox}
+        \end{algorithmic}
+    \end{algorithm}
+
+    \subsection{Realisation details}
+
+    \subsubsection{Imposing initial conditions}
+    Since the value of $y(t)$ and $f(y(t))$ are known at $t=0$ we can calculate a part of $\Phi$ analytically which
+    allows to both: impose our initial conditions and to reduce the computational cost.
+    Starting with initial state:
+    \begin{align}
+        \label{eq:phi_y_init}
+        \pmb{\phi}(t_0) B &= \pmb{y}(t_0) \\
+        \begin{bmatrix}
+            \phi_0(t_0) &
+            \phi_1(t_0)
+        \end{bmatrix}
+        \begin{bmatrix}
+            B_0 \\
+            B_1
+        \end{bmatrix}
+        +
+        \left[ \pmb{\phi}_k(t_0) \right]^T B_k
+        &= \pmb{y}_0, \; k=3,4,\dots
+    \end{align}
+    Where $B_n$ is the $n$-th row of $B$ while $\pmb{\phi}_n(t)$ is the $n$-th element of the basis function vector at
+    $t$.
+    We can write a similar equation for $f(y_0)$.
+    \begin{align}
+        \label{eq:phi_f_init}
+        \pmb{\phi}'(t_0) B &= \pmb{f}(\pmb{y}_0) \\
+        \begin{bmatrix}
+            \phi'_0(t_0) &
+            \phi'_1(t_0)
+        \end{bmatrix}
+        \begin{bmatrix}
+            B_0 \\
+            B_1
+        \end{bmatrix}
+        +
+        \left[ \pmb{\phi}'_k(t_0) \right]^T B_k
+        &= \pmb{f}(\pmb{y}_0), \; k=3,4,\dots
+    \end{align}
+    Combining~\eqref{eq:phi_y_init} and~\eqref{eq:phi_f_init} we get:
+    \begin{equation}
+        \label{eq:init_cond}
+        \begin{bmatrix}
+            \phi_0(t_0)  & \phi_1(t_0)  \\
+            \phi'_0(t_0) & \phi'_1(t_0)
+        \end{bmatrix}
+        \begin{bmatrix}
+            B_0 \\ B_1
+        \end{bmatrix}^T
+        +
+        \begin{bmatrix}
+            \pmb{\phi}_k(t_0) &
+            \pmb{\phi}'_k(t_0)
+        \end{bmatrix}^T
+        B_k
+        =
+        \begin{bmatrix}
+            \pmb{y}_0 \\
+            \pmb{f}_0
+        \end{bmatrix}
+    \end{equation}
+    The above equation allows us to express the first two rows of the coefficients matrix $B$ as a linear combination
+    of the rest $(N-1)-2$ rows.
+    This means we don't need to ``learn'' them though optimisation, we instead minimize the error subject to the
+    remaining rows.
+    \begin{equation}
+        \label{eq:phi_f2}
+        \begin{bmatrix}
+            B_0 \\ B_1
+        \end{bmatrix}^T
+        =
+        \begin{bmatrix}
+            \phi_0(t_0)  & \phi_1(t_0)  \\
+            \phi'_0(t_0) & \phi'_1(t_0)
+        \end{bmatrix}^{-1}
+        \left(
+        \begin{bmatrix}
+            \pmb{y}_0 \\
+            \pmb{f}_0
+        \end{bmatrix}
+        -
+        \begin{bmatrix}
+            \pmb{\phi}_k(t_0) &
+            \pmb{\phi}'_k(t_0)
+        \end{bmatrix}^T
+        B_k
+        \right)
+    \end{equation}
+
+    The initialisation of $B$ is in the users choice.
+    It could be a random vector but that would increase the time to convergence.
+    Alternatively, one could use a coarse ODE solver, likely a forward euler iteration with relatively large step size,
+    to get a rough estimate $\pmb{y}_c(t)$.
+    Then by solving the least squares problem $\pmb{y}_c(t) - \Phi(t) B_0$ get an initialisation that's closer to the
+    optimum, $B^*$, for faster convergence.
+    One has to figure out a good balance between the number of steps of the coarse solver -which are innately serial-
+    and how far the initial $B$ is from the optimum, which will increase the number of Newton iterations.
+
+    \subsubsection{The Hessian}
+
+    The primary concern computationally is the number of function evaluations or \textit{NFE} of $f$,
+    the neural networks.
+    The number of coefficients in $B$ is orders of magnitude smaller that the number of parameters in the network,
+    hence storing the full Hessian shouldn't be a limiting factor.
+
+    Instead of directly inverting the Hessian to obtain the next $B$, we use a modified Cholesky decomposition
+    (specifically of $LDU$ form) as described in ~\cite{gill2019practical}.
+    We use this technique in order to project the Hessian to a space of positive definite matrices in case it is not,
+    which is a necessary condition for the Newton algorithm to converge.
+    This way we can increase the definiteness of the Hessian while also solving the linear system
+    $\pmb{d}^{[k]} \gets -\left[ \nabla^2 e(B^{[k]}) \right]^{-1} \nabla e(B^{[k]})$ as an LDU system (two triangular
+    and one diagonal systems).
+    To prevent confusion around the dimensionality of the Hessian $\nabla_{B} e$,
+    the columns of $B$ are stacked as a vector so that the hessian is a rectangular matrix instead of a $4D$ tensor.
+
+    \subsection{Comparison with classical and other parellel-in-time methods}
+    First of all the parallelisation potential of such a method comes from the fact that all gradients can be computed simultaneously.
+    In contrast to classical ODE solvers where the solution, or the trajectory in state space, is calculated from initial time to terminal time, step by step; in our case the whole trajectory (an approximation of it rather) is known from the start.
+    Allowing to calculate the derivatives along the entire trajectory in a parallel manner.
+    Obviously, more than one iterations are needed to obtain a solution to some specified accuracy.
+    But if there are sufficiently many computing nodes available each iteration should be at least comparable to a single step of many common ODE solvers.
+    For example, rk4 is a widely used algorithm, from the family of Runge-Kutta methods, for solving ordinary differential equations.
+    It involves four function evaluations (NFE) at each step.
+    Likewise Dormand-Prince, the default method in many software packages [CITE?], sometimes referred as dopri54 has an NFE of 6 for a single step.
+
+    Each iteration of algorithm~\ref{alg:intapprox} takes more than 1 function evaluation of the error function.
+    We assume that the error function requires time similar to a single forward pass of $\pmb{f}$ for the reason stated above.
+    There are, however, additional evaluations of $e$ that are required at each iteration of the algorithm increasing the time of each iteration.
+    The Jacobian and Hessian matrices also have to be calculated.
+    Because of how automatic differentiation works the Jacobian is a byproduct of calculating the Hessian.
+    Calculating the full Hessian is actually not a trivial cost and we will address this later.
+    Additionally the line search algorithm -for finding step sizes along the path of the Newton direction requires some evaluations of $e$ and its Jacobian.
+    Decreasing the number of function evaluations is crucial for further speeding up this algorithm.
+
+    Comparing popular parallel in time ODE solving methods, like PFASST and parareal, to our approach showcases similarities but also differences.
+    One major difference is simplicity which allows easier implementation.
+    Polynomial Approximation Integration only builds upon simple polynomial approximation and a numerical optimiser.
+    Other methods, like PFASST, rely on more complicated \textit{spectral deferred correction} methods, a well established but more involved numerical method.
+
+    Moreover, other parallel in time techniques, like parareal, split the IVP into $N$ smaller BVPs using a combination of coarse and fine solvers alongside some Newton algorithm~\cite{maday2002parareal}.
+    One advantage of the method presented here is that it evaluates $f$ on multiple inputs simultaneously, while the weights are frozen, to minimise some cost error function.
+    This \textit{synchronised}  parallelisation scheme resembles how multiples input samples are processed in batches during training.
+    This means that one can exploit GPUs for mass parallelisation using existing frameworks.
+
+    \subsection{Shortcomings and improvements}
+    As mentioned above the critical factor for the performance of neural ODEs is the number of function evaluations that have to be performed sequentially.
+    While our experiments show that polynomial approximation integration can reduce NFE there are hidden costs involved with the calculating the full Hessian and during line search.
+
+    Firstly, because the parameters $B$ should be significantly less than the parameters of the network calculating the full Hessian doesn't present problems as far as memory is concerned.
+    But since Newton optimisation requires the inverse of the Hessian it is not possible to perform a fast (exploiting automatic differentiation properties) Hessian-vector operation.
+    We should point out though, that we can calculate the full Hessian by calculating each row in parallel using $N$ (the size of each row of $B$) vector-Jacobian products in parallel.
+    But even so the time it takes for all these calculations is 2 to 4 times that of the forward pass.
+
+    Secondly, the line search algorithm involves computing the objective function and it's derivative at multiple states ($\pmb{y}(t)$). While we hope that it shouldn't check more that two or three candidate values for the learning rate it we can expect at least 4 more function evaluations that will be performed in serial~\cite{wright2006numerical}.
+
+    These limitations of Newton optimisation with line search call for more numerical methods to be tested like Quasi-Newton, Conjugate Gradients and BFGS.
+
+    \subsection{hyper solver + parallel in time(???)}
+    Shifting out focus to the more specific problem of training neural ODEs.
+
+    \subsection{Experiments}
+    We compare the performance of [our method name] to popular time stepping methods in terms of accuracy and absolute error.
+    Most implementations of variable step length methods like RK45 allow for absolute (atol) and relative (rtol)
+    tolerances to be specified which keep the local error estimates bellow $a_{tol} + r_{tol} |y|$.
+    We can define similar criteria for our method.
+    First of all, absolute tolerance is equivelent to the threshold of the mean squared error at the $k$-th iteration of
+    the optimisation algorithm.
+    The algorithm stops when it has found a close enough polynomial approximation of the ODE solution, under our error
+    metric and accuracy specifications.
+    Alternatively, we could stop after we have found a local minimum of the error function.
+    This practically means if the norm of the gradient at the current solution $B^{[k]}$ is under a threshold defined as
+    a hyperparementer.
+
+    \subsubsection{Spiral}
+    First, we will examine a toy example of a nonlinear spiral in $\mathbb{R}^{2}$.
+    We assume that a solution using the RK45 method with maximum step size three orders of magnitute smaller than the
+    interval to be a sufficiently accurate approximation of the true solution and use it to measure the accuracy of the
+    other solutions.
+
+    \begin{equation*}
+        \frac{d \pmb{y} }{dt} =
+        \tanh(
+        \begin{bmatrix}
+            a & 1 \\ -1 & -a
+        \end{bmatrix}
+        \pmb{y}
+        )
+    \end{equation*}
+
+    We solve the ODE in the interval $[0,6]$ for $\pmb{y}(0) = [-1,\ -1]^T$ using various common methods for
+    different absolute tolerances.
+
+    \begin{center}
+    {\tabulinesep=1.2mm
+        \begin{tabu}{ |c| c| c| c| c| }
+            \hline
+            Method & $atol$/$etol$                          & $ \lVert error(T) \rVert_{2}$  & NFE & \%pan \\
+            \hline
+            RK45   & $1 \times 10^{-8}$                     & $ 5.821423518 \times 10^{-9} $ & 308 & 560\% \\
+            \hline
+            DOP853 & $1 \times 10^{-8}$                     & $ 2.935176203 \times 10^{-8} $ & 254 & 462\% \\
+            \hline
+            BDF    & $1 \times 10^{-8}$                     & $ 8.073374795 \times 10^{-8} $ & 308 & 560\% \\
+            \hline
+            LSODA  & $1 \times 10^{-8}$                     & $ 2.920422536 \times 10^{-8} $ & 201 & 365\% \\
+            \hline
+            PAN    & $1 \times 10^{-8} / 1 \times 10^{-14}$ & $ 2.356084364 \times 10^{-7} $ & 55  & -     \\
+            \hline
+        \end{tabu}
+    }
+    \end{center}
+
+    \printbibliography
+
+    \appendix
+
+
+    \section{The backpropagation equations}
+    In order to contrast and highlight the differences between classical neural networks, residual neural networks and neural ODEs we showcase how the gradients of the loss wrt.
+    the learnable parameters is calculated in each architecture.
+    This quantity is necessary in order to minimise the loss of the network using any -gradient descent based- optimisation algorithm.
+
+    \subsection{Vanilla Neural Networks}
+    Classical artificial neural networks are comprised of linear transformations followed by non-linear activation functions.
+    The equation that describes the input-output relationship of the $n$-th layer is:
+    \begin{equation}
+        \bm{y}_{n} = \phi( W_{n} \bm{y}_{n-1} )
+    \end{equation}
+
+    Where $\phi$ is a non-linear function, $W_n$ is the layer's weights, $\bm{y}_{n-1}$ the output of the previous layer, we omit the biases vector to simplify the equations but the logic is the same.
+    Unfolding this equation for the whole network of depth $N$ we get:
+
+    \begin{equation}
+        \bm{y}_{out} = \phi ( W_{N} \cdot \phi(W_{N-1} \cdot  \phi(W_{N-2}( \dots ))))
+    \end{equation}
+
+    The output of the network is passed in a (scalar) cost function $C(\bm{y}_{out},\bm{y}^*)$.
+    In order to apply gradient descent based optimisation algorithms it is necessary to calculate the gradient wrt.
+    all the weights:
+
+    \begin{equation}
+        \frac{ \partial C}{\partial W_{n} }, \quad \text{for} \ n=1,2,\dots,l
+    \end{equation}
+
+    Focusing on a single layer, lets use $\textbf{z}_{n}$ to denote $W_{n}\cdot \textbf{y}_{n-1}$ or whats goes in the non-linear function at each layer.
+    By applying the chain rule we get:
+
+    \begin{align}
+        \frac{ \partial C}{\partial \textbf{y}_{n-1} }
+        =
+        \left[ \frac{ \partial \textbf{y}_{n}}{\partial \textbf{y}_{n-1}  } \right]^T
+        \frac{ \partial C}{\partial \textbf{y}_{n} }
+        &=
+        \left[ \frac{ \partial}{\partial \textbf{y}_{n-1} } \phi(W_n \textbf{y}_{n-1}) \right]^T
+        \frac{ \partial C}{\partial \textbf{y}_{n} }
+        \\
+        &=
+        \left[ W_n^T \phi^{(1)}( \pmb{z}_n ) \right]^T
+        \frac{ \partial C}{\partial \textbf{y}_{n} }
+        \\
+        &=
+        \left[ \phi^{(1)}( \pmb{z}_n ) \right]^T
+        W_n \;
+        \frac{ \partial C}{\partial \textbf{y}_{n} }
+    \end{align}
+
+    The non-linearity $\phi$ is applied on each element of the input vector independently, so its partial derivative wrt.
+    the input its a diagonal matrix and its transpose is the same as itself.
+
+    \begin{align}
+        \frac{ \partial C}{\partial \textbf{y}_{n-1} }
+        =
+        \phi^{(1)}( \pmb{z}_n )
+        W_n \;
+        \frac{ \partial C}{\partial \textbf{y}_{n} }
+        \label{dCdy}
+    \end{align}
+
+    Equation~\eqref{dCdy} allows to calculate all such derivatives recursively starting from the last layer where $\frac{\partial C}{\partial \textbf{y}_{out}}$ has a closed form solution.
+    We can now calculate the desired gradients with respect to the weights.
+    Below $W_n^i$ is the $i$-th column of the weights matrix of the $n$-th layer.
+
+    \begin{align*}
+        \frac{ \partial C}{\partial W_n^{[i]} }
+        =
+        \left[ \frac{ \partial \pmb{y}_{n}}{\partial W_n^i } \right]^T
+        \frac{ \partial C}{\partial \pmb{y}_{n} }
+        &=
+        \left[ \frac{ \partial }{\partial W_n^{[i]} }  \phi( W_{n} \bm{y}_{n-1} )  \right]^T
+        \frac{ \partial C}{\partial \pmb{y}_{n} }
+        \\
+        &=
+        \left[ \frac{ \partial }{\partial W_n^{[i]} }  \phi(  W_{n}^{[1]} \bm{y}_{n-1}^{[1]} + \dots +W_{n}^{[i]} \bm{y}_{n-1}^{[i]} + \dots )  \right]^T
+        \frac{ \partial C}{\partial \pmb{y}_{n} }
+        \\
+        &=
+        \left[ \left[ \pmb{y}_{n-1}^{[i]} \right]^T \phi^{(1)}(\pmb{z}_n )  \right]^T
+        \frac{ \partial C}{\partial \pmb{y}_{n} }
+        \\
+        &=
+        \phi^{(1)}(\pmb{z}_n ) \; \pmb{y}_{n-1}^{[i]}
+        \frac{ \partial C}{\partial \pmb{y}_{n} }
+    \end{align*}
+
+    Stacking all the columns together we get:
+
+    \begin{equation}
+        \label{dCdW}
+        \frac{ \partial C}{\partial W_n}
+        =
+        \phi^{(1)}(\pmb{z}_n )
+        \frac{ \partial C}{\partial \pmb{y}_{n} }  \,
+        \pmb{y}_{n-1}
+    \end{equation}
+
+    Using~\eqref{dCdy} and~\eqref{dCdW} together we can find all the necessary gradients for backpropagation; as expressed in algorithm~\ref{alg:backprop}
+
+    \begin{algorithm}
+        \caption{Backpropagation}
+        \label{alg:backprop}
+        \begin{algorithmic}
+            \State Do the forward pass, save in memory $W_n, \textbf{z}_n, \textbf{y}_n$
+            \State Calculate $\frac{\partial C}{\partial \textbf{y}_{out}}$ which is trivial
+            \For{$n=N-1, \dots, 1$}
+                \State Using~\eqref{dCdy} and  $\frac{\partial C}{\partial \textbf{y}_{n+1}} $ find $\frac{\partial C}{\partial \textbf{y}_n}$
+                \State  Using~\eqref{dCdW} and $\frac{\partial C}{\partial \textbf{y}_n}$ find $\frac{\partial C}{\partial W_n}$
+            \EndFor
+        \end{algorithmic}
+    \end{algorithm}
+
+    The backpropagation algorithm is quite fast in modern hardware as it consists of mostly matrix vector multiplications.
+    Although, it is memory intensive since it requires saving all the weights and activations from the forward pass and accessing them during the backward pass.
+
+    \subsection{Residual Networks}
+    Residual neural networks operate quire similarly to classical ones in terms of training.
+
+    \begin{equation}
+        \bm{y}_{n} = \phi( W_{n} \bm{y}_{n-1} ) + \bm{y}_{n-1}
+    \end{equation}
+
+%    \begin{align}
+%        \label{resnet_dCdy}
+%        \frac{ \partial C}{\partial \textbf{y}_{n-1} }
+%        =
+%        \left[ \frac{ \partial \textbf{y}_{n}}{\partial \textbf{y}_{n-1}  } \right]^T
+%        \frac{ \partial C}{\partial \textbf{y}_{n} }
+%        &=
+%        \left\{
+%        \frac{ \partial}{\partial \textbf{y}_{n-1}}
+%        \left[
+%            \phi(W_n \textbf{y}_{n-1}) + \textbf{y_{n-1}}
+%            \right]
+%        \right\}^T
+%        \frac{ \partial C}{\partial \textbf{y}_{n} }
+%        \\
+%        &=
+%        \left[
+%            W_n^T \phi^{(1)}( \pmb{z}_n ) + I
+%            \right]^T
+%        \frac{ \partial C}{\partial \textbf{y}_{n} }
+%    \end{align}
+
+    Equation~\eqref{resnet_dCdy} is again a recursive relation that can be used to find all intermediate ``states '' starting from the output layer.
+    The gradients wrt.
+    weights becomes:
+
+    \begin{align}
+        \frac{ \partial C}{\partial W_n^{[i]} }
+        =
+        \left[ \frac{ \partial \pmb{y}_{n}}{\partial W_n^i } \right]^T
+        \frac{ \partial C}{\partial \pmb{y}_{n} }
+        &=
+        \left\{
+        \frac{ \partial }{\partial W_n^{[i]} }
+        \left[
+            \phi( W_{n} \bm{y}_{n-1} )  + \textbf{y}_{n-1}
+            \right]
+        \right\}^T
+        \frac{ \partial C}{\partial \pmb{y}_{n} }
+        \label{resnet_dCdW}
+    \end{align}
+
+    Since the output of layer $n-1$ doesn't depend on the weights of layer $n$,~\eqref{resnet_dCdW} becomes identical to~\eqref{dCdW} and the same backpropagation algorithm is used to train the network.
+
+    \begin{tikzpicture}
+        \node [rectangle, draw, text width=0.8\textwidth, inner sep=10pt] (content) at (0,0) {
+            Backpropagation can be seen as a specific of Automatic Differentiation, a very powerful framework to acquire gradients numerically.
+            The governing principle is the same, propagating the gradients through functions with closed form derivative, utilising the chain rule.
+        };
+    \end{tikzpicture}
+
+    \subsection{Neural ODEs}
+    Calculating $\nabla_{\theta}L$ in neural ODEs can be achieved by differentiating through the solver steps but as we will demonstrate there is a much more efficient way, using tools from optimal control theory, namely adjoint sensitivities.
+    The governing equations for neural ODEs are~\eqref{ivp},~\eqref{adjoint},~\eqref{dldtheta} we repeat them for convenience:
+
+    \begin{equation*}
+        \pmb{y}(T) =  \pmb{y}(0) +\int_{0}^{T} f(\pmb{y}(\tau), \tau, \pmb{\theta}) \,d\tau
+        , \quad
+        \pmb{y}(0) = \pmb{y}_0
+    \end{equation*}
+
+    \begin{equation*}
+        \frac
+        {d \pmb{a}(t)}
+        {dt}
+        =
+        - \pmb{a}(t)^T
+        \frac
+        {\partial f( \pmb{y}(t), t, \pmb{\theta} )}
+        {\partial \pmb{y} }
+        , \quad
+        \pmb{a}(T) = \frac{\partial L}{\partial \pmb{y}(T)}
+    \end{equation*}
+
+    \begin{equation*}
+        \nabla_{\pmb{\theta}} L =
+        - \int_T^0
+        \pmb{a}(t)^T
+        \frac
+        {\partial f(\pmb{y}(\tau), \pmb{\theta})}
+        {\partial \pmb{\theta}}
+        \, d\tau
+    \end{equation*}
+
+    Calculating the last integral numerically requires the values of $\pmb{a}(t)$ at all the points in time the solver chooses.
+    In the case of a fixed step size solver with step $h$ those would be $t_m = T - mh, \; m=0,1,\dots$.
+    In the case of an adaptive step size $t_m$ could be any point between $T$ and $0$.
+    In both cases we can calculate those quantities by solving the second ODE starting from time $t=T$ -where $a(T)$ has a closed form solution- and moving backwards in time.
+    Next we need the value of $\pmb{y}$ at the same $t_m$s. Again we can calculate them starting from $\pmb{y}(T)$ and solving the original IVP again backwards in time.
+    Notice that we don't need to save any intermediate state or activations from the forward pass since we can re-calculate them moving backwards.
+    In this sense, neural ODEs are reversible (up to numerical tolerances).
+
+    In algorithm~\ref{alg:adjoint} we reformulate the integral equation for the gradient of the loss wrt.
+    weights as a differential equation: $ \frac{d}{dt} \pmb{a}_\theta(t) = -\pmb{a}(t)^T \frac{\partial f}{\partial \pmb{\theta}}$.
+    We know that $\pmb{a}_\theta(T) = 0$ and we search for $\pmb{a}_\theta(0) = \nabla_\theta L$.
+
+    \begin{algorithm}
+        \caption{Adjoint}
+        \label{alg:adjoint}
+        \begin{algorithmic}
+            \State Choose ODE solver hyperparameters ($h$, $\dots$)
+            \State Do the forward pass, find $\pmb{y}(T)$
+            \State $\pmb{a}(T) \gets \frac{\partial L}{\partial \pmb{y}(T)}$ (closed form)
+            \State $\pmb{a}_{\theta}(T) \gets 0$
+            \State $t \gets T$
+            \While{$t > 0$}
+                \State $\pmb{y}(t - \Delta t) \gets \text{IntStep}(\pmb{y}(t), f) $
+                \State $\pmb{a}(t - \Delta t) \gets \text{IntStep}(
+                \pmb{a}(t), -\pmb{a}(t) \frac{\partial f }{\partial \pmb{y}}
+                )$
+                \State $\pmb{a}_{\theta}(t - \Delta t) \gets \text{IntStep}(
+                \pmb{a}_{\theta}(t), -\pmb{a}(t) \frac{\partial f }{\partial \pmb{\theta}}
+                )$
+                \State $t \gets t - \Delta t$
+            \EndWhile
+            \State \textbf{return} $\pmb{a}_\theta(0) = \nabla_\theta L$
+        \end{algorithmic}
+    \end{algorithm}
+
+
+    \section{Numerical Solvers}
+
+    \subsection{Runge-Kutta 5}
+
+    solve $\frac{dy}{dt} = f(t,y)$, $y(t_0) = y_0 $
+
+    \begin{align*}
+        y_{n+1} &= y_n + \frac{h}{6}(k_1 + 2k_2 +2k_3 + k_4)  \\
+        t_{n+1} &= t_n + h
+    \end{align*}
+
+    \begin{align*}
+        k_{1} &= f(t_{n}, y_{n}), \\
+        k_{2} &= f(t_{n} + \frac{h}{2}, y_{n} + h \frac{ k_{1} }{ 2 } ),    \\
+        k_{3} &= f(t_{n} + \frac{h}{2}, y_{n} + h \frac{ k_{2} }{ 2 } ),  \\
+        k_{4} &= f(t_{n} + h, y_{n} + hk_3), \\
+    \end{align*}
+
+    can be proved using taylor series expansion...
+
+
+    \section{An alternative derivation for $\frac{dL}{d \pmb{\theta}}$}
+    \label{adjoint_proof}
+    There are already many ways in the literature for finding this quantity without delving into control theory and reverse sensitivities.
+    Intuitively in can be thought as a continuous analogous to classical backpropagation.
+
+    \begin{align}
+        \text{classical} &\to
+        \frac{d L}{ d \pmb{\theta}} =
+        \sum_k
+        \frac{\partial L}{\partial \pmb{y}_{k}}
+        \frac{\partial f(\pmb{y}_k, \pmb\theta)}{\partial \pmb{\theta}}
+        \\
+        \text{adjoint sensitivities} &\to
+        \frac{d L}{ d \pmb{\theta}} =
+        \int_T^0
+        \frac{\partial L}{\partial \pmb{y}(\tau)}
+        \frac{\partial f(\pmb{y}(\tau), \pmb{\theta})}{\partial \pmb{\theta}} \, d\tau
+    \end{align}
+
+    In the original neural ODEs paper~\cite{chen2018neural} the authors prove~\eqref{adjoint} and use an augmented state to prove~\eqref{dldtheta} while others like~\cite{kidger2022neural} provide alternative proofs.
+    We present another, in our opinion much simpler, derivation for~\eqref{dldtheta}.
+    Consider the more general case where the loss is dependant on intermediate state on a point $s \in (0,T)$.
+    This is equivalent to the usual case where the loss depends only on the output state with $\mathcal{L}(s) = L(\pmb{y}(s))=0$ for $s\neq T$.
+    Moreover, the state $\pmb{y}$ is a also dependant on the weights even though it's not explicitly written.
+
+    \begin{align*}
+        \frac{ d L(\bm{y}(s, \bm{\theta})) }{ d \bm{\theta} }
+        &= \int_0^s \frac{d}{dt} \left( \frac{ d L(\bm{y}(s, \bm{\theta})}{ d \bm{\theta}} \right) dt \\
+        &= \int_0^s \frac{d}{dt} \left( \frac{ d L(\bm{y}(t, \bm{\theta})}{ d \bm{y}(t)} \frac{d \bm{y}(t)}{d\bm{\theta}} \right) dt \\
+        &= \int_0^s
+        \frac{d}{dt} \frac{ d L(\bm{y}(t, \bm{\theta})}{ d \bm{y}(t)} \cdot \frac{d \bm{y}(t)}{d\bm{\theta}}
+        +
+        \frac{ d L(\bm{y}(t, \bm{\theta})}{ d \bm{y}(t)} \cdot \frac{d}{dt} \frac{d \bm{y}(t)}{d\bm{\theta}}
+        dt \\
+        &= \int_0^s
+        \dot{\bm{a}}(t) \frac{d \bm{y}(t)}{d\bm{\theta}}
+        +
+        \bm{a}(t) \cdot \frac{d}{d\bm{\theta}} \frac{d \bm{y}(t)}{dt}
+        dt \\
+        &= \int_0^s
+        \dot{\bm{a}}(t) \frac{d \bm{y}(t)}{d\bm{\theta}}
+        +
+        \bm{a}(t) \cdot \frac{d\bm{f}}{d\theta}
+        dt \\
+        &= \int_0^s
+        \dot{\bm{a}}(t) \frac{d \bm{y}(t)}{d\bm{\theta}}
+        +
+        \bm{a}(t) \left( \frac{\partial \bm{f}}{\partial \bm{\theta}}
+        +
+        \frac{\partial \bm{f}}{\partial \bm{y}(t)} \frac{\partial \bm{y}(t)}{\partial \bm{\theta}}\right)
+        dt \\
+        &= \int_0^s
+        \frac{d \bm{y}(t)}{d\bm{\theta}}
+        \left( \dot{\bm{a}}(t) + a\frac{\partial \bm{f}}{\partial \bm{y}(t)} \right)
+        +
+        \bm{a}(t) \frac{\partial \bm{f}}{\partial \bm{\theta}}
+        dt \\
+    \end{align*}
+    From~\eqref{adjoint} the sum in the parenthesis is 0:
+    \begin{align}
+        \frac{ d L(\bm{y}(s, \bm{\theta})) }{ d \bm{\theta} }
+        = \int_0^s
+        \bm{a}(t) \frac{\partial \bm{f}}{\partial \bm{\theta}}
+        dt
+    \end{align}
+    Setting $s=T$ we arrive at the desired formula.
+
+
+    \section{Vector-Jacobian products}
+    Modern software packages utilise automatic differentiation methods to calculate derivatives of some arbitrary function $f$, usually with respect to some parameters or weights $\theta$.
+    \begin{equation}
+        \frac{\partial f(x; \theta)}{ \partial \theta}
+    \end{equation}
+
+
+    \section{Optimisation}
+    In the field of numerical optimisation many methods have been developed for minimising a \textit{scalar} objective function $f$.
+    One category of those, \textit{line search} methods, are iterative algorithms that seek to update the current iterate $x_k$ to a new value closer to the minimum.
+    They work by choosing a direction $p_k$ -and step size $\alpha$- along which $f$ is decreased.
+    Alternatively the problem can be restated as:
+    \begin{equation}
+        \min_{a>0} f(x_k + \alpha p_k) \label{min_a}
+    \end{equation}
+    While ideally we would solve~\eqref{min_a} exactly, in practice it is computationally expensive and practically unnecessary.
+    Line search implementations usually generate some trial step sizes until they find one that satisfies certain termination conditions we will examine later.
+
+    A \textit{descent direction} is a direction that causes $f$ to decrease along it given sufficiently small $\alpha > 0$: $f(x_k + \alpha p_k) < f(x_k)$.We can show that if $p_k$ is a descent direction then $p_k^T \nabla f_k < 0$.
+    From the first order Taylor series expansion we have:
+    \begin{equation*}
+        f(x_k+ap_k) = f(x_k) + a p_k^T \nabla f_k + O(a^2)< f(x_k) \\
+    \end{equation*}
+    Ignoring quadratic term since $\alpha$ is small.
+    \begin{align*}
+        a p_k^T \nabla f_k &< 0 \\
+        p_k^T \nabla f_k &< 0
+    \end{align*}
+    It can be proven though Zoutendijk's theorem that: as long as the search direction is a descent direction and the step size fulfils some conditions the algorithm is globally convergent.
+
+    The defining characteristic of a line search method is the way in which we obtain the search direction $p_k$.
+    An obvious choice is to use the direction of \textit{steepest descent}, mathematically obtained as the negative of the gradient at the current iterate.
+    \begin{equation}
+        x_{k+1} = x_k - \alpha \nabla f_k
+    \end{equation}
+
+    In machine learning literature steepest descent, or as they are more commonly refereed, \textit{gradient descent} methods are extremely common.
+    Almost all neural network models are trained using some derivative of classic gradient descent.
+    These methods are not categorised as line searches since they do not seek to find an appropriate step length $\alpha$ on each iteration.
+    They instead define either a fixed or dynamically updated \textit{learning rate}.
+    Usually they employ some notions of momentum and stochasticity to move along a direction dictated by an approximation of the local gradient.
+    Even so the remain first order methods since they only utilise information about the first derivative.
+    Some notable gradient descent methods as well as how the minimisation problem is formulated in the context of machine learning are discussed later.
+
+    \subsection{The Newton-Raphson algorithm with Hessian modification}
+    \label{newtonalgo}
+    In more general minimisation problems a prevalent search direction for line search optimisers is the \textit{Newton direction}, methods using this direction are called Newton methods.
+    This direction is derived from the second-order Taylor series approximation of the objective function, near the current iterate $x_k$.
+    Consider a continuous, twice differentiable function $f: \mathbb{R}^n \to \mathbb{R}^n$, its second order Taylor series approximation is:
+    \begin{equation}
+        f(x_k + p) = f_k + p^t \nabla f_k + \frac{1}{2} p^t \nabla^2 f_k p + R(p) \label{taylor}
+    \end{equation}
+    with $R(p)$ being of order $O(\rVert p \rVert^3)$.
+    For small values of $p$, the residual term diminishes and we have a pretty good quadratic model of $f$.
+    Seeking to minimise this model we set the derivative wrt. $p$ equal to 0:
+    \begin{align}
+        \nabla f_k + \nabla^2 f_k p_t &= 0  \label{grad_m} \\
+        p = -\left[ \nabla^2 f_k \right]^{-1} \nabla f_k \label{newton_dir}
+    \end{align}
+    Equation~\eqref{newton_dir} gives the definition of the newton direction.
+    As mentioned before, in order for the algorithm to be globally convergent the search direction has to be a descent direction.
+    By multiplying~\eqref{grad_m} from the left with $p^t$ we get:
+    \begin{align}
+        p^t \nabla f_k + p_t \nabla^2 f_k p_t =& 0 \\
+        p^t \nabla^2 f_k p_t =& -p^t \nabla f_k < 0 \\
+        p^t \nabla^2 f_k p_t &> 0 \label{pos_def}
+    \end{align}
+    From~\eqref{pos_def} it is apparent that the Hessian matrix $H_k=\nabla^2 f_k$ has to be positive definite which is generally true if $x_k$ is near the minimum but not necessarily true away from it.
+    If the Hessian is not positive definite there is no guarantee that~\eqref{newton_dir} gives a descent direction or even that the Hessian is non-singular.
+    In order to address this issue a positive definite approximation of the Hessian is used.
+    The approximation can be obtained in several ways, some involve adding a multiple of the identity or some correction matrix $\Delta H$, others modify the eigenvalues of the true Hessian directly.
+
+    For example in~\cite{cheng1998modified} is shown that, if $H_k$ has spectral decomposition $H_k = Q \Lambda Q^T$ then the correction matrix of minimum Frobenius norm that ensures that the smallest eigenvalue of $H_k + \Delta H$ is larger or equal to $\delta$ is given by:
+    \begin{equation*}
+        \Delta H = Q \text(diag){\tau_i} Q^T, \quad \text{with} \quad \tau_i =
+        \left\{
+        \begin{array}{ll}
+            0,                  & \lambda_i \geq \delta, \\
+            \delta - \lambda_i, & \lambda_i < \delta,
+        \end{array}
+        \right.
+    \end{equation*}
+
+    Another technique, the one used here, is to perform (or try to perform) a Cholesky decomposition, more specifically an LDL decomposition of the Hessian.
+    Since the Hessian is not always positive definite the factorisation $H = LDL^T$ may not exist or if even if it does the algorithm used to compute it is numerically unstable.
+    The core idea of modified Cholesky decomposition is to modify the values of the diagonal matrix D to be sufficiently positive while the factorisation is computed.
+
+    More specifically,~\cite{wright2006numerical} provide an algorithm for computing the $LDL^T$ factorisation a positive definite approximation of a matrix.
+    It accepts two additional parameters $\delta, \beta$ so that the following bounds are satisfied.
+    \begin{equation}
+        d_j \geq \delta, \quad \lvert m_{ij} \rvert \leq \beta, \quad i = j+1, j_2, \dots, n
+    \end{equation}
+
+    The algorithm calculates the elements of the diagonal $D$ and the unitriangular matrix $L$ column by column.
+    It is a simpler version of the algorithm presented by~\cite{gill2019practical} that additionally introduces symmetric row-column interchanges resulting in lower $ \lVert H_k - \hat{H}_k \rVert$, $\hat{H}_k$ being the approximation.
+
+    \begin{algorithm}
+        \caption{Modified Cholesky}
+        \begin{algorithmic}
+            \For{ $i = j+1,\dots,n$ }
+                \State $c_{jj} \gets a_{jj} - \sum_{s=1}^{j-1} d_s l_{js}$
+                \State $\theta_j \gets \max_{j<i\leq n}(\lvert c_{ij} \rvert)$
+                \State $d_j \gets  \max
+                \left(
+                \lvert c_{jj} \rvert,
+                \left( \frac{\theta_j}{\beta} \right)^2,
+                \delta \right)$
+                \For{$i = j+1,\dots, n$}
+                    \State $c_{ij} \gets a_{ij} - \sum_{s=1}^{j-1} d_s l_{is} l_{js}$
+                    \State $l_{ij} \gets c_{ij} / d_j$
+                \EndFor
+            \EndFor
+        \end{algorithmic}
+    \end{algorithm}
+
+    After addressing the definiteness of the the Hessian let's describe how an algorithm would decide on the step size.
+    As noted earlier Zoutendijk's theorem requires the search direction to be a descent direction as well as the step size to fulfil a certain set of conditions.
+    One can prove Zoutedijk's theorem for multiple sets of conditions, namely the Wolfe, strong Wolfe and Goldstein conditions.
+    We will focus on the strong Wolfe conditions.
+
+    Assume we have chose direction $p_k$ at step $k$ of the algorithm, our second objective is to find step size $a$ to proceed to the next step without minimising $\phi(\alpha) = f(x_k + \alpha p_k)$ explicitly.
+    The first strong Wolfe condition states that our guess for $a$ should give \textit{sufficient decrease} in the objective function in the following way:
+    \begin{equation}
+        f(x_k + ap_k) \leq f(x_k) + c_1 a \nabla f_k ^T p_k
+    \end{equation}
+    for some $c_1 \in (0,1)$ usually chosen to be quite small ($\approx 10^{-4}$). This ensures the reduction in $f$ is proportional to the step size as well as the directional derivative $\nabla f ^T p_k$.
+    The sufficient decrease condition is not enough to make reasonable progress since it's satisfied for values of $\alpha$ close to 0.
+    To prevent this, the second strong Wolfe condition or \textit{curvature condition} states that $\alpha$ should also satisfy:
+    \begin{equation}
+        \lvert \nabla f(x_k + \alpha p_k )^T p_k \rvert \leq \lvert c_2 \nabla f_k^T p_k \rvert
+    \end{equation}
+    for some constant $c_2 \in (c_1, 1)$ usually set around $0.9$ for Newton direction.
+    Notice that the left hand side if the derivative wrt. $\alpha$ of $\phi(a)$ at $a_k$ and the right hand size at $0$.
+    Practically the curvature condition requires the slope of $\phi$ at the new point to be greater that at the start times $c_2$.
+    Remember that $p_k$ is a descent direction so $\phi(0)$ is strictly negative.
+    Larger slope would mean we get closer to a stationary point of zero gradient.
+    The absolute ensures that the slope doesn't become too positive and we don't overshoot away from the stationary point.
+
+    Utilising those conditions we construct the following line search algorithm parameterised by $c_1, c_2, \alpha_{max}$
+
+    \begin{algorithm}
+        \caption{Line search}
+        \label{alg:linesearh}
+        \begin{algorithmic}
+            \State Set $a_0 \gets 0$, choose $a_1 \in (0, a_{max})$
+            \State $i \gets 1$
+            \Repeat
+                \If {$\phi(a_i) > \phi(0) + c_1 a_i \phi'(0)$ or [$\phi(a_i) \geq \phi(a_{i-1})$ and $i>1$]}
+                    \State return \textbf{zoom}($a_{i-1}, a_i$)
+                \EndIf
+                \If {$\lvert \phi'(a_i) \rvert \leq -c_2 \phi'(0)$}
+                    \State return $a_i$
+                \EndIf
+                \If {$\phi'(a_i) \geq 0$}
+                    \State return \textbf{zoom}($a_i, a_{i-1}$)
+                \EndIf
+                \State $a_{i+1} \gets \min({a_max, 2*a_i})$
+                \State $i \gets i+1$
+            \Until
+        \end{algorithmic}
+    \end{algorithm}
+
+
+\end{document}

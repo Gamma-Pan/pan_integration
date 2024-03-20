@@ -11,8 +11,8 @@ def backtracking(f, y, grad_y, direction, tau=0.5, alpha=1.0, c1=1e-3, max_iter=
     f_start = f(y)
     iter_cntr = 0
     while (
-            f(y + alpha * direction) >= f_start + c1 * alpha * torch.dot(grad_y, direction)
-            and iter_cntr < max_iter
+        f(y + alpha * direction) >= f_start + c1 * alpha * torch.dot(grad_y, direction)
+        and iter_cntr < max_iter
     ):
         alpha = tau * alpha
         iter_cntr += 1
@@ -44,19 +44,19 @@ def min_cubic_interpol(a0, phi0, D_phi0, a1, phi1, D_phi1):
 
 
 def _zoom(
-        a_lo,
-        a_hi,
-        phi,
-        Dphi,
-        c1=10e-4,
-        c2=0.9,
-        max_iters=5,
-        phi_0=None,
-        Dphi_0=None,
-        phi_lo=None,
-        Dphi_lo=None,
-        phi_hi=None,
-        Dphi_hi=None,
+    a_lo,
+    a_hi,
+    phi,
+    Dphi,
+    c1=10e-4,
+    c2=0.9,
+    max_iters=5,
+    phi_0=None,
+    Dphi_0=None,
+    phi_lo=None,
+    Dphi_lo=None,
+    phi_hi=None,
+    Dphi_hi=None,
 ):
     if phi_0 is None:
         phi_0 = phi(0)
@@ -73,7 +73,6 @@ def _zoom(
 
     i = 0
     while i < max_iters:
-
         i = i + 1
         a_i = min_cubic_interpol(a_lo, phi_lo, Dphi_lo, a_hi, phi_hi, Dphi_hi)
 
@@ -84,29 +83,31 @@ def _zoom(
         else:
             Dphi_i = Dphi(a_i)
             if abs(Dphi_i) <= c2 * Dphi_0:
-                if plotting: plotter.close_all()
+                if plotting:
+                    plotter.close_all()
                 return a_i
 
             if Dphi_i * (a_hi - a_lo) >= 0:
                 a_hi = a_lo
             a_lo = a_i
 
-    if plotting: plotter.close_all()
+    if plotting:
+        plotter.close_all()
     return (a_lo + a_hi) / 2
 
 
 def _line_search(
-        f: Callable,
-        grad_f: Callable,
-        x: Tensor,
-        p: Tensor,
-        c1=1e-3,
-        c2=0.9,
-        a_max=tensor(10.0),
-        max_iters=10,
-        phi_0=None,
-        Dphi_0=None,
-        plot=False,
+    f: Callable,
+    grad_f: Callable,
+    x: Tensor,
+    p: Tensor,
+    c1=1e-3,
+    c2=0.9,
+    a_max=tensor(10.0),
+    max_iters=10,
+    phi_0=None,
+    Dphi_0=None,
+    plot=False,
 ):
     """
     Algorithm 3.6 from Nocedal, Wright - Numerical Approximation pg.62; returns
@@ -140,7 +141,8 @@ def _line_search(
     while i < max_iters and a_cur < a_max:
         # evaluate f at trial step (1 evaluation per loop)
         phi_cur = phi(a_cur)
-        if plotting: plotter.line_search(a_cur)
+        if plotting:
+            plotter.line_search(a_cur)
         # if sufficient decrease is violated at new point find min with zoom
         if phi_cur > phi_0 + c1 * a_cur * Dphi_0 or (phi_cur >= phi_prev and i > 1):
             return _zoom(
@@ -162,7 +164,8 @@ def _line_search(
 
         # if sufficient decrease holds and curvature hold return this a
         if abs(Dphi_cur) <= -c2 * Dphi_0:
-            if plotting: plotter.close_all()
+            if plotting:
+                plotter.close_all()
             return a_cur
 
         # TODO: explain this step
@@ -190,20 +193,22 @@ def _line_search(
         a_cur = 2 * a_cur
         i = i + 1
 
-    if plotting: plotter.close_all()
+    if plotting:
+        plotter.close_all()
     return a_cur
 
 
 def newton(
-        f: Callable,
-        b_init: Tensor,
-        f_args: tuple = None,
-        f_kwargs: dict = None,
-        has_aux=False,
-        max_steps=50,
-        metrics=False,
-        tol: float = 1e-4,
-        callback: Callable = None,
+    f: Callable,
+    b_init: Tensor,
+    f_args: tuple = None,
+    f_kwargs: dict = None,
+    has_aux=False,
+    max_steps=50,
+    metrics=False,
+    etol: float = 1e-5,
+    atol: float = 1e-5,
+    callback: Callable = None,
 ) -> Tensor:
     """
     :param f: scalar function to minimize
@@ -218,7 +223,6 @@ def newton(
     """
     f_args = f_args or []
     f_kwargs = f_kwargs or {}
-    num_coeff = torch.numel(b_init)
 
     # TODO: utilize jit
     def ff(x):
@@ -228,10 +232,9 @@ def newton(
     grad = jacrev(ff, has_aux=True)
     hessian = jacfwd(grad, has_aux=True)
 
-    prev_norm = 0
     b = b_init
+    prev_grad_norm = 0
     for step in range(max_steps):
-
         if callback is not None:
             with torch.no_grad():
                 callback(b.clone())
@@ -239,13 +242,11 @@ def newton(
         # calculate forward pass and
         Df_k, f_k = grad(b)
 
+        grad_norm = torch.norm(Df_k)
         # check if gradient is within tolerance and if so return
-        norm = torch.norm(Df_k)
-        if metrics:
-            print(f"norm of grad: {norm} \t norms diff: {torch.abs(norm - prev_norm)}")
-        if norm < tol or torch.abs(norm - prev_norm) < 1e-6:
+        if grad_norm < etol and f_k < atol or abs(grad_norm - prev_grad_norm) < etol:
             return b
-        prev_norm = norm
+        prev_grad_norm = grad_norm
 
         # calculate Hessian
         Hf_k = hessian(b)[0]
@@ -256,18 +257,14 @@ def newton(
         L_ch = torch.tril(LD_compat, -1).fill_diagonal_(1)
 
         # SOLVE LDL^T d_k = -Df_k
-        #  first solve uni-triangular system 1
-        Z = torch.linalg.solve_triangular(L_ch, -Df_k[:, None], upper=False, unitriangular=True)
-        # then solve diagonal system 2
+        #  first solve uni-triangular system
+        Z = torch.linalg.solve_triangular(
+            L_ch, -Df_k[:, None], upper=False, unitriangular=True
+        )
+        # then solve diagonal system
         Y = Z / D_ch  # + 1e-5) # for numerical stability
-        # then sole uni-triangular system 1
+        # then solve uni-triangular system
         d_k = torch.linalg.solve_triangular(L_ch.T, Y, upper=True, unitriangular=True)
-
-        # Df_k is 1d, make it a column vector to solve linear system
-        # d_k = -torch.linalg.ldl_solve(LD_compat, torch.arange(1,num_coeff+1), Df_k[:, None])
-
-        # if f_k < ff(b+0.00000001*d_k[:,0])[0] :
-        #     raise Exception("NOT A DESCENT DIRECTION")
 
         alpha = _line_search(
             lambda x: ff(x)[0],
@@ -277,7 +274,7 @@ def newton(
             d_k[:, 0],  # pass it to lineseach as a batch of 1d vectors
             phi_0=f_k,
             Dphi_0=(d_k.T @ Df_k).squeeze(),
-            plot=False
+            plot=False,
         )
 
         b = b + alpha * d_k[:, 0]
