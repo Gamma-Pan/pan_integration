@@ -6,6 +6,7 @@ from itertools import cycle
 from matplotlib.animation import PillowWriter
 from scipy.integrate import solve_ivp
 import torch
+from torch import max, min, tensor
 
 mpl.use("TkAgg")
 
@@ -82,7 +83,7 @@ class VfPlotter:
         Xs, Ys = torch.meshgrid(xs, ys, indexing="xy")
 
         batch = torch.stack((Xs, Ys), dim=-1).reshape(-1, 2)
-        derivatives = self.f(batch).reshape(
+        derivatives = self.f(batch.to(torch.float32)).reshape(
             self.grid_definition[0], self.grid_definition[1], 2
         )
         Us, Vs = derivatives.unbind(dim=-1)
@@ -99,7 +100,12 @@ class VfPlotter:
         raise NotImplementedError
 
     def solve_ivp(
-        self, interval, y_init: torch.tensor = None, ivp_kwargs=None, plot_kwargs=None
+        self,
+        interval,
+        y_init: torch.tensor = None,
+        set_lims=False,
+        ivp_kwargs=None,
+        plot_kwargs=None,
     ):
         plot_kwargs = plot_kwargs or {}
         ivp_kwargs = ivp_kwargs or {}
@@ -116,8 +122,18 @@ class VfPlotter:
 
         trajectory = ivp_sol.y
         print(
-            f"Method {ivp_kwargs['method']} \t took {ivp_sol.nfev} function evaluations, y(T) = ({trajectory[0][-1]:.6},{trajectory[1][-1]:.6} )"
+            f"Method {ivp_kwargs['method']} took {ivp_sol.nfev}\t\t function evaluations, y(T) = ({trajectory[0][-1]:.9f},{trajectory[1][-1]:.9f})"
         )
+
+        if set_lims:
+            xmax = torch.max(tensor(trajectory[0, :]))
+            xmin = torch.min(tensor(trajectory[0, :]))
+            ymax = torch.max(tensor(trajectory[1, :]))
+            ymin = torch.min(tensor(trajectory[1, :]))
+            padding = 0.2
+            self.ax.set_xlim(xmin - padding, xmax + padding)
+            self.ax.set_ylim(ymin - padding, ymax + padding)
+            self._plot_vector_field()
 
         (self.trajectory,) = self.ax.plot(
             *trajectory,
@@ -157,8 +173,8 @@ class VfPlotter:
             self.ax.plot(*approx[0, :], "o", **kwargs)
             for _ in range(self.queue_size):
                 art = next(self.approx_arts)
-                art.approx_arts[0].set_data([], [])
-                art.approx_arts[1].set_text("")
+                art[1].set_data([], [])
+                art[0].set_text("")
 
         # update one artist and reduce opacity of the previous ones
         self.approx_art[1].set_data(approx[:, 0], approx[:, 1])

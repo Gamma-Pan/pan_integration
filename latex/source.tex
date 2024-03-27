@@ -26,6 +26,7 @@
 
     \maketitle
 
+
     \section{Introduction}
     The machine learning scene in 2023 is dominated by gargantuan models with billions of parameters.
     Even though they have demonstrated impressive results the compute and energy requirements of such models are a
@@ -71,142 +72,142 @@
     But the empirical evidence show that optimisers can't find this solution, at least in sensible time limits.
 
     \begin{center}
-    \begin{tikzpicture}[
-        every path/.style={ultra thick},
-        scale=3,
-        block/.style={
-            rectangle,
-            rounded corners,
-            thick,
-            minimum size = 1.5cm,
-            inner sep = 0pt,
-            node distance = 3.5cm,
-            draw=black!80
-        },
-        shallow/.style={
-            block,
-        },
-        deep/.style={
-            block,
-            dashed,
-            thick
-        },
-        darkgreen/.style={
-            green!80!black!90
-        },
-        >= stealth,
-    ]
+        \begin{tikzpicture}[
+            every path/.style={ultra thick},
+            scale=3,
+            block/.style={
+                rectangle,
+                rounded corners,
+                thick,
+                minimum size = 1.5cm,
+                inner sep = 0pt,
+                node distance = 3.5cm,
+                draw=black!80
+            },
+            shallow/.style={
+                block,
+            },
+            deep/.style={
+                block,
+                dashed,
+                thick
+            },
+            darkgreen/.style={
+                green!80!black!90
+            },
+            >= stealth,
+        ]
 
-        \begin{scope}[local bounding box = net1]
-            \node[shallow] (A) at (0,0) {};
-            \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+            \begin{scope}[local bounding box = net1]
+                \node[shallow] (A) at (0,0) {};
+                \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
 
-            \node[shallow] (B) [right= of A] {};
-            \node[below right=0cm of B.north west] {$f_{k}(x)$};
+                \node[shallow] (B) [right= of A] {};
+                \node[below right=0cm of B.north west] {$f_{k}(x)$};
 
-            \node[shallow] (C) [right= of B] {};
-            \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+                \node[shallow] (C) [right= of B] {};
+                \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
 
-            \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
-            \draw[->] (A.east) -- (B.west);
-            \draw[->] (B.east) -- (C.west);
-            \draw[dashed] (C.east) -- +(0.1cm,0);
+                \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+                \draw[->] (A.east) -- (B.west);
+                \draw[->] (B.east) -- (C.west);
+                \draw[dashed] (C.east) -- +(0.1cm,0);
 
-            \node[above] at (current bounding box.north) {A section of the starting neural net.};
+                \node[above] at (current bounding box.north) {A section of the starting neural net.};
 
-        \end{scope}
+            \end{scope}
 
-        \begin{scope}[local bounding box = scope1, yshift = -0.8cm]
-            \node[shallow] (A) at (0,0) {};
-            \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+            \begin{scope}[local bounding box = scope1, yshift = -0.8cm]
+                \node[shallow] (A) at (0,0) {};
+                \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
 
-            \node[shallow] (B) [right= of A] {};
-            \node[below right=0cm of B.north west] {$f_{k}(x)$};
+                \node[shallow] (B) [right= of A] {};
+                \node[below right=0cm of B.north west] {$f_{k}(x)$};
 
-            \node[shallow] (C) [right= of B] {};
-            \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+                \node[shallow] (C) [right= of B] {};
+                \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
 
-            \node[deep] (AB) at ($(A)!0.5!(B)$) {};
-            \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
+                \node[deep] (AB) at ($(A)!0.5!(B)$) {};
+                \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
 
-            \node[deep] (BC) at ($(B)!0.5!(C)$) {};
-            \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
+                \node[deep] (BC) at ($(B)!0.5!(C)$) {};
+                \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
 
-            \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
-            \draw[->] (A.east) -- (AB.west);
-            \draw[->] (AB.east) -- (B.west);
-            \draw[->] (B.east) -- (BC.west);
-            \draw[->] (BC.east) -- (C.west);
-            \draw[dashed] (C.east) -- +(0.1cm,0);
+                \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+                \draw[->] (A.east) -- (AB.west);
+                \draw[->] (AB.east) -- (B.west);
+                \draw[->] (B.east) -- (BC.west);
+                \draw[->] (BC.east) -- (C.west);
+                \draw[dashed] (C.east) -- +(0.1cm,0);
 
-            \node[above] at (scope1.north) {Increase its depth by adding more layers.};
-        \end{scope}
+                \node[above] at (scope1.north) {Increase its depth by adding more layers.};
+            \end{scope}
 
-        \begin{scope}[local bounding box = scope2,yshift=-1.8cm]
-            \node[shallow] (A) at (0,0) {};
-            \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+            \begin{scope}[local bounding box = scope2,yshift=-1.8cm]
+                \node[shallow] (A) at (0,0) {};
+                \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
 
-            \node[shallow] (B) [right= of A] {};
-            \node[below right=0cm of B.north west] {$f_{k}(x)$};
+                \node[shallow] (B) [right= of A] {};
+                \node[below right=0cm of B.north west] {$f_{k}(x)$};
 
-            \node[shallow] (C) [right= of B] {};
-            \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+                \node[shallow] (C) [right= of B] {};
+                \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
 
-            \node[deep,darkgreen] (AB) at ($(A)!0.5!(B)$) {};
-            \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
-            \node[above left=0cm of AB.south east, darkgreen] {$\mathbf I$};
+                \node[deep,darkgreen] (AB) at ($(A)!0.5!(B)$) {};
+                \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
+                \node[above left=0cm of AB.south east, darkgreen] {$\mathbf I$};
 
-            \node[deep,darkgreen] (BC) at ($(B)!0.5!(C)$) {};
-            \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
-            \node[above left=0cm of BC.south east, darkgreen] {$ \mathbf I$};
+                \node[deep,darkgreen] (BC) at ($(B)!0.5!(C)$) {};
+                \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
+                \node[above left=0cm of BC.south east, darkgreen] {$ \mathbf I$};
 
-            \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
-            \draw (A.east) -- (AB.west);
-            \draw[darkgreen] (AB.west) -- (AB.east);
-            \draw (AB.east) -- (B.west);
-            \draw[->] (AB.east) -- (B.west);
-            \draw (B.east) -- (BC.west);
-            \draw[darkgreen] (BC.west) -- (BC.east);
-            \draw[->] (BC.east) -- (C.west);
-            \draw[dashed] (C.east) -- +(0.1cm,0);
+                \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+                \draw (A.east) -- (AB.west);
+                \draw[darkgreen] (AB.west) -- (AB.east);
+                \draw (AB.east) -- (B.west);
+                \draw[->] (AB.east) -- (B.west);
+                \draw (B.east) -- (BC.west);
+                \draw[darkgreen] (BC.west) -- (BC.east);
+                \draw[->] (BC.east) -- (C.west);
+                \draw[dashed] (C.east) -- +(0.1cm,0);
 
-            \node[above,align=left] at (scope2.north) {If the extra layers learned to be identity mappings the\\
-            deeper network would function identically to the original.};
-        \end{scope}
+                \node[above,align=left] at (scope2.north) {If the extra layers learned to be identity mappings the\\
+                deeper network would function identically to the original.};
+            \end{scope}
 
-        \begin{scope}[local bounding box = scope3,yshift=-3.1cm]
-            ;
-            \node[shallow] (A) at (0,0) {};
-            \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+            \begin{scope}[local bounding box = scope3,yshift=-3.1cm]
+                ;
+                \node[shallow] (A) at (0,0) {};
+                \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
 
-            \node[shallow] (B) [right= of A] {};
-            \node[below right=0cm of B.north west] {$f_{k}(x)$};
+                \node[shallow] (B) [right= of A] {};
+                \node[below right=0cm of B.north west] {$f_{k}(x)$};
 
-            \node[shallow] (C) [right= of B] {};
-            \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+                \node[shallow] (C) [right= of B] {};
+                \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
 
-            \node[deep, yshift=1cm] (AB) at ($(A)!0.5!(B)$) {};
-            \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
-            \node[above left=0cm of AB.south east] {};
+                \node[deep, yshift=1cm] (AB) at ($(A)!0.5!(B)$) {};
+                \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
+                \node[above left=0cm of AB.south east] {};
 
-            \node[deep, yshift=1cm] (BC) at ($(B)!0.5!(C)$) {};
-            \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
-            \node[above left=0cm of BC.south east] {};
+                \node[deep, yshift=1cm] (BC) at ($(B)!0.5!(C)$) {};
+                \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
+                \node[above left=0cm of BC.south east] {};
 
-            \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
-            \draw[->, rounded corners] (A.east) +(0.1cm,0) -- ($(AB.west) - (0.1cm,0)$)  -- (AB.west);
-            \draw[->, rounded corners] (AB.east) -- ++(0.1cm,0) -- ($(B.west) + (-0.15cm,0)$);
-            \draw[->, rounded corners] (B.east) +(0.1cm,0) -- ($(BC.west) - (0.1cm,0)$)  -- (BC.west);
-            \draw[->, rounded corners] (BC.east) -- ++(0.1cm,0) -- ($(C.west) + (-0.15cm,0)$);
-            \draw[dashed] (C.east) -- +(0.1cm,0);
+                \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+                \draw[->, rounded corners] (A.east) +(0.1cm,0) -- ($(AB.west) - (0.1cm,0)$)  -- (AB.west);
+                \draw[->, rounded corners] (AB.east) -- ++(0.1cm,0) -- ($(B.west) + (-0.15cm,0)$);
+                \draw[->, rounded corners] (B.east) +(0.1cm,0) -- ($(BC.west) - (0.1cm,0)$)  -- (BC.west);
+                \draw[->, rounded corners] (BC.east) -- ++(0.1cm,0) -- ($(C.west) + (-0.15cm,0)$);
+                \draw[dashed] (C.east) -- +(0.1cm,0);
 
-            \draw[->,darkgreen, rounded corners] (B.west) +(-0.3cm,0) -- ++(0.05cm, -0.37cm) -- ++(0.42cm, 0cm) -- ($(B.east) + (0.25cm,0)$);
-            \draw[->,darkgreen] (A.east) -- (B.west);
-            \draw[->,darkgreen] (B.east) -- (C.west);
+                \draw[->,darkgreen, rounded corners] (B.west) +(-0.3cm,0) -- ++(0.05cm, -0.37cm) -- ++(0.42cm, 0cm) -- ($(B.east) + (0.25cm,0)$);
+                \draw[->,darkgreen] (A.east) -- (B.west);
+                \draw[->,darkgreen] (B.east) -- (C.west);
 
-            \node[above,align=left] at (scope3.north) {Shortcut connections precondition the deep network \\ to identity mappings and train the residual };
-        \end{scope}
-    \end{tikzpicture}
+                \node[above,align=left] at (scope3.north) {Shortcut connections precondition the deep network \\ to identity mappings and train the residual };
+            \end{scope}
+        \end{tikzpicture}
     \end{center}
 
     In order to incorporate this observation into the network, so called \textit{shortcut connections} are introduced to the layers.
@@ -703,7 +704,7 @@
     \subsubsection{Spiral}
     First, we will examine a toy example of a nonlinear spiral in $\mathbb{R}^{2}$.
     We assume that a solution using the RK45 method with maximum step size three orders of magnitute smaller than the
-    interval to be a sufficiently accurate approximation of the true solution and use it to measure the accuracy of the
+    interval, to be a sufficiently accurate approximation of the true solution; and use it to measure the accuracy of the
     other solutions.
 
     \begin{equation*}
@@ -718,9 +719,13 @@
 
     We solve the ODE in the interval $[0,6]$ for $\pmb{y}(0) = [-1,\ -1]^T$ using various common methods for
     different absolute tolerances.
+    For [our method] the numerical optimisation tolerance (etol) is set to small value to approach the minimum as
+    closely as possible without facing machine precision related problems.
+    On the other solver the relative error is also set to a small number so that the absolute error is unaffected.
 
     \begin{center}
     {\tabulinesep=1.2mm
+        \label{tol_table}
         \begin{tabu}{ |c| c| c| c| c| }
             \hline
             Method & $atol$/$etol$                          & $ \lVert error(T) \rVert_{2}$  & NFE & \%pan \\
@@ -735,9 +740,46 @@
             \hline
             PAN    & $1 \times 10^{-8} / 1 \times 10^{-14}$ & $ 2.356084364 \times 10^{-7} $ & 55  & -     \\
             \hline
+            RK45   & $1 \times 10^{-6}$                     & $ 3.440944521 \times 10^{-9} $ & 140 & 246\% \\
+            \hline
+            DOP853 & $1 \times 10^{-6}$                     & $ 8.266072061 \times 10^{-8} $ & 110 & 193\% \\
+            \hline
+            BDF    & $1 \times 10^{-6}$                     & $  3.462641753\times 10^{-8} $   & 164 & 288\% \\
+            \hline
+            LSODA  & $1 \times 10^{-6}$                     & $  5.336214834\times 10^{-8} $   & 115 & 202\% \\
+            \hline
+            PAN    & $1 \times 10^{-6} / 1 \times 10^{-14}$ & $6.477419509 \times 10^{-7} $  & 56  & -     \\
+            \hline
         \end{tabu}
     }
     \end{center}
+
+    We remind that during optimisation $f$ is evaluated on multiple points, but since this can be performed in parallel
+    we assume the wall clock time is similar to one evaluation plus parallelisation overhead.
+    At a first glance the polynomial approximation solver seams to exchange accuracy for number of (serial) function
+    evaluations, as can be seen at ~\ref{tol_table}.
+    We notice that the absolute error doesn't drop while decreasing the tolerances, indicating that for the number of
+    coefficients used we are near an optimum.
+    In fact it doesn't seem to match the accuracy of the other solvers.
+    Adjusting hyperparameters like the number of coefficients of $B$, the number of points where mean square error is
+    calculated and the step size of the coarse solver can increase the accuracy, decrease NFE or both.
+
+    \begin{figure}[h]
+        \begin{center}
+            \input{converge.pgf}
+        \end{center}
+        \label{fig:plateau}
+    \end{figure}
+
+    As we can see in figure ~\ref{fig:plateau} if we keep decreasing the absolute tolerance of the algorithm we
+    eventually reach a plateau where the polynomial approximation can't fit any better to the ODE solution.
+    Further increasing the number of coefficients until the tolerences are respented maked the algorithm prone to
+    numerical error.
+    Insted, to increace accuracy we can split the interval of integration to $K$ smaller ones and solve the resulting
+    IVPs sequentially.
+    This way we simplify the task of the optimising algorithm by fitting more but simpler functions.
+
+
 
     \printbibliography
 
@@ -867,27 +909,27 @@
         \bm{y}_{n} = \phi( W_{n} \bm{y}_{n-1} ) + \bm{y}_{n-1}
     \end{equation}
 
-%    \begin{align}
-%        \label{resnet_dCdy}
-%        \frac{ \partial C}{\partial \textbf{y}_{n-1} }
-%        =
-%        \left[ \frac{ \partial \textbf{y}_{n}}{\partial \textbf{y}_{n-1}  } \right]^T
-%        \frac{ \partial C}{\partial \textbf{y}_{n} }
-%        &=
-%        \left\{
-%        \frac{ \partial}{\partial \textbf{y}_{n-1}}
-%        \left[
-%            \phi(W_n \textbf{y}_{n-1}) + \textbf{y_{n-1}}
-%            \right]
-%        \right\}^T
-%        \frac{ \partial C}{\partial \textbf{y}_{n} }
-%        \\
-%        &=
-%        \left[
-%            W_n^T \phi^{(1)}( \pmb{z}_n ) + I
-%            \right]^T
-%        \frac{ \partial C}{\partial \textbf{y}_{n} }
-%    \end{align}
+    \begin{align}
+        \label{resnet_dCdy}
+        \frac{ \partial C}{\partial \textbf{y}_{n-1} }
+        =
+        \left[ \frac{ \partial \textbf{y}_{n}}{\partial \textbf{y}_{n-1}  } \right]^T
+        \frac{ \partial C}{\partial \textbf{y}_{n} }
+        &=
+        \left\{
+        \frac{ \partial }{\partial \textbf{y}_{n-1}}
+           \left[
+               \phi( W_n \textbf{y}_{n-1} ) + \textbf{y}_{n-1}
+           \right]
+        \right\}^T
+        \frac{ \partial C}{ \partial \textbf{y}_{n} }
+        \\
+        &=
+        \left[
+            W_n^T \phi^{(1)}( \pmb{z}_n ) + I
+        \right]^T
+        \frac{ \partial C}{\partial \textbf{y}_{n} }
+    \end{align}
 
     Equation~\eqref{resnet_dCdy} is again a recursive relation that can be used to find all intermediate ``states '' starting from the output layer.
     The gradients wrt.

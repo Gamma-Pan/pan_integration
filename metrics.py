@@ -4,6 +4,7 @@ from pan_integration.solvers import pan_int
 from pan_integration.utils import plotting
 from pan_integration.solvers.pan_integration import _B_init_cond, _cheb_phis
 from scipy.integrate import solve_ivp
+import matplotlib.pyplot as plt
 
 import numpy as np
 from numpy.linalg import norm
@@ -34,23 +35,35 @@ if __name__ == "__main__":
     yT = solution.y[:, -1]
     print(f"truish: \t {solution.y[:,-1]} \t {solution.nfev}")
 
-    pan_y, pan_nfe = pan_int(
-        spiral,
-        y_init,
-        t_lims,
-        num_coeff_per_dim=25,
-        etol=1e-12,
-        atol=1e-8,
-        num_points=100,
-        step=None,
-        coarse_steps=20,
-        callback=None,
-    )
-    print(f"pan \t {norm(yT - pan_y[-1,:].numpy()):.10} \t {pan_nfe}")
+    fig, ax = plt.subplots()
+    errors = [[],[],[]]
+    for i, step in enumerate((1,2,3)):
+        for numc in range(10,40):
+            pan_y, pan_nfe = pan_int(
+                spiral,
+                y_init,
+                t_lims,
+                num_coeff_per_dim_newton=numc,
+                etol=1e-8,
+                atol=1e-12,
+                num_points=100,
+                step=step,
+                coarse_steps=7,
+                callback=None,
+            )
+            err = norm(yT - pan_y[-1,:].numpy())
+            print(f"pan ({numc}, {step}) \t {err:.10} \t {pan_nfe}")
+            errors[i].append(err)
+
+        plt.yscale('log')
+        ax.plot(list(range(10,40)), errors[i], label=str(step))
+
+    ax.legend()
+    plt.show()
 
     methods = ["RK45", "DOP853", "BDF", "LSODA"]
     for method in methods:
         solution = solve_ivp(f, t_lims, y_init, method=method, rtol=1e-13, atol=1e-8)
         print(
             f"{method} \t {norm(yT - solution.y[:,-1]):.10} \t {solution.nfev} \t {( solution.nfev/ pan_nfe) * 100:3.0f}%"
-        )
+       )
