@@ -8,7 +8,6 @@
 \usepackage[noEnd=false,indLines=false]{algpseudocodex}
 \usepackage[left=3.5cm, right=3.5cm]{geometry}
 \usepackage{tikz}
-\usepackage{tabu}
 \usetikzlibrary{shapes,positioning,backgrounds, calc}
 \usepackage{pgfplots}
 \pgfplotsset{compat=newest }
@@ -17,18 +16,27 @@
 \usepackage[style=ieee]{biblatex} %Imports biblatex package
 \addbibresource{references.bib} %Import the bibliography file
 
-\title{Polynomial approximation integration  \\ \large{Speeding up Neural Ordinary Differential Equations thought Parallelism} \\ v0.7}
+\title{Polynomial approximation integration  \\ \large{Speeding up Neural Ordinary Differential Equations thought Parallelism} \\ v0.8}
 
 \author{Yiorgos Panagiotopoulos}
-\date{January 2023}
+\date{April 2024}
 
 \begin{document}
 
     \maketitle
 
+    \abstract
+    We present a short introduction to neural ordinary differential equations and how they emerge as continuous time
+    generalizations of residual neural networks.
+    One of the main bottlenecks of neural ODEs has been their speed both on training and inference.
+    The numerical solver used for the forward and backward pass of the network can greatly impact its performance both
+    in terms of speed and accuracy.
+    We develop a new numerical ODE solver based on refining a polynomial approximation of the solution and explore its
+    impact on this framework.
+    At the end we showcase how our method compares to some commonly used numerical solvers.
 
     \section{Introduction}
-    The machine learning scene in 2023 is dominated by gargantuan models with billions of parameters.
+    The machine learning scene in 2024 is dominated by gargantuan models with billions of parameters.
     Even though they have demonstrated impressive results the compute and energy requirements of such models are a
     concern.
     It's the authors opinion that we ought to transition to analog or hybrid models of computation to reduce energy
@@ -71,144 +79,150 @@
     The existence of this artificially deep network suggests that deep networks shouldn't produce higher error that the shallower ones.
     But the empirical evidence show that optimisers can't find this solution, at least in sensible time limits.
 
-    \begin{center}
-        \begin{tikzpicture}[
-            every path/.style={ultra thick},
-            scale=3,
-            block/.style={
-                rectangle,
-                rounded corners,
-                thick,
-                minimum size = 1.5cm,
-                inner sep = 0pt,
-                node distance = 3.5cm,
-                draw=black!80
-            },
-            shallow/.style={
-                block,
-            },
-            deep/.style={
-                block,
-                dashed,
-                thick
-            },
-            darkgreen/.style={
-                green!80!black!90
-            },
-            >= stealth,
-        ]
+    \begin{figure}
+        \begin{center}
+            \begin{tikzpicture}[
+                every path/.style={ultra thick},
+                scale=3,
+                block/.style={
+                    rectangle,
+                    rounded corners,
+                    thick,
+                    minimum size = 1.5cm,
+                    inner sep = 0pt,
+                    node distance = 3.5cm,
+                    draw=black!80
+                },
+                shallow/.style={
+                    block,
+                },
+                deep/.style={
+                    block,
+                    dashed,
+                    thick
+                },
+                darkgreen/.style={
+                    green!80!black!90
+                },
+                >= stealth,
+            ]
 
-            \begin{scope}[local bounding box = net1]
-                \node[shallow] (A) at (0,0) {};
-                \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+                \begin{scope}[local bounding box = net1]
+                    \node[shallow] (A) at (0,0) {};
+                    \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
 
-                \node[shallow] (B) [right= of A] {};
-                \node[below right=0cm of B.north west] {$f_{k}(x)$};
+                    \node[shallow] (B) [right= of A] {};
+                    \node[below right=0cm of B.north west] {$f_{k}(x)$};
 
-                \node[shallow] (C) [right= of B] {};
-                \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+                    \node[shallow] (C) [right= of B] {};
+                    \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
 
-                \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
-                \draw[->] (A.east) -- (B.west);
-                \draw[->] (B.east) -- (C.west);
-                \draw[dashed] (C.east) -- +(0.1cm,0);
+                    \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+                    \draw[->] (A.east) -- (B.west);
+                    \draw[->] (B.east) -- (C.west);
+                    \draw[dashed] (C.east) -- +(0.1cm,0);
 
-                \node[above] at (current bounding box.north) {A section of the starting neural net.};
+                    \node[above] at (current bounding box.north) {A section of the starting neural net.};
 
-            \end{scope}
+                \end{scope}
 
-            \begin{scope}[local bounding box = scope1, yshift = -0.8cm]
-                \node[shallow] (A) at (0,0) {};
-                \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+                \begin{scope}[local bounding box = scope1, yshift = -0.8cm]
+                    \node[shallow] (A) at (0,0) {};
+                    \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
 
-                \node[shallow] (B) [right= of A] {};
-                \node[below right=0cm of B.north west] {$f_{k}(x)$};
+                    \node[shallow] (B) [right= of A] {};
+                    \node[below right=0cm of B.north west] {$f_{k}(x)$};
 
-                \node[shallow] (C) [right= of B] {};
-                \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+                    \node[shallow] (C) [right= of B] {};
+                    \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
 
-                \node[deep] (AB) at ($(A)!0.5!(B)$) {};
-                \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
+                    \node[deep] (AB) at ($(A)!0.5!(B)$) {};
+                    \node[below right=0cm of AB.north west] {$\bar{f}_{k-1}(x)$};
 
-                \node[deep] (BC) at ($(B)!0.5!(C)$) {};
-                \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
+                    \node[deep] (BC) at ($(B)!0.5!(C)$) {};
+                    \node[below right=0cm of BC.north west] {$\bar{f}_{k}(x)$};
 
-                \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
-                \draw[->] (A.east) -- (AB.west);
-                \draw[->] (AB.east) -- (B.west);
-                \draw[->] (B.east) -- (BC.west);
-                \draw[->] (BC.east) -- (C.west);
-                \draw[dashed] (C.east) -- +(0.1cm,0);
+                    \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+                    \draw[->] (A.east) -- (AB.west);
+                    \draw[->] (AB.east) -- (B.west);
+                    \draw[->] (B.east) -- (BC.west);
+                    \draw[->] (BC.east) -- (C.west);
+                    \draw[dashed] (C.east) -- +(0.1cm,0);
 
-                \node[above] at (scope1.north) {Increase its depth by adding more layers.};
-            \end{scope}
+                    \node[above] at (scope1.north) {Increase its depth by adding more layers.};
+                \end{scope}
 
-            \begin{scope}[local bounding box = scope2,yshift=-1.8cm]
-                \node[shallow] (A) at (0,0) {};
-                \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+                \begin{scope}[local bounding box = scope2,yshift=-1.8cm]
+                    \node[shallow] (A) at (0,0) {};
+                    \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
 
-                \node[shallow] (B) [right= of A] {};
-                \node[below right=0cm of B.north west] {$f_{k}(x)$};
+                    \node[shallow] (B) [right= of A] {};
+                    \node[below right=0cm of B.north west] {$f_{k}(x)$};
 
-                \node[shallow] (C) [right= of B] {};
-                \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+                    \node[shallow] (C) [right= of B] {};
+                    \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
 
-                \node[deep,darkgreen] (AB) at ($(A)!0.5!(B)$) {};
-                \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
-                \node[above left=0cm of AB.south east, darkgreen] {$\mathbf I$};
+                    \node[deep,darkgreen] (AB) at ($(A)!0.5!(B)$) {};
+                    \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
+                    \node[above left=0cm of AB.south east, darkgreen] {$\mathbf I$};
 
-                \node[deep,darkgreen] (BC) at ($(B)!0.5!(C)$) {};
-                \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
-                \node[above left=0cm of BC.south east, darkgreen] {$ \mathbf I$};
+                    \node[deep,darkgreen] (BC) at ($(B)!0.5!(C)$) {};
+                    \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
+                    \node[above left=0cm of BC.south east, darkgreen] {$ \mathbf I$};
 
-                \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
-                \draw (A.east) -- (AB.west);
-                \draw[darkgreen] (AB.west) -- (AB.east);
-                \draw (AB.east) -- (B.west);
-                \draw[->] (AB.east) -- (B.west);
-                \draw (B.east) -- (BC.west);
-                \draw[darkgreen] (BC.west) -- (BC.east);
-                \draw[->] (BC.east) -- (C.west);
-                \draw[dashed] (C.east) -- +(0.1cm,0);
+                    \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+                    \draw (A.east) -- (AB.west);
+                    \draw[darkgreen] (AB.west) -- (AB.east);
+                    \draw (AB.east) -- (B.west);
+                    \draw[->] (AB.east) -- (B.west);
+                    \draw (B.east) -- (BC.west);
+                    \draw[darkgreen] (BC.west) -- (BC.east);
+                    \draw[->] (BC.east) -- (C.west);
+                    \draw[dashed] (C.east) -- +(0.1cm,0);
 
-                \node[above,align=left] at (scope2.north) {If the extra layers learned to be identity mappings the\\
-                deeper network would function identically to the original.};
-            \end{scope}
+                    \node[above,align=left] at (scope2.north) {If the extra layers learned to be identity mappings the\\
+                    deeper network would function identically to the original.};
+                \end{scope}
 
-            \begin{scope}[local bounding box = scope3,yshift=-3.1cm]
-                ;
-                \node[shallow] (A) at (0,0) {};
-                \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
+                \begin{scope}[local bounding box = scope3,yshift=-3.1cm]
+                    ;
+                    \node[shallow] (A) at (0,0) {};
+                    \node[below right=0cm of A.north west] {$f_{k-1}(x)$};
 
-                \node[shallow] (B) [right= of A] {};
-                \node[below right=0cm of B.north west] {$f_{k}(x)$};
+                    \node[shallow] (B) [right= of A] {};
+                    \node[below right=0cm of B.north west] {$f_{k}(x)$};
 
-                \node[shallow] (C) [right= of B] {};
-                \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
+                    \node[shallow] (C) [right= of B] {};
+                    \node[below right=0cm of C.north west] {$f_{k+1}(x)$};
 
-                \node[deep, yshift=1cm] (AB) at ($(A)!0.5!(B)$) {};
-                \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
-                \node[above left=0cm of AB.south east] {};
+                    \node[deep, yshift=1cm] (AB) at ($(A)!0.5!(B)$) {};
+                    \node[below right=0cm of AB.north west] {$\bar f_{k-1}(x)$};
+                    \node[above left=0cm of AB.south east] {};
 
-                \node[deep, yshift=1cm] (BC) at ($(B)!0.5!(C)$) {};
-                \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
-                \node[above left=0cm of BC.south east] {};
+                    \node[deep, yshift=1cm] (BC) at ($(B)!0.5!(C)$) {};
+                    \node[below right=0cm of BC.north west] {$\bar f_{k}(x)$};
+                    \node[above left=0cm of BC.south east] {};
 
-                \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
-                \draw[->, rounded corners] (A.east) +(0.1cm,0) -- ($(AB.west) - (0.1cm,0)$)  -- (AB.west);
-                \draw[->, rounded corners] (AB.east) -- ++(0.1cm,0) -- ($(B.west) + (-0.15cm,0)$);
-                \draw[->, rounded corners] (B.east) +(0.1cm,0) -- ($(BC.west) - (0.1cm,0)$)  -- (BC.west);
-                \draw[->, rounded corners] (BC.east) -- ++(0.1cm,0) -- ($(C.west) + (-0.15cm,0)$);
-                \draw[dashed] (C.east) -- +(0.1cm,0);
+                    \draw[->] (A.west)+(-0.1cm,0) -- (A.west);
+                    \draw[->, rounded corners] (A.east) +(0.1cm,0) -- ($(AB.west) - (0.1cm,0)$)  -- (AB.west);
+                    \draw[->, rounded corners] (AB.east) -- ++(0.1cm,0) -- ($(B.west) + (-0.15cm,0)$);
+                    \draw[->, rounded corners] (B.east) +(0.1cm,0) -- ($(BC.west) - (0.1cm,0)$)  -- (BC.west);
+                    \draw[->, rounded corners] (BC.east) -- ++(0.1cm,0) -- ($(C.west) + (-0.15cm,0)$);
+                    \draw[dashed] (C.east) -- +(0.1cm,0);
 
-                \draw[->,darkgreen, rounded corners] (B.west) +(-0.3cm,0) -- ++(0.05cm, -0.37cm) -- ++(0.42cm, 0cm) -- ($(B.east) + (0.25cm,0)$);
-                \draw[->,darkgreen] (A.east) -- (B.west);
-                \draw[->,darkgreen] (B.east) -- (C.west);
+                    \draw[->,darkgreen, rounded corners] (B.west) +(-0.3cm,0) -- ++(0.05cm, -0.37cm) -- ++(0.42cm, 0cm) -- ($(B.east) + (0.25cm,0)$);
+                    \draw[->,darkgreen] (A.east) -- (B.west);
+                    \draw[->,darkgreen] (B.east) -- (C.west);
 
-                \node[above,align=left] at (scope3.north) {Shortcut connections precondition the deep network \\ to identity mappings and train the residual };
-            \end{scope}
-        \end{tikzpicture}
-    \end{center}
+                    \node[above,align=left] at (scope3.north) {Shortcut connections precondition the deep network \\ to identity mappings and train the residual };
+                \end{scope}
+            \end{tikzpicture}
+        \end{center}
+        \caption{A visual explenation of residual learninig. Information flows through the shortcut connections as
+        if they were identity mappings. The network learns the residual instead of a direct mapping.
+        Residual neural networks use this property to achieve very large depth. }
+        \label{fig:res_expl}
+    \end{figure}
 
     In order to incorporate this observation into the network, so called \textit{shortcut connections} are introduced to the layers.
     Basically, the input to a block of stacked layers is added back to it's output.
@@ -245,7 +259,7 @@
     Instead of a discrete sequence of hidden states, $\pmb{y}(t)$ is a continuous flow $\pmb{y} : [0,T] \to \mathbb{R}^{N_y}$ defined be the vector field parameterised by $\pmb{\theta}$.
 
     One important issue we haven't addressed is that the weights in~\eqref{resnet} change at each layer but at~\eqref{diffeq} they are the same for the entire trajectory.
-    For notations sake we could define $f$ as $f(\pmb{y}(t), t, \pmb{\theta})$ meaning at certain ``depths'' different sections of the weights vector $\pmb{\theta}$ are used, maybe in a piecewise constant fashion~\cite{kidger2022neural}.
+    For notation’s sake we could define $f$ as $f(\pmb{y}(t), t, \pmb{\theta})$ meaning at certain ``depths'' different sections of the weights vector $\pmb{\theta}$ are used, maybe in a piecewise constant fashion~\cite{kidger2022neural}.
     Alternatively, the weights could be time dependant which complicates the model but leads to \textit{Galerkin} Neural ODEs, a more suitable continuous time equivalent of ResNet~\cite{massaroli2020dissecting}.
     For our purposes we consider the weights constant for the rest of this paper.
 
@@ -283,13 +297,15 @@
     Secondly, there is the outlining model, the neural differential equation, which receives input $\pmb{y}_0$ and produced output $\pmb{y}(T)$; $f$ is to neural ODE what a layer is to ResNet.
     Internally, depending on the solver, $f$ will be evaluated for many values of $\pmb{y}(t)$.
     As disguised above, in contrast to ResNet $f$ contains all the learnable parameters of the model, which in out case are independent of depth.
-    In conclusion the Neural ODE is comprised of: a neural network $f$ -that defines a \textit{learnable} vector field- parameterised by $\pmb{\theta}$,  some input $y_0$ and a numerical solver that applies $f$ until it reaches $\pmb{y}(T)$.
+    In conclusion the Neural ODE consists of: a neural network $f$ -that defines a \textit{learnable} vector field- parameterised by $\pmb{\theta}$,  some input $y_0$ and a numerical solver that applies $f$ until it reaches $\pmb{y}(T)$.
 
     \begin{figure}[h]
         \begin{center}
             \input{resnet_to_node_plot.pgf}
         \end{center}
-        \label{fig:enter-label}
+        \caption{ResNets can be considered as discretizations of an ODE solution. Under this assumption as Resnet
+            defines a continuous time vector field.}
+        \label{fig:resnet_to_node}
     \end{figure}
 
     \subsection{Training}
@@ -390,42 +406,22 @@
 
     By substituting $\hat{y}$ in~\eqref{dydt} we get:
     \begin{align}
-        \frac{d}{dt} \left[ \pmb{\phi}(t) \right]^T \pmb{b} &\approx f( \left[ \pmb{\phi}(t) \right]^T \pmb{b} ) \label{dPhidt}
+        \frac{d}{dt}  \pmb{\phi}^T(t)  \pmb{b} &\approx f( \pmb{\phi}^T(t)  \pmb{b} ) \label{dPhidt}
         \\
-        \left[ \pmb{\phi}'(t) \right]^T \, \pmb{b} &\approx f(  \left[ \pmb{\phi}(t) \right]^T \pmb{b} ) \label{dphi_fphi}
+        \pmb{\dot{\phi}}^T(t)  \, \pmb{b} &\approx f(  \pmb{\phi}(t)  \pmb{b} ) \label{dphi_fphi}
     \end{align}
     We define an approximation error (in the mean square error sense) that we wish to minimise in the interval of interest.
     \begin{equation}
         e(\pmb{b}) = \int_0^T
         \left(
-        \left[ \pmb{\phi}'(\tau) \right]^T \, \pmb{b} - f( \left[ \pmb{\phi}(\tau) \right]^T \pmb{b} )
+        \pmb{\dot{\phi}}(\tau)  \, \pmb{b} - f(  \pmb{\phi}^T(\tau)  \pmb{b} )
         \right)^2
         d\tau
     \end{equation}
 
-    Depending on the choice of basis functions, the derivative of $\pmb{\phi}(t)$ with respect to time can be trivial to obtain analytically.
-    Were we to use trigonometric polynomials for example:
-
-    \begin{equation*}
-        \pmb{\phi}(t)
-        =
-        \left[  \cos(0 \cdot t) \; \cos(1  \cdot t) \; \dots \; \cos(\frac{N-1}{2} \cdot t)
-        \; \dots \;
-        \sin(0  \cdot t) \; \sin(1 \cdot t) \dots \; \sin(\frac{N-1}{2}  \cdot t) \right]^T
-    \end{equation*}
-    or equivalently
-    \begin{equation*}
-        \pmb{\phi}(t) = \left[ \left[ \pmb{\phi}_c(t) \right]^T \left[ \pmb{\phi}_s(t) \right]^T ] \right]^T
-    \end{equation*}
-    where $\pmb{\phi}_c$ contains the cosine terms and $\pmb{\phi}_s$ contains the sin terms.
-    Taking the derivative with respect to time we get:
-    \begin{align}
-        \pmb{\phi}_s'(t) &= \left[ -1 \cdot  \sin(1\cdot t ) \quad  -2 \cdot \sin(2\cdot t ) \  \dots \  -\frac{N}{2} \sin(\frac{N}{2}  t ) \right]^T \label{phis_dot}
-        \\
-        \pmb{\phi}_c'(t) &= \left[ \ \ 1 \cdot  \cos(1\cdot t ) \quad  \ \ 2 \cdot \cos(2\cdot t ) \ \  \dots \ \   \frac{N}{2} \cos(\frac{N}{2}  t ) \right]^T \label{phic_dot}
-    \end{align}
-
-    We instead opt to use Chebyshev polynomials as the basis functions of our approximation which are known for their
+    Depending on the choice of basis functions, the derivative of $\pmb{\phi}(t)$ with respect to time can be trivial
+    to obtain analytically.
+    We opt to use Chebyshev polynomials as the basis functions of our approximation which are known for their
     properties in approximation theory [CITATION].
     They form an orthonormal basis for functions in $[-1,1]$ but we can use them in our desired interval through a
     simple change of variables while being mindful of the differential in $\frac{d}{dt} \pmb{\phi}(t) $.
@@ -442,7 +438,7 @@
         \label{eq:cheb_rec}
         \begin{aligned}[c]
             T_0(t) &= 1 \\
-            T_1(t) &= x \\
+            T_1(t) &= t \\
             T_n(t) &= 2tT_{n-1}(t) - T_{n-1}(t)
         \end{aligned}
         \qquad \quad
@@ -459,10 +455,12 @@
     \end{equation}
     Since we operate in discrete time we define a grid of $M$ points $\pmb{t} = [t_0 \; t_1 \; \dots \; t_{M-1}]^T$
     where we calculate the error.
+    The points can be equidistant or another set of points between $0$ and $T$ could be used.
+    For our calculations we use the Chebyshev node of the second kind $t_m = \cos\left( \frac{m\pi}{M-1} \right), \ m=0,\dots,M-1$.
     For simplicity's sake let's assume that the time variable has been rescaled to be in $[-1,1]$.
-    In this case $\left[ \pmb{\phi}(\pmb{t}) \right]^T$ would be written as a $M \times N$ matrix.
+    In this case $\pmb{\phi}^T(\pmb{t}) $ would be written as a $M \times N$ matrix.
     \begin{equation}
-        \left[ \pmb{\phi}(\pmb{t})  \right]^T = \left[ \Phi \right]^T =
+        \pmb{\phi}^T(\pmb{t}) =  \Phi^T  =
         \begin{bmatrix}
             T_0(t_0)     & T_1(t_0)     & \dots & T_{N-1}(t_{0})   \\
             T_0(t_1)     & T_1(t_1)     & \dots & T_{N-1}(t_1)     \\
@@ -470,11 +468,11 @@
             T_0(t_{M-1}) & T_1(t_{M-1}) & \dots & T_{N-1}(t_{M-1}) \\
         \end{bmatrix}\label{eq:cheb_mat}
     \end{equation}
-    Similarly, the derivative of $\Phi$ at the defined grid of points is found be differentiating each element of~\eqref{PHI} wrt.
+    Similarly, the derivative of $\Phi$ at the defined grid of points is found be differentiating each element of~\eqref{eq:cheb_mat} wrt.
     the grid points and by utilising~\eqref{Dcheb}.
     \begin{equation}
         \label{PHI}
-        \left[ \Phi' \right]^T =
+        \dot{\Phi}^T  =
         \begin{bmatrix}
             0 & 1 \cdot U_0(t_0)     & \dots & (N-1) \cdot U_{N-2}(t_{0})   \\
             0 & 1 \cdot U_0(t_1)     & \dots & (N-1) \cdot U_{N-2}(t_1)     \\
@@ -482,48 +480,94 @@
             0 & 1 \cdot U_0(t_{M-1}) & \dots & (N-1) \cdot U_{N-2}(t_{M-1}) \\
         \end{bmatrix}
     \end{equation}
-
     Generalising to a vector valued $\pmb{y} : [0,T] \to \mathbb{R}^L$ the collection of coefficients becomes a matrix $B\in \mathbb{R}^{N \times L}$.
     Another way of thinking about this is stacking $L$ coefficient vectors, one for each dimension next to each other, forming the coefficient matrix $B$.
     The error function is then reformulated as
     \begin{align}
-        e(B) &= \sum \left(
-        \left[ \Phi' \right]^T B -
-        \pmb{f} \left( \pmb{y}_0 + \left[ \Phi B \right]^T \right)
+        e(B) &= \sum_t \left(
+        \pmb{\dot\phi}^T(t)  B -
+        f (  \pmb\phi^T(t) B  )
         \right)^2
         \label{approx_error}
     \end{align}
+    We therefore seek to find coefficients $B^*$ that minimise the above error.
+    To find the minimum we set the derivative wrt. $B$ equal to zero and solve for it.
+    \begin{align}
+        \nabla_B e(B) = 0
+    \end{align}
+    Depending on the form of $f$ it can be hard -or even impossible- to find a closed form solution to this problem.
+    We replace $f(  \pmb\phi^T(t) B  )$ with its zero-th order approximation around an initial point $B^{[k]}$.
+    \begin{align}
+        \nabla_B
+        \sum_t \left(
+        \pmb{\dot\phi}^T(t))  B -
+        f( \pmb\phi^T(t) (B^{[k]} ) +
+        r(B^{[k]})
+        \right)^2 &=0
+        \\
+        \sum_t
+        \pmb{\dot\phi}(t) +
+        \left(
+        \pmb{\dot\phi}^T(t)  B -
+        f( \pmb\phi^T(t) B^{[k]} )
+        \right) &\approx 0
+        \\
+        \Phi \; \Phi^T B - \Phi f (  \Phi^T B^{[k]} )
+        &\approx 0
+        \label{eq:approx_error2}
+    \end{align}
+    Solving for $B$ in the above equation and using the solution for the new zero-th order approximation of $f$ we arrive
+    to the iterative solution:
+    \begin{equation}
+        \label{eq:Bitaration}
+        B^{[k]} = \left[  \dot\Phi \; \dot\Phi^T \right]^{-1}  \dot\Phi f (  \pmb\phi^T(t)B^{[k-1]} ), \quad k=0,1,\dots
+    \end{equation}
 
     \begin{figure}[h]
         \begin{center}
             \input{sol_regression.pgf}
         \end{center}
+        \caption{ Regression of the approximate solutions to the true solution. As the coefficients go to the
+        optimum and the error function approaches the minimum the trajectories are getting closer to the true solution.}
         \label{fig:reg_sol}
     \end{figure}
 
-    We can use an optimisation algorithm on the error function to find the coefficients matrix that minimises it.
-    A simple choice is the Newton-Raphson algorithm with Hessian modification.
-    An version of the algorithm is showcased in Appendix~\ref{newtonalgo}, where line-search is used for the learning
+    It's apparent that the accuracy of this iterative solution depends on the residual $r(B^{[k]})$ of the zero order
+    approximation on ~\eqref{eq:approx_error2}.
+    Depending on the condition number of $f$ the accuracy of the solution when the method converges may not be
+    sufficient.
+    To combat that this, we can use the solution matrix $\bar B$ as the starting solution of a higher order method to
+    increase accuracy.
+    A simple choice is the Newton-Raphson algorithm with Hessian modification, a second order method.
+    A version of the algorithm is showcased in Appendix~\ref{newtonalgo}, where line-search is used for the learning
     rate or step size of the update ~\ref{alg:linesearh}.
     Combining polynomial approximation with the Newton algorithm we arrive at algorithm \ref{alg:intapprox}.
-
     \begin{algorithm}
         \caption{Polynomial approximation numerical integration}
         \begin{algorithmic}
-            \State choose $\epsilon_{tol}$, $B^{[0]}$, $k_{max}$
+            \State choose $\epsilon_{ls}$, $\epsilon_{n}$, $B^{[0]}$, $K_{ls}, K_{n}$
             \State $\pmb{t} \gets [t_0 \; t_1 \; t_2 \; \dots \; t_{M-1} ]^T$
             \State $k \gets 1$
             \State calculate $\Phi, \Phi'$ at $\pmb{t}$
             \Repeat
+                \State $B^{[k]} \gets \left[  \dot\Phi \; \dot\Phi^T \right]^{-1}  \dot\Phi f (  \pmb\phi^T(t)B^{[k-1]} )$
+                \If { $\lVert B^{[k]} - B^{[k-1]}\rVert < \epsilon_{ls}$ }
+                    \State \textbf{break}
+                \EndIf
+                \State $k \gets k +1$
+            \Until{$k=K_{ls}$}
+            \State $B^{[1]} \gets B^{[k]}$
+            \State $k \gets 1$
+            \Repeat
                 \State calculate $e(B^{[k]})$
-                \If { $e(B^{[k]})< \epsilon_{tol}$ }
+                \If { $e(B^{[k]})< \epsilon_{n}$ }
                     \State \textbf{return} $B^{[k]}$
                 \EndIf
                 \State $ \pmb{d}^{[k]} \gets -\left[ \nabla^2 e(B^{[k]}) \right]^{-1} \nabla e(B^{[k]})$
                 \State $ \alpha^{[k]} \gets \text{lineseach}(e, B^{[k]}, \pmb{d}^{[k]}) $
                 \State $ B^{[k+1]} \gets B^{[k]} + \alpha \pmb{d}^{[k]}$
                 \State $k \gets k+1$
-            \Until{$k>k_{max}$}
+            \Until{$k>k_{max2}$}
             \label{alg:intapprox}
         \end{algorithmic}
     \end{algorithm}
@@ -531,7 +575,7 @@
     \subsection{Realisation details}
 
     \subsubsection{Imposing initial conditions}
-    Since the value of $y(t)$ and $f(y(t))$ are known at $t=0$ we can calculate a part of $\Phi$ analytically which
+    Since the value of $y(t)$ and $f(y(t))$ are known at $t=0$ we can calculate a part of $B$ analytically which
     allows to both: impose our initial conditions and to reduce the computational cost.
     Starting with initial state:
     \begin{align}
@@ -546,43 +590,43 @@
             B_1
         \end{bmatrix}
         +
-        \left[ \pmb{\phi}_k(t_0) \right]^T B_k
-        &= \pmb{y}_0, \; k=3,4,\dots
+        \pmb{\tilde\phi}^T(t_0) \tilde{B}
+        &= \pmb{y}_0
     \end{align}
-    Where $B_n$ is the $n$-th row of $B$ while $\pmb{\phi}_n(t)$ is the $n$-th element of the basis function vector at
+    Where $\tilde{B}$ is the remaining $(N-1)-2$ rows of $B$, which the actual learnable part.
     $t$.
     We can write a similar equation for $f(y_0)$.
     \begin{align}
         \label{eq:phi_f_init}
-        \pmb{\phi}'(t_0) B &= \pmb{f}(\pmb{y}_0) \\
+        \pmb{\dot\phi}(t_0) B &= f(\pmb{y}_0) \\
         \begin{bmatrix}
-            \phi'_0(t_0) &
-            \phi'_1(t_0)
+            \dot{\phi}_0(t_0) &
+            \dot{\phi}_1(t_0)
         \end{bmatrix}
         \begin{bmatrix}
             B_0 \\
             B_1
         \end{bmatrix}
         +
-        \left[ \pmb{\phi}'_k(t_0) \right]^T B_k
-        &= \pmb{f}(\pmb{y}_0), \; k=3,4,\dots
+        \pmb{\tilde{\dot\phi}}^T(t_0)  \tilde{B}
+        &= f(\pmb{y}_0)
     \end{align}
     Combining~\eqref{eq:phi_y_init} and~\eqref{eq:phi_f_init} we get:
     \begin{equation}
         \label{eq:init_cond}
         \begin{bmatrix}
-            \phi_0(t_0)  & \phi_1(t_0)  \\
-            \phi'_0(t_0) & \phi'_1(t_0)
+            \phi_0(t_0)     & \phi_1(t_0)     \\
+            \dot\phi_0(t_0) & \dot\phi_1(t_0)
         \end{bmatrix}
         \begin{bmatrix}
             B_0 \\ B_1
         \end{bmatrix}^T
         +
         \begin{bmatrix}
-            \pmb{\phi}_k(t_0) &
-            \pmb{\phi}'_k(t_0)
+            \pmb{\tilde\phi}(t_0) &
+            \pmb{\tilde{\dot\phi}}(t_0)
         \end{bmatrix}^T
-        B_k
+        \tilde{B}
         =
         \begin{bmatrix}
             \pmb{y}_0 \\
@@ -600,8 +644,8 @@
         \end{bmatrix}^T
         =
         \begin{bmatrix}
-            \phi_0(t_0)  & \phi_1(t_0)  \\
-            \phi'_0(t_0) & \phi'_1(t_0)
+            \phi_0(t_0)     & \phi_1(t_0)     \\
+            \dot\phi_0(t_0) & \dot\phi_1(t_0)
         \end{bmatrix}^{-1}
         \left(
         \begin{bmatrix}
@@ -610,21 +654,20 @@
         \end{bmatrix}
         -
         \begin{bmatrix}
-            \pmb{\phi}_k(t_0) &
-            \pmb{\phi}'_k(t_0)
+            \pmb{\tilde\phi}(t_0) &
+            \pmb{\tilde{\dot\phi}}(t_0)
         \end{bmatrix}^T
-        B_k
+        \tilde{B}
         \right)
     \end{equation}
 
-    The initialisation of $B$ is in the users choice.
-    It could be a random vector but that would increase the time to convergence.
-    Alternatively, one could use a coarse ODE solver, likely a forward euler iteration with relatively large step size,
+    The initialisation of $B$ is in the users choice, it could be random matrix.
+    Alternatively, one could use a coarse ODE solver, likely a forward Euler iteration with relatively large step size,
     to get a rough estimate $\pmb{y}_c(t)$.
-    Then by solving the least squares problem $\pmb{y}_c(t) - \Phi(t) B_0$ get an initialisation that's closer to the
+    Then by solving the least squares problem $\pmb{y}_c(t) - \Phi B_0$ get an initialisation that's closer to the
     optimum, $B^*$, for faster convergence.
     One has to figure out a good balance between the number of steps of the coarse solver -which are innately serial-
-    and how far the initial $B$ is from the optimum, which will increase the number of Newton iterations.
+    and how far the initial $B$ is from the optimum, which will increase the number of iterations.
 
     \subsubsection{The Hessian}
 
@@ -644,68 +687,99 @@
     the columns of $B$ are stacked as a vector so that the hessian is a rectangular matrix instead of a $4D$ tensor.
 
     \subsection{Comparison with classical and other parellel-in-time methods}
-    First of all the parallelisation potential of such a method comes from the fact that all gradients can be computed simultaneously.
-    In contrast to classical ODE solvers where the solution, or the trajectory in state space, is calculated from initial time to terminal time, step by step; in our case the whole trajectory (an approximation of it rather) is known from the start.
-    Allowing to calculate the derivatives along the entire trajectory in a parallel manner.
-    Obviously, more than one iterations are needed to obtain a solution to some specified accuracy.
-    But if there are sufficiently many computing nodes available each iteration should be at least comparable to a single step of many common ODE solvers.
-    For example, rk4 is a widely used algorithm, from the family of Runge-Kutta methods, for solving ordinary differential equations.
-    It involves four function evaluations (NFE) at each step.
-    Likewise Dormand-Prince, the default method in many software packages [CITE?], sometimes referred as dopri54 has an NFE of 6 for a single step.
+    First of all, the parallelisation potential of such a method comes from the fact that $f$ can be evaluated for all
+    input points $\hat y(t)$ simultaneously at a single iteration.
+    More specifically, during the fist, zero-th order part of the algorithm, a vector of points is passed into $f$ to
+    update the coeffecients as can be seen in  ~\eqref{eq:Bitaration}.
+    In reality, $f$ is applied on each element of this vector but since the calculations are independent all elements are
+    evaluated in parallel.
+    Similarly, during the Newton iteration the Hessian can, up to some degree, be computed in parallel by exploiting
+    vectorization [CITE PYTORCH vmap?].
+    This is in contrast to classical ODE solvers where the solution, or the trajectory in state space, is calculated from
+    initial time to terminal time, step by step; in our case the whole trajectory (a continuous time approximation
+    of it rather) is known from the start.
+    This is what allows to calculate the values -and the derivatives- along the entire trajectory in a parallel manner.
 
-    Each iteration of algorithm~\ref{alg:intapprox} takes more than 1 function evaluation of the error function.
-    We assume that the error function requires time similar to a single forward pass of $\pmb{f}$ for the reason stated above.
-    There are, however, additional evaluations of $e$ that are required at each iteration of the algorithm increasing the time of each iteration.
-    The Jacobian and Hessian matrices also have to be calculated.
+    Obviously, more than one iteration is needed to obtain a solution to some specified accuracy.
+    But if there are sufficiently many computing nodes available, each iteration should be at least comparable to a
+    single step of many common ODE solvers.
+    The critical point of out method is that it takes less parallel/batch evaluations of $f$ to converge to a solution
+    than steps of a time stepping solver.
+
+    For the second part of the algotithm the Jacobian and Hessian matrices of $e$ also have to be calculated.
     Because of how automatic differentiation works the Jacobian is a byproduct of calculating the Hessian.
-    Calculating the full Hessian is actually not a trivial cost and we will address this later.
-    Additionally the line search algorithm -for finding step sizes along the path of the Newton direction requires some evaluations of $e$ and its Jacobian.
+    Calculating the full Hessian is actually not of trivial cost and we will address this later.
+    Additionally, the line search algorithm -for finding step sizes along the path of the Newton direction requires
+    some evaluations of $e$ and its Jacobian.
     Decreasing the number of function evaluations is crucial for further speeding up this algorithm.
+    To this goal the cheaper recursive least squares solution is found first at significally less number of function
+    evaluations and the Newton algorithm is used for refining the solution to highter accuracy.
 
-    Comparing popular parallel in time ODE solving methods, like PFASST and parareal, to our approach showcases similarities but also differences.
+    It's important to note that traditional ODE numerical solver also take more that 1 (serial) function evaluations at
+    each step.
+    For example RK45, a widely used algorithm from the family of Runge-Kutta methods, involves six sequential function
+    evaluations (NFE) [CITE?] at each step.
+    Likewise, Dormand-Prince, the default method in many software packages [CITE?], sometimes referred as DOPRI5 also
+    has an NFE of 6 for a single step.
+
+    Comparing popular parallel in time ODE solving methods, like PFASST and parareal, to our approach showcases
+    similarities but also differences.
     One major difference is simplicity which allows easier implementation.
-    Polynomial Approximation Integration only builds upon simple polynomial approximation and a numerical optimiser.
-    Other methods, like PFASST, rely on more complicated \textit{spectral deferred correction} methods, a well established but more involved numerical method.
+    Polynomial Approximation Numerical integration only builds upon simple polynomial approximation and a numerical
+    optimiser.
+    Other methods, like PFASST ~\cite{emmett2012toward}, rely on more complicated \textit{spectral deferred correction}
+    methods, a well established but more involved numerical method.
+    Moreover, other parallel in time techniques, like parareal, split the initial value problem into $N$ smaller boundary
+    value problems using a combination of coarse and fine solvers ~\cite{maday2002parareal}.
 
-    Moreover, other parallel in time techniques, like parareal, split the IVP into $N$ smaller BVPs using a combination of coarse and fine solvers alongside some Newton algorithm~\cite{maday2002parareal}.
-    One advantage of the method presented here is that it evaluates $f$ on multiple inputs simultaneously, while the weights are frozen, to minimise some cost error function.
-    This \textit{synchronised}  parallelisation scheme resembles how multiples input samples are processed in batches during training.
-    This means that one can exploit GPUs for mass parallelisation using existing frameworks.
+    One advantage of the method presented here is that it evaluates $f$ on multiple inputs simultaneously,
+    to minimise some error function.
+    This \textit{synchronised} parallelisation scheme resembles how multiples input samples are processed in batches
+    during training of a neural network.
+    This means that one can exploit GPUs' architecture for mass parallelisation using existing frameworks.
 
     \subsection{Shortcomings and improvements}
-    As mentioned above the critical factor for the performance of neural ODEs is the number of function evaluations that have to be performed sequentially.
-    While our experiments show that polynomial approximation integration can reduce NFE there are hidden costs involved with the calculating the full Hessian and during line search.
+    As mentioned above the critical factor for the performance of neural ODEs is the number of function evaluations that
+    have to be performed sequentially.
+    While our experiments show that polynomial approximation integration can reduce NFE there are hidden costs involved
+    with the calculating of the full Hessian and during line search.
 
-    Firstly, because the parameters $B$ should be significantly less than the parameters of the network calculating the full Hessian doesn't present problems as far as memory is concerned.
-    But since Newton optimisation requires the inverse of the Hessian it is not possible to perform a fast (exploiting automatic differentiation properties) Hessian-vector operation.
-    We should point out though, that we can calculate the full Hessian by calculating each row in parallel using $N$ (the size of each row of $B$) vector-Jacobian products in parallel.
-    But even so the time it takes for all these calculations is 2 to 4 times that of the forward pass.
+    Firstly, because the parameters $B$ should be significantly less than the parameters of the network; calculating the
+    full Hessian doesn't present problems as far as memory is concerned.
+    But since Newton optimisation requires the inverse of the Hessian it is not possible to perform a fast
+    Hessian-vector operation exploiting automatic differentiation properties.
+    We instead calculate the full Hessian first, row by row, and then invert it.
 
-    Secondly, the line search algorithm involves computing the objective function and it's derivative at multiple states ($\pmb{y}(t)$). While we hope that it shouldn't check more that two or three candidate values for the learning rate it we can expect at least 4 more function evaluations that will be performed in serial~\cite{wright2006numerical}.
+    Secondly, the line search algorithm involves computing the objective function and it's derivative at multiple
+    states ($\pmb{y}(t)$).
+    While we hope that it shouldn't check more that two or three candidate values for the learning rate we can
+    expect at least 4 more function evaluations that will be performed serialy ~\cite{wright2006numerical}.
 
-    These limitations of Newton optimisation with line search call for more numerical methods to be tested like Quasi-Newton, Conjugate Gradients and BFGS.
+    These limitations of Newton optimisation with line search call for more numerical methods to be tested like
+    Quasi-Newton, Conjugate Gradients and BFGS.
 
-    \subsection{hyper solver + parallel in time(???)}
-    Shifting out focus to the more specific problem of training neural ODEs.
+%    \subsection{hyper solver + parallel in time(???)}
+%    Shifting out focus to the more specific problem of training neural ODEs.
 
     \subsection{Experiments}
-    We compare the performance of [our method name] to popular time stepping methods in terms of accuracy and absolute error.
+    We compare the performance of our method to popular time stepping methods in terms of accuracy and absolute error.
     Most implementations of variable step length methods like RK45 allow for absolute (atol) and relative (rtol)
-    tolerances to be specified which keep the local error estimates bellow $a_{tol} + r_{tol} |y|$.
-    We can define similar criteria for our method.
-    First of all, absolute tolerance is equivelent to the threshold of the mean squared error at the $k$-th iteration of
-    the optimisation algorithm.
-    The algorithm stops when it has found a close enough polynomial approximation of the ODE solution, under our error
-    metric and accuracy specifications.
-    Alternatively, we could stop after we have found a local minimum of the error function.
-    This practically means if the norm of the gradient at the current solution $B^{[k]}$ is under a threshold defined as
-    a hyperparementer.
+    tolerances to be specified which keep the local error estimates bellow $atol + rtol |y|$.
+    For our case, we define tolerances for both steps of the algorithm, least squares and Newton iteration in the
+    following ways.
+    For the first part, the algorithm stops when there is no sufficient change in the parameters:
+    $\lVert B^{[k]} - B^{[k-1]} \rVert < $ tol\_ls.
+    While for the Newton part the iteration stops when the gradient is sufficiently close to zero:
+    $ \lVert \partial_k e \rVert < $ tol\_newton.
+    Adjusting these two \textit{hyperparameters} as well as the number of approximation coefficients and the number of
+    points where the error is calculated; we can change the convergence properties of the algorithm.
 
     \subsubsection{Spiral}
     First, we will examine a toy example of a nonlinear spiral in $\mathbb{R}^{2}$.
-    We assume that a solution using the RK45 method with maximum step size three orders of magnitute smaller than the
-    interval, to be a sufficiently accurate approximation of the true solution; and use it to measure the accuracy of the
-    other solutions.
+    We assume that the true solution is provided by the RK45 method with step size three orders of magnitude smaller than the
+    interval.
+    We assume this approximation to be good enough for out purpose and compare the norm of the error at terminal time
+    with other alongside our approach.
 
     \begin{equation*}
         \frac{d \pmb{y} }{dt} =
@@ -717,74 +791,122 @@
         )
     \end{equation*}
 
-    We solve the ODE in the interval $[0,6]$ for $\pmb{y}(0) = [-1,\ -1]^T$ using various common methods for
-    different absolute tolerances.
-    For [our method] the numerical optimisation tolerance (etol) is set to small value to approach the minimum as
-    closely as possible without facing machine precision related problems.
-    On the other solver the relative error is also set to a small number so that the absolute error is unaffected.
+    We solve the ODE in the interval $[0,10]$ for $\pmb{y}(0) = [2,\ 1]^T$.
+    We use the same tolerances for the time stepping methods and for ours (PAN) even thought there is not direct
+    equivalence.
+    This shouldn't matter as we are ultimately interested only in the comparison between accuracy and number of function
+    evaluations (NFE).
+    For the other solvers the relative error is also set to a small number so that the absolute error is unaffected.
 
-    \begin{center}
-    {\tabulinesep=1.2mm
-        \label{tol_table}
-        \begin{tabu}{ |c| c| c| c| c| }
-            \hline
-            Method & $atol$/$etol$                          & $ \lVert error(T) \rVert_{2}$  & NFE & \%pan \\
-            \hline
-            RK45   & $1 \times 10^{-8}$                     & $ 5.821423518 \times 10^{-9} $ & 308 & 560\% \\
-            \hline
-            DOP853 & $1 \times 10^{-8}$                     & $ 2.935176203 \times 10^{-8} $ & 254 & 462\% \\
-            \hline
-            BDF    & $1 \times 10^{-8}$                     & $ 8.073374795 \times 10^{-8} $ & 308 & 560\% \\
-            \hline
-            LSODA  & $1 \times 10^{-8}$                     & $ 2.920422536 \times 10^{-8} $ & 201 & 365\% \\
-            \hline
-            PAN    & $1 \times 10^{-8} / 1 \times 10^{-14}$ & $ 2.356084364 \times 10^{-7} $ & 55  & -     \\
-            \hline
-            RK45   & $1 \times 10^{-6}$                     & $ 3.440944521 \times 10^{-9} $ & 140 & 246\% \\
-            \hline
-            DOP853 & $1 \times 10^{-6}$                     & $ 8.266072061 \times 10^{-8} $ & 110 & 193\% \\
-            \hline
-            BDF    & $1 \times 10^{-6}$                     & $  3.462641753\times 10^{-8} $   & 164 & 288\% \\
-            \hline
-            LSODA  & $1 \times 10^{-6}$                     & $  5.336214834\times 10^{-8} $   & 115 & 202\% \\
-            \hline
-            PAN    & $1 \times 10^{-6} / 1 \times 10^{-14}$ & $6.477419509 \times 10^{-7} $  & 56  & -     \\
-            \hline
-        \end{tabu}
-    }
-    \end{center}
-
-    We remind that during optimisation $f$ is evaluated on multiple points, but since this can be performed in parallel
-    we assume the wall clock time is similar to one evaluation plus parallelisation overhead.
-    At a first glance the polynomial approximation solver seams to exchange accuracy for number of (serial) function
-    evaluations, as can be seen at ~\ref{tol_table}.
-    We notice that the absolute error doesn't drop while decreasing the tolerances, indicating that for the number of
-    coefficients used we are near an optimum.
-    In fact it doesn't seem to match the accuracy of the other solvers.
-    Adjusting hyperparameters like the number of coefficients of $B$, the number of points where mean square error is
-    calculated and the step size of the coarse solver can increase the accuracy, decrease NFE or both.
-
-    \begin{figure}[h]
+    \renewcommand{\arraystretch}{1.5}
+    \renewcommand{\tabcolsep}{10.25pt}
+    \begin{table}[!h]
         \begin{center}
-            \input{converge.pgf}
+            \caption{Metrics for the solution of an IVP with different methods. For PAN params indicates the number of
+            approximation coefficients per dimention, in this case there are 2 dimensions.
+            NFE for PAN is show as NFE for least squares plus (+) NFE for Newton.}
+            \label{spiral-metrics}
+            \begin{tabular}{|c|c|c|c|}
+                \hline
+                Method(params) & tolerance & error(t) & NFE \\
+                \hline
+                RK45 & 1.0e-06 & 4.14e-07 & 212
+                \\ \hline
+                Radau & 1.0e-06 & 6.97e-08 & 599
+                \\ \hline
+                BDF & 1.0e-06 & 4.56e-06 & 250
+                \\ \hline
+                LSODA & 1.0e-06 & 4.34e-06 & 171
+                \\ \hline
+                PAN(50) & 1e-06/1e-06 & 1.86e-10 & 37 + 5
+                \\ \hline
+                PAN(100) & 1e-06/1e-06 & 4.17e-14 & 36 + 5
+                \\ \hline \hline
+                RK45 & 1.0e-09 & 6.28e-10 & 716
+                \\ \hline
+                Radau & 1.0e-09 & 1.05e-10 & 2994
+                \\ \hline
+                BDF & 1.0e-09 & 1.66e-08 & 656
+                \\ \hline
+                LSODA & 1.0e-09 & 4.48e-10 & 361
+                \\ \hline
+                PAN(50) & 1e-09/1e-09 & 1.86e-10 & 42 + 5
+                \\ \hline
+                PAN(100) & 1e-09/1e-09 & 2.25e-15 & 55 + 5
+                \\ \hline
+            \end{tabular}
         \end{center}
-        \label{fig:plateau}
-    \end{figure}
+    \end{table}
 
-    As we can see in figure ~\ref{fig:plateau} if we keep decreasing the absolute tolerance of the algorithm we
-    eventually reach a plateau where the polynomial approximation can't fit any better to the ODE solution.
-    Further increasing the number of coefficients until the tolerences are respented maked the algorithm prone to
-    numerical error.
-    Insted, to increace accuracy we can split the interval of integration to $K$ smaller ones and solve the resulting
-    IVPs sequentially.
-    This way we simplify the task of the optimising algorithm by fitting more but simpler functions.
+    We remind that for PAN, during optimisation $f$ is evaluated on multiple points, but since this calculations can be
+    performed in parallel we assume the wall clock time is similar to one evaluation plus parallelisation overhead.
+    As we can see in table ~\ref{spiral-metrics} for this simple problem our method achieves better accuracy while
+    taking significantly less number of function evaluation.
 
+    \subsubsection{Lorenz Attractor}
+    The Lorenz system is a system of ordinary differential equations known for its chaotic behaviour.
+    \begin{align*}
+        \frac{dx}{dt} &= \sigma( y - x ) \\
+        \frac{dy}{dt} &=  x( \rho - z) - y \\
+        \frac{dz}{dt} &=  xy - \beta z\\
+    \end{align*}
 
+    We again solve the equation using a variety of solvers and compare them with our method.
+    Though, this time we use ``step'' for our method, meaning we apply the algorithm in smaller sub-intervals setting
+    the endpoint of each sub-solution as the initial conditions for the next interval.
+    The problem parameters are set to: $\rho = 28, \ \sigma=10,\ \beta = \frac{8}{3}$, the interval is $[0, 15]$ and
+    $\pmb{y}(0) = [2, 1 ,1]^T $.
+
+    \begin{table}[!h]
+        \begin{center}
+            \caption{Accuracy and NFE for Lorenz system. For PAN the interval has been split in subintervals of length
+                $0.3$ and the algorithm has been applied sequencially on each interval.}
+            \label{lorenz_metric}
+            \renewcommand{\arraystretch}{1.5}
+            \renewcommand{\tabcolsep}{10.25pt}
+            \begin{tabular}{|c|c|c|c|}
+                \hline
+                Method(params) & tolerance & error(t) & NFE \\
+                \hline
+                RK45 & 1.0e-06 & 5.75e-02 & 5174
+                \\ \hline
+                Radau & 1.0e-06 & 2.17e-02 & 16476
+                \\ \hline
+                BDF & 1.0e-06 & 2.09e-01 & 4794
+                \\ \hline
+                LSODA & 1.0e-06 & 4.86e-02 & 2803
+                \\ \hline
+                PAN(50) & 1e-06/1e-06 & 1.60e-07 & 1180 + 250
+                \\ \hline
+                PAN(100) & 1e-06/1e-06 & 1.60e-07 & 1231 + 250
+                \\ \hline\hline
+                RK45 & 1.0e-09 & 6.58e-05 & 19532
+                \\ \hline
+                Radau & 1.0e-09 & 4.19e-06 & 89999
+                \\ \hline
+                BDF & 1.0e-09 & 5.65e-04 & 15184
+                \\ \hline
+                LSODA & 1.0e-09 & 5.45e-06 & 4735
+                \\ \hline
+                PAN(50) & 1e-09/1e-09 & 1.61e-07 & 1399 + 262
+                \\ \hline
+                PAN(100) & 1e-09/1e-09 & 1.61e-07 & 1450 + 390
+                \\ \hline
+            \end{tabular}
+        \end{center}
+    \end{table}
+
+    In table, \ref{lorenz_metric} we see that our method achieves better accuracy for less amount of function
+    evaluation on this system of ODEs.
+    Although, we have to note that accuracy seems to become saturated and decreasing tolerances or increasing number
+    of coefficients doesn't improve results.
+    It becomes apparent that finding the optimal hyperparameters is crucial for the most efficient use of the algorithm.
+
+    \newpage
 
     \printbibliography
 
     \appendix
-
 
     \section{The backpropagation equations}
     In order to contrast and highlight the differences between classical neural networks, residual neural networks and neural ODEs we showcase how the gradients of the loss wrt.
@@ -918,16 +1040,16 @@
         &=
         \left\{
         \frac{ \partial }{\partial \textbf{y}_{n-1}}
-           \left[
-               \phi( W_n \textbf{y}_{n-1} ) + \textbf{y}_{n-1}
-           \right]
+        \left[
+            \phi( W_n \textbf{y}_{n-1} ) + \textbf{y}_{n-1}
+            \right]
         \right\}^T
         \frac{ \partial C}{ \partial \textbf{y}_{n} }
         \\
         &=
         \left[
             W_n^T \phi^{(1)}( \pmb{z}_n ) + I
-        \right]^T
+            \right]^T
         \frac{ \partial C}{\partial \textbf{y}_{n} }
     \end{align}
 
@@ -1159,8 +1281,8 @@
     These methods are not categorised as line searches since they do not seek to find an appropriate step length $\alpha$ on each iteration.
     They instead define either a fixed or dynamically updated \textit{learning rate}.
     Usually they employ some notions of momentum and stochasticity to move along a direction dictated by an approximation of the local gradient.
-    Even so the remain first order methods since they only utilise information about the first derivative.
-    Some notable gradient descent methods as well as how the minimisation problem is formulated in the context of machine learning are discussed later.
+    Even so they remain first order methods since they only utilise information about the first derivative.
+%    Some notable gradient descent methods as well as how the minimisation problem is formulated in the context of machine learning are discussed later.
 
     \subsection{The Newton-Raphson algorithm with Hessian modification}
     \label{newtonalgo}
@@ -1279,6 +1401,5 @@
             \Until
         \end{algorithmic}
     \end{algorithm}
-
 
 \end{document}

@@ -6,7 +6,8 @@ from itertools import cycle
 from matplotlib.animation import PillowWriter
 from scipy.integrate import solve_ivp
 import torch
-from torch import max, min, tensor
+from torch import max, min, tensor, abs
+from torch.linalg import inv
 
 mpl.use("TkAgg")
 
@@ -41,7 +42,6 @@ class VfPlotter:
         grid_definition: tuple = (40, 40),
         existing_axes: plt.Axes = None,
         ax_kwargs: dict = None,
-        show=False,
         animation=False,
         text=False,
         queue_size=5,
@@ -72,9 +72,6 @@ class VfPlotter:
             self.writer.setup(self.fig, "test.gif", 100)
             self.writer.frame_format = "png"
         self.animation = animation
-
-        if show:
-            wait()
 
     def _plot_vector_field(self):
         xs = torch.linspace(*self.ax.get_xlim(), self.grid_definition[0])
@@ -107,7 +104,8 @@ class VfPlotter:
         ivp_kwargs=None,
         plot_kwargs=None,
     ):
-        plot_kwargs = plot_kwargs or {}
+        if plot_kwargs is None:
+            plot_kwargs = {"color": "red"}
         ivp_kwargs = ivp_kwargs or {}
         y_init = self.y_init if y_init is None else y_init
 
@@ -122,7 +120,7 @@ class VfPlotter:
 
         trajectory = ivp_sol.y
         print(
-            f"Method {ivp_kwargs['method']} took {ivp_sol.nfev}\t\t function evaluations, y(T) = ({trajectory[0][-1]:.9f},{trajectory[1][-1]:.9f})"
+            f"Method {ivp_kwargs['method']} took {ivp_sol.nfev}\t\t\t function evaluations, y(T) = ({trajectory[0][-1]:.9f},{trajectory[1][-1]:.9f})"
         )
 
         if set_lims:
@@ -195,10 +193,10 @@ class VfPlotter:
                 art[1].set_linestyle("--")
                 art[1].set_linewidth(1)
                 new_c = list(mpl.colors.to_rgb(art[0].get_c()))
-                new_c[0] = min(1, new_c[0] + 0.05)
-                new_c[1] = max(0, new_c[1] - 0.05)
-                art[0].set_c(tuple(new_c))
-                art[1].set_c(tuple(new_c))
+                new_c[0] = float(min(tensor(1.0), tensor(new_c[0] + 0.05)))
+                new_c[1] = float(max(tensor(0.0), tensor(new_c[1] - 0.05)))
+                art[0].set_c(new_c)
+                art[1].set_c([x for x in new_c])
             self.approx_art = art
 
         if Dapprox is not None:
@@ -222,34 +220,91 @@ class VfPlotter:
 
 
 class LsPlotter:
-    def __init__(self, func, plot_res=100, alpha_max=10):
+    def __init__(self, func, Dfunc, plot_res=1000, alpha_max=10):
         self.fig, self.ax = plt.subplots()
         self.phi = func
+        self.Dphi = Dfunc
         self.plot_res = plot_res
         self.alpha_max = alpha_max
 
         (self.alpha_line_art,) = self.ax.plot(
             [], [], color="#EE2233", label="$\phi(a)$"
         )
+
+        (self.alpha_slope,) = self.ax.plot([], [], color="green", label="$\phi'(a)$")
+
         (self.curpoint,) = self.ax.plot(
             [], [], color="#FF5566", label="$a_i$", marker="o"
         )
 
-    def line_search(self, a_cur):
+        (self.wolfe1_line,) = self.ax.plot(
+            [],
+            [],
+            color="orange",
+            label="$\phi(0) + c_1 a \phi'$",
+            linestyle="--",
+        )
+
+        (self.wolfe2_line,) = self.ax.plot(
+            [],
+            [],
+            color="yellow",
+            label="$-c_2 \phi'(0)$",
+            linestyle="--",
+        )
+
+        self.ai, = self.ax.plot([], [], 'o', color= "#440834")
+
+    def line_search(self, a_cur, c1):
+        # plot the line along the search direction
         a = torch.linspace(0, a_cur + 1, self.plot_res)
         phi_a = torch.stack([self.phi(a) for a in a])
         self.alpha_line_art.set_xdata(a)
-
         self.alpha_line_art.set_ydata(phi_a)
-        self.ax.set_xlim(-0.1, a_cur + 1)
-        self.ax.set_ylim([0.9 * torch.min(phi_a), self.phi(a_cur + 1) * 1.1])
 
+        self.alpha_slope.set_xdata([a_cur - 0.1, a_cur + 0.1])
+        self.alpha_slope.set_ydata(
+            [
+                self.phi(a_cur) - 0.1 * self.Dphi(a_cur),
+                self.phi(a_cur) + 0.1 * self.Dphi(a_cur),
+            ]
+        )
+
+        self.ax.set_xlim(-0.1, a_cur + 1)
+        self.ax.set_ylim([0.8 * torch.min(phi_a), self.phi(a_cur + 1) * 2.5])
+
+        # plot the current point
         self.curpoint.set_xdata([a_cur])
         self.curpoint.set_ydata([self.phi(a_cur)])
-        wait()
 
-    def zoom(self):
-        raise NotImplementedError
+        # plot the wolfe1 slope at start point
+        self.wolfe1_line.set_xdata([tensor(0), a_cur + 0.5])
+        self.wolfe1_line.set_ydata(
+            [self.phi(0), self.phi(0) + (a_cur + 0.5) * c1 * self.Dphi(0)]
+        )
+        # self.wolfe2_line.set_xdata([tensor(0), a_cur+0.5])
+        # self.wolfe2_line.set_ydata(
+        #     [self.phi(0), self.phi(0) + (a_cur + 0.5) * c1 * self.Dphi(0)]
+        # )
+
+    def zoom(self, ai, c1, c2, DPhi_0):
+        phi_ai = self.phi(ai)
+        Dphi_ai = self.Dphi(ai)
+        self.ai.set_xdata([ai])
+        self.ai.set_ydata([phi_ai])
+
+        self.alpha_slope.set_xdata([ai, ai + 0.1])
+        self.alpha_slope.set_ydata(
+            [
+                phi_ai,
+                phi_ai + 0.1 * abs(Dphi_ai),
+                ]
+        )
+
+        self.wolfe2_line.set_xdata([ai, ai + .1])
+        self.wolfe2_line.set_ydata([phi_ai, phi_ai - .1*c2*DPhi_0] )
+
+        wait()
 
     def close_all(self):
         plt.close(self.fig)

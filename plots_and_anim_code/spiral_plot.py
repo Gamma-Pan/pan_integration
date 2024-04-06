@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 
 def spiral(batch):
     a = 0.5
-    P = tensor([[-a, 1.0], [-1.0, -a]])[None]
-    xy = batch[..., None]  # add trailing dim for matrix vector muls
-    derivative = tanh(P @ xy)
-    return torch.squeeze(derivative)
+    P = tensor([[-a, 1.0], [-1.0, -a]], dtype=torch.float)[None]
+    xy = batch[..., None].to(torch.float32)  # add trailing dim for matrix vector muls
+    derivative = P @ xy
+    return torch.squeeze(derivative).to(torch.float64)
 
 
 def regression(func, t_lims, y_init, save=False):
@@ -29,9 +29,21 @@ def regression(func, t_lims, y_init, save=False):
         t_init=0.0,
         ax_kwargs=ax_kwargs,
         animation=False,
-        queue_size=1,
+        queue_size=3,
         text=False,
     )
+
+    trajectory = plotter.solve_ivp(
+        t_lims,
+        ivp_kwargs={
+            "method": "RK45",
+            "max_step": 1e-2,
+        },
+        plot_kwargs={"color": "firebrick", "alpha": 0.5},
+        set_lims=True,
+    )
+
+    y_TRUE = trajectory[-1, :]
 
     methods = ["RK45"]  # ["RK45", "DOP853", "BDF", "LDSODA"]
     colors = ["lime"]  # ["lime", "turquoise", "firebrick", "violet"]
@@ -40,11 +52,10 @@ def regression(func, t_lims, y_init, save=False):
             t_lims,
             ivp_kwargs={
                 "method": method,
-                "atol": 1e-6,
+                "atol": 1e-9,
                 "rtol": 1e-13,
             },
             plot_kwargs={"color": color, "alpha": 1},
-            set_lims=True,
         )
 
     @torch.no_grad()
@@ -68,28 +79,27 @@ def regression(func, t_lims, y_init, save=False):
 
         plotter.approx(approx, t_0, Dapprox=None, color=(0.1, 0.4, 0.12))
         # plotting.wait()
-        plt.pause(0.3)
+        # plt.pause(0.3)
         plotter.fig.canvas.draw()
         plotter.fig.canvas.flush_events()
         if plotter.animation:
             plotter.grab_frame()
 
-    approx, (ls_nfe,nfe) = pan_int(
-        func,
+    approx, (ls_nfe, nfe) = pan_int(
+        lambda x: func(x.to(torch.float32)).to(torch.get_default_dtype()),
         y_init,
-        callback=callback,
+        callback=None,
         t_lims=t_lims,
-        step=(t_lims[1] - t_lims[0]) / 3,
-        num_points=50,
-        num_coeff_per_dim_newton= 40,
-        num_coeff_per_dim_ls=10,
-        etol_newton=1e-5,
-        etol_lstsq=1e-3,
+        step=(t_lims[1] - t_lims[0])/4,
+        num_points=300,
+        num_coeff_per_dim=300,
+        etol_newton=1e-14,
+        etol_lstsq=1e-8,
         coarse_steps=5,
     )
 
     print(
-        f"pan int took {ls_nfe,nfe}\t\t function evaluations, y(T) = ({approx[-1, 0].item():.9f},{approx[-1, 1].item():.9f})"
+        f"Method pan took {ls_nfe,nfe}\t\t function evaluations, y(T) = ({approx[-1, 0].item():.9f},{approx[-1, 1].item():.9f}), "
     )
 
     plotter.ax.plot(approx[-1, 0], approx[-1, 1], "o", color="blue", zorder=100)
@@ -107,10 +117,10 @@ def regression(func, t_lims, y_init, save=False):
         plotter.ax.set_ylabel("$y_1$")
         plotter.fig.savefig("./latex/ivps.pgf")
 
-        mpl.pyplot.show()
+    mpl.pyplot.show()
 
 
 if __name__ == "__main__":
-    t_lims = tensor([0, 6])
-    y_init = tensor([-3.0, -3.0])
+    t_lims = tensor([0, 8])
+    y_init = tensor([0.5, -5.0])
     regression(spiral, t_lims, y_init)
