@@ -10,11 +10,13 @@ def mod_chol(G: torch.Tensor, delta=torch.tensor(1e-3), pivoting=False) -> Union
     Implementing the Modified Cholesky Factorization as described in
     Gill, Murray, Wright - Practical Optimization pg.111
     """
-    # TODO: use the same storage for L and d
+    # TODO: MAKE THIS BATCHED
+    device = G.device
+    delta = delta.to(device)
 
     n = G.shape[0]
 
-    L = torch.zeros(n, n)
+    L = torch.zeros(n, n, device=device)
     d = torch.diag(G)
 
     nu = max(1., sqrt(n ** 2 - 1.))
@@ -22,7 +24,7 @@ def mod_chol(G: torch.Tensor, delta=torch.tensor(1e-3), pivoting=False) -> Union
     # G is symmetric so the max of the off diagonal elements is also the max
     # of the lower triangular part excluding the diagonal
     xi = torch.max(torch.tril(G, -1))
-    eps =  torch.tensor(1e-10)  # torch.tensor(sys.float_info.epsilon)
+    eps =  torch.tensor(1e-10).to(device)  # torch.tensor(sys.float_info.epsilon)
     beta_sq = torch.max(torch.stack((gamma, xi / nu, eps)))
     P = torch.arange(n)
 

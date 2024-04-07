@@ -1,66 +1,54 @@
 import torch.utils.data
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
+from torchvision import transforms
 from torch import utils
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 import os
+import lightning as L
+from math import floor
 
 
-def mnist_dataloaders(
-        path: str = "/data/mnist",
-        train: bool = False,
-        val: bool = False,
-        test: bool = False,
-        num_workers: int = 1,
-        batch_size: int = 64
-) -> list:
-    assert (val and train) or not val, "validation loader only if train loader"
-    dataset_path = os.getcwd() + path
-    # if already downloaded, don't download
-    download_dataset = not os.path.exists(dataset_path)
-    out = [None, None, None]
-
-    # create test dataloader if test == true
-    if test:
-        test_dataset = MNIST(
-            dataset_path,
-            download=download_dataset,
-            train=False,
-            transform=ToTensor(),
-        )
-        test_loader = DataLoader(
-            test_dataset, num_workers=num_workers, batch_size=batch_size, shuffle=True
-        )
-        out[2] = test_loader
-
-    if train:
-        train_dataset = MNIST(
-            dataset_path, download=download_dataset, train=True, transform=ToTensor()
+class MNISTDataModule(L.LightningDataModule):
+    def __init__(
+        self, data_dir: str = "/data/mnist", batch_size: int = 64, num_workers: int = 1
+    ):
+        super().__init__()
+        self.data_dir = data_dir
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
         )
 
-        if not val:
-            train_loader = DataLoader(
-                train_dataset, num_workers=num_workers, batch_size=batch_size, shuffle=True
-            )
-            out[0] = train_loader
-        else:
-            # create subsets for train and validation
-            val_percent = 0.1
-            train_dataset_size = int(len(train_dataset) * (1 - val_percent))
-            val_dataset_size = int(len(train_dataset) * val_percent)
-            generator = torch.Generator().manual_seed(42)
+    def prepare_data(self):
+        MNIST(self.data_dir, train=True, download=True)
+        MNIST(self.data_dir, train=False, download=True)
 
-            train_subset, val_subset = utils.data.random_split(
-                train_dataset,
-                [train_dataset_size, val_dataset_size],
-                generator=generator,
+    def setup(self, stage: str):
+        if stage == "fit":
+            mnist_full = MNIST(self.data_dir, train=True, transform=self.transform)
+            dataset_sz = len(mnist_full)
+            self.mnist_train, self.mnist_val = random_split(
+                mnist_full,
+                [floor(dataset_sz * 0.9), floor(dataset_sz * 0.1)],
+                generator=torch.Generator.nanual_seed(42),
             )
 
-            train_loader = DataLoader(train_subset, num_workers=num_workers, batch_size=batch_size)
-            val_loader = DataLoader(
-                val_subset, num_workers=num_workers, batch_size=batch_size, shuffle=False
-            )
-            out[0] = train_loader
-            out[1] = val_loader
+        if stage == "test":
+            self.mnist_test = MNIST(self.data_dir, train=False, transform=self.transform)
+        if stage == "predict":
+            self.mnist_predict = MNIST(self.data_dir, train=False, transform=self.transform)
 
-    return out
+    def train_dataloader(self):
+        return DataLoader(self.mnist_train, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def val_dataloader(self):
+        return DataLoader(self.mnist_val, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def test_dataloader(self):
+        return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=self.num_workers)
+
+    def predict_dataloader(self):
+        return DataLoader(self.mnist_predict, batch_size=self.batch_size, num_workers=self.num_workers)
+

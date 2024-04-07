@@ -50,7 +50,7 @@ def _B_init_cond(B_tail, y_init, f_init, Phi, DPhi):
     return torch.vstack([B_01, B_tail])
 
 
-def _cheb_phis(num_points, num_coeff_per_dim, t_lims):
+def _cheb_phis(num_points, num_coeff_per_dim, t_lims, device):
     step = t_lims[1] - t_lims[0]
     Phi = T_grid(num_points, num_coeff_per_dim)
     DPhi = (2 / step) * torch.hstack(
@@ -60,27 +60,29 @@ def _cheb_phis(num_points, num_coeff_per_dim, t_lims):
             * U_grid(num_points, num_coeff_per_dim - 1),
         ]
     )
-    return Phi, DPhi
+    return Phi.to(device), DPhi.to(device)
 
 
+@torch.no_grad()
 def _coarse_euler_init(f, y_init, num_solver_steps, t_lims, num_coeff_per_dim):
     dims = y_init.shape[0]
     step = t_lims[1] - t_lims[0]
-    step_size = step / (num_solver_steps)
+    step_size = step / num_solver_steps
+    device = y_init.device
 
-    y_eul = torch.zeros(num_solver_steps, dims)
+    y_eul = torch.zeros(num_solver_steps, dims).to(device)
     y_eul[0, :] = y_init
-    f_eul = torch.zeros(num_solver_steps, dims)
+    f_eul = torch.zeros(num_solver_steps, dims).to(device)
     f_eul[0, :] = f(y_init)
 
     # forward euler
     for i in range(1, num_solver_steps):
         y_cur = y_eul[i - 1, :]
-        f_eul[i, :] = f(y_cur)
         f_cur = f(y_cur)
+        f_eul[i, :] = f_cur
         y_eul[i, :] = y_cur + step_size * f_cur
 
-    Phi, DPhi = _cheb_phis(num_solver_steps, num_coeff_per_dim, t_lims)
+    Phi, DPhi = _cheb_phis(num_solver_steps, num_coeff_per_dim, t_lims, device=device)
 
     inv0 = inv(vstack((Phi[0, [0, 1]], DPhi[0, [0, 1]])))
     PHI = -vstack([Phi[:, [0, 1]], DPhi[:, [0, 1]]]) @ inv0 @ vstack(
@@ -91,7 +93,7 @@ def _coarse_euler_init(f, y_init, num_solver_steps, t_lims, num_coeff_per_dim):
         [Phi[:, [0, 1]], DPhi[:, [0, 1]]]
     ) @ inv0 @ vstack([y_init, f_eul[[0], :]])
 
-    B_ls = torch.linalg.lstsq(PHI, Y).solution
+    B_ls = torch.linalg.lstsq(PHI, Y, driver='gels').solution
     return B_ls.T.reshape(-1)
 
 
@@ -102,8 +104,8 @@ def lst_sq_solver(
     t_lims,
     num_coeff_per_dim,
     num_points,
-    Phi = None,
-    DPhi = None,
+    Phi=None,
+    DPhi=None,
     max_steps=50,
     etol=1e-5,
     coarse_steps=5,
@@ -111,8 +113,9 @@ def lst_sq_solver(
     init="euler",
     callback=None,
 ):
+    device = y_init.device
     if Phi is None or DPhi is None:
-        Phi, DPhi = _cheb_phis(num_points, num_coeff_per_dim, t_lims)
+        Phi, DPhi = _cheb_phis(num_points, num_coeff_per_dim, t_lims, device)
 
     nfe = 0
 
@@ -125,7 +128,7 @@ def lst_sq_solver(
         )
         nfe += coarse_steps
     elif init == "random":
-        B = torch.rand(num_coeff_per_dim - 2, dims)
+        B = torch.rand(num_coeff_per_dim - 2, dims, device=device)
     else:
         raise "init must be either 'euler' or 'random'"
 
@@ -143,7 +146,7 @@ def lst_sq_solver(
     Q = inv(Phi_b.T @ Phi_b)
     for i in range(max_steps):
         if callback is not None:
-            callback(B.T.reshape(-1))
+            callback(B.T.reshape(-1).cpu())
 
         B_prev = B
         B = Q @ (Phi_b.T @ f(Phi @ vstack((l(B), B))) - Phi_b.T @ Phi_a)
@@ -200,6 +203,8 @@ def pan_int(
     ls_kwargs["return_nfe"] = True
     newton_kwargs["has_aux"] = True
 
+    device = y_init.device
+
     newton_nfe = 0
     ls_nfe_total = 0
 
@@ -209,7 +214,7 @@ def pan_int(
     dims = y_init.shape[0]
     cur_interval = [t_lims[0], t_lims[0] + step]
 
-    approx = torch.tensor([])
+    approx = torch.tensor([],device = device)
 
     while True:
         if cur_interval[1] > t_lims[1]:
@@ -219,7 +224,7 @@ def pan_int(
         f_init = f(y_init)
         ls_nfe_total += 1
 
-        Phi, DPhi = _cheb_phis(num_points, num_coeff_per_dim, cur_interval)
+        Phi, DPhi = _cheb_phis(num_points, num_coeff_per_dim, cur_interval, device)
 
         # START WITH THE LEAST SQUARES SOLUTION
         B, sol, ls_nfe = lst_sq_solver(
@@ -232,6 +237,8 @@ def pan_int(
             callback=lambda B: callback(B, y_init, cur_interval)
             if callback is not None
             else None,
+            Phi = Phi,
+            DPhi = DPhi,
             **ls_kwargs
         )
         ls_nfe_total += ls_nfe
@@ -245,7 +252,7 @@ def pan_int(
             B = _B_init_cond(
                 B_vec.reshape(dims, num_coeff_per_dim - 2).T,
                 y_init,
-                f(y_init),
+                f_init,
                 Phi,
                 DPhi,
             )

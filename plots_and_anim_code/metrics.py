@@ -2,7 +2,7 @@ import torch
 from torch import tensor, cos, sin, tanh, log, cosh
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from matplotlib.animation import PillowWriter
+from matplotlib.animation import PillowWriter, FFMpegWriter
 from scipy.integrate import solve_ivp
 from math import floor, log10
 
@@ -57,12 +57,12 @@ def lorenz_anim(t_lims, y_init):
         left=False, right=False, labelleft=False, labelbottom=False, bottom=False
     )
 
-    (approx_art,) = ax.plot([], [], [], color="#125577")
+    (approx_art,) = ax.plot([], [], [], color="#125577", alpha=0.7)
     plt.pause(0.05)
 
-    writer = PillowWriter(fps=24, metadata={"artist": "Yiorgos Pan"})
-    writer.setup(fig, "test.gif", 150)
-    writer.frame_format = "png"
+    writer = FFMpegWriter(fps=24, metadata={"artist": "Yiorgos Pan"})
+    writer.setup(fig, "test.mp4", 100)
+    # writer.frame_format = "png"
     azim = 0
 
     curt = t_lims[0]
@@ -75,7 +75,7 @@ def lorenz_anim(t_lims, y_init):
         num_coeff_per_dim = (B_vec.shape[0] + 2 * dims) // dims
 
         # plotting points
-        Phi, DPhi = _cheb_phis(100, num_coeff_per_dim, cur_interval)
+        Phi, DPhi = _cheb_phis(100, num_coeff_per_dim, cur_interval, device=y_init.device)
         B = _B_init_cond(
             B_vec.reshape(dims, num_coeff_per_dim - 2).T,
             y_init,
@@ -192,14 +192,14 @@ def latex_table(
 
 if __name__ == "__main__":
     scipy_params = [
-        # ("RK45", 1e-6),
-        # ("Radau", 1e-6),
-        # ("BDF", 1e-6),
-        # ("LSODA", 1e-6),
-        # ("RK45", 1e-9),
-        # ("Radau", 1e-9),
-        # ("BDF", 1e-9),
-        # ("LSODA", 1e-9),
+        ("RK45", 1e-6),
+        ("Radau", 1e-6),
+        ("BDF", 1e-6),
+        ("LSODA", 1e-6),
+        ("RK45", 1e-9),
+        ("Radau", 1e-9),
+        ("BDF", 1e-9),
+        ("LSODA", 1e-9),
     ]
     pan_params = [
         (50, 0.3, 1e-6, 1e-6),

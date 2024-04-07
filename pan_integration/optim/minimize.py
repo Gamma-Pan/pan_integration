@@ -242,7 +242,7 @@ def newton(
     for step in range(max_steps):
         if callback is not None:
             with torch.no_grad():
-                callback(b.clone())
+                callback(b.cpu())
 
         # calculate forward pass and
         Df_k, aux = grad(b)

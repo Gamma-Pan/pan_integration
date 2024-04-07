@@ -6,5 +6,5 @@
 /.idea/
 *.pyc
 __pycache__/
-/test.gif
+/test.mp4
 /misc/lightning_logs/
