@@ -44,8 +44,8 @@ if __name__ == "__main__":
         f"({y_rk.y[0][-1].item()},{y_rk.y[1][-1].item()})"
     )
 
-    num_coeff_per_dim = 50
-    num_points = 50
+    num_coeff_per_dim = 100
+    num_points = 100
     B_vec, nfe = lst_sq_solver(
         f,
         y_init[0],
