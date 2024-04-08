@@ -4,7 +4,8 @@ from pan_integration.solvers.pan_integration import (
     _B_init_cond,
 )
 import torch
-from torch import nn
+from torch import nn, tensor
+import scipy
 
 
 class Spiral(nn.Module):
@@ -28,6 +29,13 @@ if __name__ == "__main__":
     f_init = f(y_init)
 
     t_lims = [0.0, 1.0]
+
+    y_rk = scipy.integrate.solve_ivp(lambda t, x: f(tensor(x, dtype=torch.float32)).numpy(),t_lims, y_init[0])
+
+    print(
+        f"Method lstsq took {y_rk.nfev}: \t\t\t\t function evaluations  y(T) = "
+        f"({y_rk.y[0][-1].item()},{y_rk.y[0][-1].item()})"
+    )
 
     num_coeff_per_dim = 50
     num_points = 50
@@ -59,7 +67,7 @@ if __name__ == "__main__":
     )
     approx = Phi @ B
     print(
-        f"Method lstsq took {nfe}: \t\t\t\t function evaluations  y(T) = ({approx[-1,0].item()},{approx[-1,0].item()}"
+        f"Method lstsq took {nfe}: \t\t\t\t function evaluations  y(T) = ({approx[-1,0].item()},{approx[-1,1].item()})"
     )
 
 
