@@ -16,6 +16,8 @@ import matplotlib as mpl
 
 mpl.use("TkAgg")
 
+from pan_integration.utils import plotting
+
 
 class Learner(L.LightningModule):
     def __init__(
@@ -62,6 +64,9 @@ if __name__ == "__main__":
     X, y = d.generate(n_samples=10_000, dataset_type="moons", noise=0.1)
     X_train = torch.Tensor(X).to(device)
     y_train = torch.Tensor(y.to(torch.float32)).to(device)
+
+    colors = ["blue", "orange"]
+
     train_dataset = data.TensorDataset(X_train, y_train)
     train_loader = data.DataLoader(train_dataset, batch_size=len(X), shuffle=True)
 
@@ -87,7 +92,7 @@ if __name__ == "__main__":
     ).to(device)
 
     learner = Learner(model)
-    trainer = L.Trainer(max_epochs=200)  # callbacks=TQDMProgressBar(refresh_rate=5))
+    trainer = L.Trainer(max_epochs=150)  # callbacks=TQDMProgressBar(refresh_rate=5))
     trainer.fit(learner, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
     # ckpt_path = glob.glob("lightning_logs/version_0/checkpoints/*.ckpt")
@@ -99,7 +104,6 @@ if __name__ == "__main__":
 
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
-    colors = ["blue", "orange"]
 
     for i in range(len(X_val)):
         ax.plot(

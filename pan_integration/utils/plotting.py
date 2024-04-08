@@ -38,7 +38,7 @@ class VfPlotter:
         self,
         f: Callable,
         y_init: torch.Tensor,
-        t_init: float,
+        t_init: float = None,
         grid_definition: tuple = (40, 40),
         existing_axes: plt.Axes = None,
         ax_kwargs: dict = None,
@@ -47,7 +47,7 @@ class VfPlotter:
         queue_size=5,
     ):
         self.y_init = y_init
-        self.t_init = t_init
+        self.t_init = t_init if t_init is not None else 0.
 
         if existing_axes is None:
             self.fig, self.ax = plt.subplots()
@@ -65,7 +65,7 @@ class VfPlotter:
         self.grid_definition = grid_definition
         self.f = f
 
-        self._plot_vector_field()
+        # self._plot_vector_field()
 
         if animation:
             self.writer = PillowWriter(fps=4, metadata={"artist": "Yiorgos Pan"})
@@ -106,7 +106,8 @@ class VfPlotter:
     ):
         if plot_kwargs is None:
             plot_kwargs = {"color": "red"}
-        ivp_kwargs = ivp_kwargs or {}
+        if ivp_kwargs is None:
+            ivp_kwargs = {"method": "RK45"}
         y_init = self.y_init if y_init is None else y_init
 
         ivp_sol = solve_ivp(
@@ -146,7 +147,7 @@ class VfPlotter:
         self,
         approx,
         t_init,
-        color,
+        color='green',
         Dapprox=None,
         num_arrows: int = 10,
         **kwargs,
@@ -253,7 +254,7 @@ class LsPlotter:
             linestyle="--",
         )
 
-        self.ai, = self.ax.plot([], [], 'o', color= "#440834")
+        (self.ai,) = self.ax.plot([], [], "o", color="#440834")
 
     def line_search(self, a_cur, c1):
         # plot the line along the search direction
@@ -298,11 +299,11 @@ class LsPlotter:
             [
                 phi_ai,
                 phi_ai + 0.1 * abs(Dphi_ai),
-                ]
+            ]
         )
 
-        self.wolfe2_line.set_xdata([ai, ai + .1])
-        self.wolfe2_line.set_ydata([phi_ai, phi_ai - .1*c2*DPhi_0] )
+        self.wolfe2_line.set_xdata([ai, ai + 0.1])
+        self.wolfe2_line.set_ydata([phi_ai, phi_ai - 0.1 * c2 * DPhi_0])
 
         wait()
 
