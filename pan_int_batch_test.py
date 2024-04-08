@@ -26,7 +26,7 @@ f.requires_grad_(False)
 f.eval()
 
 if __name__ == "__main__":
-    y_init = torch.rand(1, 2)
+    y_init = torch.tensor([.5,.5])[None]
     f_init = f(y_init)
 
     t_lims = [0.0, 1.0]
