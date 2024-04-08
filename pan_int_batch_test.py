@@ -77,3 +77,5 @@ if __name__ == "__main__":
     print(
         f"Method lstsq took {nfe}: \t\t\t\t function evaluations  y(T) = ({approx[-1,0].item()},{approx[-1,1].item()})"
     )
+    
+    print(torch.norm(approx[-1,0] - torch.tensor( [ y_rk.y[0][-1].item(), y_rk.y[1][-1].item()] )))
