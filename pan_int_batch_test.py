@@ -30,11 +30,17 @@ if __name__ == "__main__":
 
     t_lims = [0.0, 1.0]
 
-    y_rk = scipy.integrate.solve_ivp(lambda t, x: f(tensor(x, dtype=torch.float32)).numpy(),t_lims, y_init[0])
+    y_rk = scipy.integrate.solve_ivp(
+        lambda t, x: f(tensor(x, dtype=torch.float32)).numpy(),
+        t_lims,
+        y_init[0],
+        atol=1e-9,
+        rtol=1e-14,
+    )
 
     print(
         f"Method lstsq took {y_rk.nfev}: \t\t\t\t function evaluations  y(T) = "
-        f"({y_rk.y[0][-1].item()},{y_rk.y[0][-1].item()})"
+        f"({y_rk.y[0][-1].item()},{y_rk.y[1][-1].item()})"
     )
 
     num_coeff_per_dim = 50
@@ -47,6 +53,7 @@ if __name__ == "__main__":
         num_coeff_per_dim=num_coeff_per_dim,
         num_points=num_points,
         return_nfe=True,
+        etol=1e-9
     )
 
     Phi, DPhi = _cheb_phis(
@@ -69,5 +76,3 @@ if __name__ == "__main__":
     print(
         f"Method lstsq took {nfe}: \t\t\t\t function evaluations  y(T) = ({approx[-1,0].item()},{approx[-1,1].item()})"
     )
-
-
