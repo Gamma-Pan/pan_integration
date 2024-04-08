@@ -15,6 +15,7 @@ class Spiral(nn.Module):
         self.linear.weight = nn.Parameter(
             torch.tensor([[-a, 1.0], [-1.0, -a]], requires_grad=True)
         )
+        self.linear.bias = nn.Parameter(torch.zeros((1, 2), requires_grad=False))
 
     def forward(self, x):
         return self.linear(x)
@@ -31,7 +32,7 @@ if __name__ == "__main__":
     t_lims = [0.0, 1.0]
 
     y_rk = scipy.integrate.solve_ivp(
-        lambda t, x: f(tensor(x, dtype=torch.float32)).numpy(),
+        lambda t, x: f(tensor(x, dtype=torch.float32)[None]).numpy(),
         t_lims,
         y_init[0],
         atol=1e-9,
@@ -53,7 +54,7 @@ if __name__ == "__main__":
         num_coeff_per_dim=num_coeff_per_dim,
         num_points=num_points,
         return_nfe=True,
-        etol=1e-9
+        etol=1e-9,
     )
 
     Phi, DPhi = _cheb_phis(
