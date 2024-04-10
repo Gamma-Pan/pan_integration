@@ -3,13 +3,20 @@ from pan_integration.solvers.pan_integration import (
     _cheb_phis,
     _B_init_cond,
 )
+
+from pan_integration.utils.plotting import VfPlotter, wait
+
 import torch
 from torch import nn, tensor
 import scipy
 
+from torchdyn.numerics import odeint
+
+torch.manual_seed(42)
+
 
 class Spiral(nn.Module):
-    def __init__(self, a=0.1):
+    def __init__(self, a=0.3):
         super().__init__()
         self.linear = nn.Linear(2, 2)
         self.linear.weight = nn.Parameter(
@@ -26,56 +33,58 @@ f.requires_grad_(False)
 f.eval()
 
 if __name__ == "__main__":
-    y_init = torch.tensor([.5,.5])[None]
+    batches = 3
+    dims=2
+    y_init = torch.rand(batches,dims)
     f_init = f(y_init)
 
-    t_lims = [0.0, 1.0]
+    t_lims = [0., 4.]
+    t_span = torch.linspace(*t_lims, 10)
 
-    y_rk = scipy.integrate.solve_ivp(
-        lambda t, x: f(tensor(x, dtype=torch.float32)[None]).numpy(),
-        t_lims,
-        y_init[0],
-        atol=1e-9,
-        rtol=1e-14,
-    )
+    plotter = VfPlotter(f, y_init[0], t_lims[0])
+    plotter.solve_ivp(t_lims, y_init[0], set_lims=True)
 
-    print(
-        f"Method lstsq took {y_rk.nfev}: \t\t\t\t function evaluations  y(T) = "
-        f"({y_rk.y[0][-1].item()},{y_rk.y[1][-1].item()})"
-    )
+    t_eval, y_tsit = odeint(lambda t, x:f(x),y_init,t_span, 'tsit5' )
 
-    num_coeff_per_dim = 100
-    num_points = 100
+    def callback(B_vec):
+        Phi, DPhi = _cheb_phis(
+            num_coeff_per_dim=num_coeff_per_dim,
+            num_points=num_points,
+            t_lims=t_lims,
+            include_end=True,
+        )
+        B = _B_init_cond(
+            B_vec.reshape(
+                2,
+                num_coeff_per_dim - 2,
+            ).T,
+            y_init,
+            f_init,
+            Phi,
+            DPhi,
+        )
+        approx = Phi @ B
+        Dapprox = DPhi @ B
+        plotter.approx(approx, t_lims[0], Dapprox=Dapprox)
+        wait()
+
+    num_coeff_per_dim =  8
+    num_points = 10
     B_vec, nfe = lst_sq_solver(
         f,
-        y_init[0],
-        f_init[0],
-        [0.0, 1.0],
+        y_init,
+        f_init,
+        t_lims,
         num_coeff_per_dim=num_coeff_per_dim,
         num_points=num_points,
         return_nfe=True,
         etol=1e-9,
+        callback=None
     )
 
-    Phi, DPhi = _cheb_phis(
-        num_coeff_per_dim=num_coeff_per_dim,
-        num_points=num_points,
-        t_lims=t_lims,
-        include_end=True,
-    )
-    B = _B_init_cond(
-        B_vec.reshape(
-            2,
-            num_coeff_per_dim - 2,
-        ).T,
-        y_init,
-        f_init,
-        Phi,
-        DPhi,
-    )
-    approx = Phi @ B
-    print(
-        f"Method lstsq took {nfe}: \t\t\t\t function evaluations  y(T) = ({approx[-1,0].item()},{approx[-1,1].item()})"
-    )
-    
-    print(torch.norm(approx[-1,0] - torch.tensor( [ y_rk.y[0][-1].item(), y_rk.y[1][-1].item()] )))
+    Phi, DPhi = _cheb_phis(num_points, num_coeff_per_dim,t_lims,include_end=True)
+    B_tail = B_vec.reshape(batches, dims, num_coeff_per_dim - 2 ).mT
+    B = _B_init_cond(B_tail, y_init, f_init, Phi, DPhi)
+    approx = Phi@B
+    plotter.approx(approx[0,...], t_lims[0])
+    wait()

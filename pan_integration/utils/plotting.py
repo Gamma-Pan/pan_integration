@@ -47,7 +47,7 @@ class VfPlotter:
         queue_size=5,
     ):
         self.y_init = y_init
-        self.t_init = t_init if t_init is not None else 0.
+        self.t_init = t_init if t_init is not None else 0.0
 
         if existing_axes is None:
             self.fig, self.ax = plt.subplots()
@@ -60,6 +60,7 @@ class VfPlotter:
         self.approx_arts = None
         self.queue_size = queue_size
         self.Dapprox_art = None
+        self.fart = None
         self.text = text
 
         self.grid_definition = grid_definition
@@ -147,7 +148,7 @@ class VfPlotter:
         self,
         approx,
         t_init,
-        color='green',
+        color="green",
         Dapprox=None,
         num_arrows: int = 10,
         **kwargs,
@@ -206,13 +207,23 @@ class VfPlotter:
 
             if self.Dapprox_art is not None:
                 self.Dapprox_art.remove()
+                self.fart.remove()
 
             self.Dapprox_art = self.ax.quiver(
                 approx[idxs, 0],
                 approx[idxs, 1],
                 Dapprox[idxs, 0],
                 Dapprox[idxs, 1],
-                angles="xy",
+                **quiver_args
+            )
+            f = self.f(approx)
+
+            self.fart = self.ax.quiver(
+                approx[idxs, 0],
+                approx[idxs, 1],
+                f[idxs, 0],
+                f[idxs, 1],
+                **quiver_args
             )
 
     def grab_frame(self):

@@ -1,5 +1,5 @@
 import torch
-from torch import Tensor, vstack, tensor
+from torch import Tensor, vstack, tensor, cat, stack
 from torch.linalg import inv
 from ..optim import newton
 from typing import Tuple
@@ -10,12 +10,12 @@ from typing import Tuple
 def T_grid(num_points, num_coeff_per_dim, include_end=False):
     t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
     if include_end:
-        torch.cat((t, tensor([1.])))
+        t = torch.cat((t, tensor([1.0])))
     t = t[:, None]
 
-    out = torch.empty(num_points, num_coeff_per_dim)
+    out = torch.empty(num_points + include_end, num_coeff_per_dim)
     out[:, [0]] = torch.ones(
-        num_points,
+        num_points+include_end,
         1,
     )
     out[:, [1]] = t
@@ -26,17 +26,17 @@ def T_grid(num_points, num_coeff_per_dim, include_end=False):
     return out
 
 
-def U_grid(num_points, num_coeff_per_dim,include_end=False):
+def U_grid(num_points, num_coeff_per_dim, include_end=False):
     t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
     if include_end:
-        torch.cat((t, tensor([1.])))
+        t = torch.cat((t, tensor([1.0])))
     t = t[:, None]
     out = torch.empty(
-        num_points,
+        num_points+include_end,
         num_coeff_per_dim,
     )
     out[:, [0]] = torch.ones(
-        num_points,
+        num_points+include_end,
         1,
     )
     out[:, [1]] = 2 * t
@@ -47,25 +47,28 @@ def U_grid(num_points, num_coeff_per_dim,include_end=False):
     return out
 
 
-def _B_init_cond(B_tail, y_init, f_init, Phi, DPhi):
-    inv0 = inv(vstack((Phi[0, [0, 1]], DPhi[0, [0, 1]])))
-    B_01 = inv0 @ (
-        vstack([y_init, f_init]) - vstack([Phi[[0], 2:], DPhi[[0], 2:]]) @ B_tail
-    )
-    return torch.vstack([B_01, B_tail])
-
-
-def _cheb_phis(num_points, num_coeff_per_dim, t_lims, include_end=False ):
+def _cheb_phis(num_points, num_coeff_per_dim, t_lims, include_end=False):
     step = t_lims[1] - t_lims[0]
     Phi = T_grid(num_points, num_coeff_per_dim, include_end)
     DPhi = (2 / step) * torch.hstack(
         [
-            torch.zeros(num_points, 1, dtype=torch.float),
+            torch.zeros(num_points+include_end, 1, dtype=torch.float),
             torch.arange(1, num_coeff_per_dim, dtype=torch.float)
             * U_grid(num_points, num_coeff_per_dim - 1, include_end),
         ]
     )
-    return Phi, DPhi
+    return Phi[None], DPhi[None]
+
+
+def _B_init_cond(B_tail, y_init, f_init, Phi, DPhi):
+    inv0 = inv(stack((Phi[:, 0, [0, 1]], DPhi[:, 0, [0, 1]]), dim=1))
+
+    l = lambda B: inv0 @ (
+        stack((y_init, f_init), dim=1)
+        - cat((Phi[:, [0], 2:], DPhi[:, [0], 2:]), dim=1) @ B_tail
+    )
+
+    return torch.cat([l(B_tail), B_tail], dim=1)
 
 
 @torch.no_grad()
@@ -87,7 +90,7 @@ def _coarse_euler_init(f, y_init, num_solver_steps, t_lims, num_coeff_per_dim):
         f_eul[i, :] = f_cur
         y_eul[i, :] = y_cur + step_size * f_cur
 
-    Phi, DPhi = _cheb_phis(num_solver_steps, num_coeff_per_dim, t_lims, device=device)
+    Phi, DPhi = _cheb_phis(num_solver_steps, num_coeff_per_dim, t_lims)
 
     inv0 = inv(vstack((Phi[0, [0, 1]], DPhi[0, [0, 1]])))
     PHI = -vstack([Phi[:, [0, 1]], DPhi[:, [0, 1]]]) @ inv0 @ vstack(
@@ -120,11 +123,12 @@ def lst_sq_solver(
 ) -> Tensor | Tuple[Tensor, int]:
     device = y_init.device
     if Phi is None or DPhi is None:
-        Phi, DPhi = _cheb_phis(num_points, num_coeff_per_dim, t_lims, device)
+        Phi, DPhi = _cheb_phis(num_points, num_coeff_per_dim, t_lims)
 
     nfe = 0
 
-    dims = y_init.shape[-1]
+    batches, dims = y_init.shape
+
     if init == "euler":
         B = (
             _coarse_euler_init(f, y_init, coarse_steps, t_lims, num_coeff_per_dim)
@@ -133,7 +137,7 @@ def lst_sq_solver(
         )
         nfe += coarse_steps
     elif init == "random":
-        B = torch.rand(num_coeff_per_dim - 2, dims, device=device)
+        B = torch.rand(batches, num_coeff_per_dim - 2, dims, device=device)
     else:
         raise "init must be either 'euler' or 'random'"
 
@@ -142,18 +146,20 @@ def lst_sq_solver(
 
     # integral interval lengths for non-uniform sampling
     t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
-    d = torch.diff(torch.cat((t, tensor([1.0]))))[:, None]
+    d = t_lims[1] * torch.diff(torch.cat((t, tensor([1.0]))))[:, None]
 
-    inv0 = inv(vstack((Phi[0, [0, 1]], DPhi[0, [0, 1]])))
-    Phi_aT = DPhi[:, [0, 1]] @ inv0 @ vstack((y_init, f_init))
+    inv0 = inv(stack((Phi[:, 0, [0, 1]], DPhi[:, 0, [0, 1]]), dim=1))
+    Phi_aT = DPhi[:, :, [0, 1]] @ inv0 @ stack((y_init, f_init), dim=1)
     Phi_bT = (
-        -DPhi[:, [0, 1]] @ inv0 @ vstack((Phi[[0], 2:], DPhi[[0], 2:])) + DPhi[:, 2:]
+        -DPhi[:, :, [0, 1]] @ inv0 @ cat((Phi[:, [0], 2:], DPhi[:, [0], 2:]), dim=1)
+        + DPhi[:, :, 2:]
     )
     l = lambda B: inv0 @ (
-        vstack((y_init, f_init)) - vstack((Phi[[0], 2:], DPhi[[0], 2:])) @ B
+        stack((y_init, f_init), dim=1)
+        - cat((Phi[:, [0], 2:], DPhi[:, [0], 2:]), dim=1) @ B
     )
 
-    Q = inv(Phi_bT.T @ (d * Phi_bT))
+    Q = inv(Phi_bT.mT @ (d * Phi_bT))
     # MAIN LOOP
     for i in range(max_steps):
         if callback is not None:
@@ -161,16 +167,18 @@ def lst_sq_solver(
 
         B_prev = B
         # B update
-        B = Q @ (Phi_bT.T @ (d * f(Phi @ vstack((l(B), B)))) - Phi_bT.T @ (d * Phi_aT))
+        B = Q @ (
+            Phi_bT.mT @ (d * f(Phi @ cat((l(B), B), dim=1))) - Phi_bT.mT @ (d * Phi_aT)
+        )
 
         nfe += 1
         if torch.norm(B - B_prev) < etol:
             break
 
     if return_nfe:
-        return B.T.reshape(-1), nfe
+        return B.mT.reshape(-1), nfe
     else:
-        return (B.T.reshape(-1),)
+        return (B.mT.reshape(-1),)
 
 
 def pan_int(
