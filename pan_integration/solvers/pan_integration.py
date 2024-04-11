@@ -5,7 +5,7 @@ from ..optim import newton
 from typing import Tuple
 
 # torch.set_default_dtype(torch.float64)
-
+torch.manual_seed(42)
 
 def T_grid(num_points, num_coeff_per_dim, include_end=False):
     t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
@@ -15,7 +15,7 @@ def T_grid(num_points, num_coeff_per_dim, include_end=False):
 
     out = torch.empty(num_points + include_end, num_coeff_per_dim)
     out[:, [0]] = torch.ones(
-        num_points+include_end,
+        num_points + include_end,
         1,
     )
     out[:, [1]] = t
@@ -32,11 +32,11 @@ def U_grid(num_points, num_coeff_per_dim, include_end=False):
         t = torch.cat((t, tensor([1.0])))
     t = t[:, None]
     out = torch.empty(
-        num_points+include_end,
+        num_points + include_end,
         num_coeff_per_dim,
     )
     out[:, [0]] = torch.ones(
-        num_points+include_end,
+        num_points + include_end,
         1,
     )
     out[:, [1]] = 2 * t
@@ -52,7 +52,7 @@ def _cheb_phis(num_points, num_coeff_per_dim, t_lims, include_end=False):
     Phi = T_grid(num_points, num_coeff_per_dim, include_end)
     DPhi = (2 / step) * torch.hstack(
         [
-            torch.zeros(num_points+include_end, 1, dtype=torch.float),
+            torch.zeros(num_points + include_end, 1, dtype=torch.float),
             torch.arange(1, num_coeff_per_dim, dtype=torch.float)
             * U_grid(num_points, num_coeff_per_dim - 1, include_end),
         ]
@@ -168,7 +168,8 @@ def lst_sq_solver(
         B_prev = B
         # B update
         B = Q @ (
-            Phi_bT.mT @ (d * f(Phi @ cat((l(B), B), dim=1))) - Phi_bT.mT @ (d * Phi_aT)
+            Phi_bT.mT @ (d * f(0, Phi @ cat((l(B), B), dim=1)))
+            - Phi_bT.mT @ (d * Phi_aT)
         )
 
         nfe += 1

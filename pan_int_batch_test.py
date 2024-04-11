@@ -7,12 +7,75 @@ from pan_integration.solvers.pan_integration import (
 from pan_integration.utils.plotting import VfPlotter, wait
 
 import torch
-from torch import nn, tensor
-import scipy
+from torch import nn, tensor, cat, stack
+from torch.linalg import inv
 
-from torchdyn.numerics import odeint
+from torchdyn.numerics import odeint, odeint_mshooting
+from torchdyn.numerics.solvers.templates import MultipleShootingDiffeqSolver
 
 torch.manual_seed(42)
+
+
+class LSZero(MultipleShootingDiffeqSolver):
+    def __init__(self, num_coeff_per_dim, num_points , etol=1e-5, callback=None):
+        super().__init__("euler", "euler")
+        self.num_coeff_per_dim = num_coeff_per_dim
+        self.num_points = num_points
+        self.etol = etol
+        self.callback = None
+
+    def root_solve(self, odeint_func, f, x, t_span, B, fine_steps, maxiter):
+        y_init = x
+        t_lims = [t_span[0], t_span[-1]]
+
+        batches, dims = y_init.shape
+        C = torch.rand(batches, self.num_coeff_per_dim - 2, dims)
+
+        t = -torch.cos(torch.pi * (torch.arange(var_num_points) / var_num_points))
+        d = t_lims[1] * torch.diff(torch.cat((t, tensor([1.0]))))[:, None]
+
+        Phi, DPhi = _cheb_phis(
+            self.num_points, self.num_coeff_per_dim, t_lims
+        )
+
+        inv0 = inv(stack((Phi[:, 0, [0, 1]], DPhi[:, 0, [0, 1]]), dim=1))
+        Phi_aT = DPhi[:, :, [0, 1]] @ inv0 @ stack((y_init, f_init), dim=1)
+        Phi_bT = (
+            -DPhi[:, :, [0, 1]] @ inv0 @ cat((Phi[:, [0], 2:], DPhi[:, [0], 2:]), dim=1)
+            + DPhi[:, :, 2:]
+        )
+        l = lambda C: inv0 @ (
+            stack((y_init, f_init), dim=1)
+            - cat((Phi[:, [0], 2:], DPhi[:, [0], 2:]), dim=1) @ C
+        )
+
+        Q = inv(Phi_bT.mT @ (d * Phi_bT))
+        # MAIN LOOP
+        for i in range(50):
+            if self.callback is not None:
+                self.callback(C.cpu())
+
+            C_prev = C
+            # C update
+            C = Q @ (
+                Phi_bT.mT @ (d * f(0, Phi @ cat((l(C), C), dim=1)))
+                - Phi_bT.mT @ (d * Phi_aT)
+            )
+
+            if torch.norm(C - C_prev) < self.etol:
+                break
+
+
+        # refine with newton
+
+
+        Phi_out,_ = _cheb_phis(len(t_span), self.num_coeff_per_dim, t_lims, include_end=True)
+
+        approx = Phi_out @ cat((l(C), C), dim=1)
+        # return (time,batch,dim)
+        return approx.transpose(0, 1)
+
+
 
 
 class Spiral(nn.Module):
@@ -24,7 +87,7 @@ class Spiral(nn.Module):
         )
         self.linear.bias = nn.Parameter(torch.zeros((1, 2), requires_grad=False))
 
-    def forward(self, x):
+    def forward(self, t, x):
         return self.linear(x)
 
 
@@ -33,58 +96,47 @@ f.requires_grad_(False)
 f.eval()
 
 if __name__ == "__main__":
-    batches = 3
-    dims=2
-    y_init = torch.rand(batches,dims)
-    f_init = f(y_init)
+    var_batches = 1
+    var_dims = 2
+    var_y_init = torch.rand(var_batches, var_dims)
+    f_init = f(0, var_y_init)
 
-    t_lims = [0., 4.]
-    t_span = torch.linspace(*t_lims, 10)
+    var_t_lims = [0.0, 5.0]
+    var_t_span = torch.linspace(*var_t_lims, 10)
 
-    plotter = VfPlotter(f, y_init[0], t_lims[0])
-    plotter.solve_ivp(t_lims, y_init[0], set_lims=True)
+    plotter = VfPlotter(f)
+    plotter.solve_ivp(var_t_span, var_y_init, set_lims=True)
 
-    t_eval, y_tsit = odeint(lambda t, x:f(x),y_init,t_span, 'tsit5' )
+    t_eval, y_tsit = odeint(f, var_y_init, var_t_span, "tsit5")
 
     def callback(B_vec):
         Phi, DPhi = _cheb_phis(
-            num_coeff_per_dim=num_coeff_per_dim,
-            num_points=num_points,
-            t_lims=t_lims,
+            num_coeff_per_dim=var_num_coeff_per_dim,
+            num_points=var_num_points,
+            t_lims=var_t_lims,
             include_end=True,
         )
         B = _B_init_cond(
             B_vec.reshape(
                 2,
-                num_coeff_per_dim - 2,
+                var_num_coeff_per_dim - 2,
             ).T,
-            y_init,
+            var_y_init,
             f_init,
             Phi,
             DPhi,
         )
         approx = Phi @ B
         Dapprox = DPhi @ B
-        plotter.approx(approx, t_lims[0], Dapprox=Dapprox)
+        plotter.approx(approx, var_t_lims[0], Dapprox=Dapprox)
         wait()
 
-    num_coeff_per_dim =  8
-    num_points = 10
-    B_vec, nfe = lst_sq_solver(
-        f,
-        y_init,
-        f_init,
-        t_lims,
-        num_coeff_per_dim=num_coeff_per_dim,
-        num_points=num_points,
-        return_nfe=True,
-        etol=1e-9,
-        callback=None
-    )
+    var_num_coeff_per_dim = 8
+    var_num_points = 10
 
-    Phi, DPhi = _cheb_phis(num_points, num_coeff_per_dim,t_lims,include_end=True)
-    B_tail = B_vec.reshape(batches, dims, num_coeff_per_dim - 2 ).mT
-    B = _B_init_cond(B_tail, y_init, f_init, Phi, DPhi)
-    approx = Phi@B
-    plotter.approx(approx[0,...], t_lims[0])
+    solver = LSZero(var_num_coeff_per_dim, var_num_points)
+    _, approx_ms = odeint_mshooting(f, var_y_init, var_t_span, solver, torch.empty(0))
+
+    plotter.approx(approx_ms, var_t_lims[0], color="orange")
+
     wait()

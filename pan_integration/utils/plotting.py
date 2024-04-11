@@ -4,10 +4,12 @@ from typing import Callable
 from itertools import cycle
 
 from matplotlib.animation import PillowWriter
-from scipy.integrate import solve_ivp
 import torch
 from torch import max, min, tensor, abs
 from torch.linalg import inv
+
+from torchdyn.numerics import odeint
+
 
 mpl.use("TkAgg")
 
@@ -37,8 +39,6 @@ class VfPlotter:
     def __init__(
         self,
         f: Callable,
-        y_init: torch.Tensor,
-        t_init: float = None,
         grid_definition: tuple = (40, 40),
         existing_axes: plt.Axes = None,
         ax_kwargs: dict = None,
@@ -46,9 +46,6 @@ class VfPlotter:
         text=False,
         queue_size=5,
     ):
-        self.y_init = y_init
-        self.t_init = t_init if t_init is not None else 0.0
-
         if existing_axes is None:
             self.fig, self.ax = plt.subplots()
             if ax_kwargs is not None:
@@ -56,17 +53,12 @@ class VfPlotter:
         else:
             self.ax = existing_axes
 
-        self.ax.plot(*y_init, "ro")
-        self.approx_arts = None
-        self.queue_size = queue_size
-        self.Dapprox_art = None
-        self.fart = None
-        self.text = text
+        self.D_quiver = None
+        self.f_quiver = None
 
+        self.t_init = None
         self.grid_definition = grid_definition
         self.f = f
-
-        # self._plot_vector_field()
 
         if animation:
             self.writer = PillowWriter(fps=4, metadata={"artist": "Yiorgos Pan"})
@@ -74,14 +66,23 @@ class VfPlotter:
             self.writer.frame_format = "png"
         self.animation = animation
 
-    def _plot_vector_field(self):
-        xs = torch.linspace(*self.ax.get_xlim(), self.grid_definition[0])
-        ys = torch.linspace(*self.ax.get_ylim(), self.grid_definition[1])
+    def _plot_vector_field(self, trajectories):
+        padding = 0.2
+        xmax = torch.max(trajectories) + padding
+        xmin = torch.min(trajectories) - padding
+        ymax = torch.max(trajectories) + padding
+        ymin = torch.min(trajectories) - padding
+
+        self.ax.set_xlim(xmin , xmax )
+        self.ax.set_ylim(ymin , ymax )
+
+        xs = torch.linspace(float(xmin), float(xmax), self.grid_definition[0])
+        ys = torch.linspace(float(ymin), float(ymax), self.grid_definition[1])
 
         Xs, Ys = torch.meshgrid(xs, ys, indexing="xy")
 
         batch = torch.stack((Xs, Ys), dim=-1).reshape(-1, 2)
-        derivatives = self.f(batch.to(torch.float32)).reshape(
+        derivatives = self.f(0,batch).reshape(
             self.grid_definition[0], self.grid_definition[1], 2
         )
         Us, Vs = derivatives.unbind(dim=-1)
@@ -94,12 +95,9 @@ class VfPlotter:
             **stream_kwargs,
         )
 
-    def update(self):
-        raise NotImplementedError
-
     def solve_ivp(
         self,
-        interval,
+        t_span,
         y_init: torch.tensor = None,
         set_lims=False,
         ivp_kwargs=None,
@@ -108,123 +106,31 @@ class VfPlotter:
         if plot_kwargs is None:
             plot_kwargs = {"color": "red"}
         if ivp_kwargs is None:
-            ivp_kwargs = {"method": "RK45"}
-        y_init = self.y_init if y_init is None else y_init
+            ivp_kwargs = {"solver": "tsit5", 'atol': 1e-9, 'rtol': 1e-12}
 
-        ivp_sol = solve_ivp(
-            lambda t, x: self.f(torch.tensor(x[None], dtype=torch.float32))
-            .squeeze()
-            .numpy(),
-            interval,
-            y_init,
-            **ivp_kwargs,
-        )
+        t_eval, trajectories = odeint(self.f, y_init, t_span, **ivp_kwargs)
 
-        trajectory = ivp_sol.y
-        print(
-            f"Method {ivp_kwargs['method']} took {ivp_sol.nfev}\t\t\t function evaluations, y(T) = ({trajectory[0][-1]:.9f},{trajectory[1][-1]:.9f})"
-        )
+        self.ax.plot( *trajectories.unbind(dim=-1), **plot_kwargs)
 
         if set_lims:
-            xmax = torch.max(tensor(trajectory[0, :]))
-            xmin = torch.min(tensor(trajectory[0, :]))
-            ymax = torch.max(tensor(trajectory[1, :]))
-            ymin = torch.min(tensor(trajectory[1, :]))
-            padding = 0.2
-            self.ax.set_xlim(xmin - padding, xmax + padding)
-            self.ax.set_ylim(ymin - padding, ymax + padding)
-            self._plot_vector_field()
+            self._plot_vector_field(trajectories)
+            plt.autoscale(enable=False)
 
-        (self.trajectory,) = self.ax.plot(
-            *trajectory,
-            **plot_kwargs,
-            label=f"{ivp_kwargs['method']} - {ivp_sol.nfev} NFE",
-            zorder=10,
-        )
-        self.ax.plot(*trajectory[:, -1], "o", color=plot_kwargs["color"], zorder=15)
-        return trajectory
+        return trajectories
 
     def approx(
         self,
         approx,
         t_init,
-        color="green",
         Dapprox=None,
         num_arrows: int = 10,
         **kwargs,
     ):
-        kwargs["color"] = color
-        # faster than deleting and creating artists
-        if not self.approx_arts:
-            self.approx_arts = cycle(
-                [
-                    (
-                        self.ax.text(0, 0, ""),
-                        self.ax.plot([], [], zorder=100, **kwargs)[0],
-                    )
-                    for _ in range(self.queue_size)
-                ]
-            )
-            self.approx_art = next(self.approx_arts)
-
-        # if new step erase previous artists in list expect last and draw new starting point
         if self.t_init != t_init:
             self.t_init = t_init
-            self.ax.plot(*approx[0, :], "o", **kwargs)
-            for _ in range(self.queue_size):
-                art = next(self.approx_arts)
-                art[1].set_data([], [])
-                art[0].set_text("")
-
-        # update one artist and reduce opacity of the previous ones
-        self.approx_art[1].set_data(approx[:, 0], approx[:, 1])
-        self.approx_art[1].set_linestyle("-")
-        self.approx_art[1].set_linewidth(2)
-        self.approx_art[1].set_alpha(1)
-        self.approx_art[1].set_c(color)
-        if self.text:
-            self.approx_art[0].set_position(approx[-1, :])
-            self.approx_art[0].set_text(",".join((f"{x:.2f}") for x in approx[-1, :]))
-            self.approx_art[0].set_c(color)
-
-        if self.queue_size > 1:
-            for a in torch.linspace(1, 0.0, self.queue_size + 1)[1:-1]:
-                art = next(self.approx_arts)
-                art[0].set_alpha(float(a))
-                art[1].set_alpha(float(a))
-                art[1].set_linestyle("--")
-                art[1].set_linewidth(1)
-                new_c = list(mpl.colors.to_rgb(art[0].get_c()))
-                new_c[0] = float(min(tensor(1.0), tensor(new_c[0] + 0.05)))
-                new_c[1] = float(max(tensor(0.0), tensor(new_c[1] - 0.05)))
-                art[0].set_c(new_c)
-                art[1].set_c([x for x in new_c])
-            self.approx_art = art
-
-        if Dapprox is not None:
-            sz = approx.shape[0]
-            idxs = torch.arange(0, sz, sz // num_arrows).tolist()
-
-            if self.Dapprox_art is not None:
-                self.Dapprox_art.remove()
-                self.fart.remove()
-
-            self.Dapprox_art = self.ax.quiver(
-                approx[idxs, 0],
-                approx[idxs, 1],
-                Dapprox[idxs, 0],
-                Dapprox[idxs, 1],
-                **quiver_args
-            )
-            f = self.f(approx)
-
-            self.fart = self.ax.quiver(
-                approx[idxs, 0],
-                approx[idxs, 1],
-                f[idxs, 0],
-                f[idxs, 1],
-                **quiver_args
-            )
+            self.lines = self.ax.plot(*approx.unbind(-1), **kwargs)
+        else:
+            self.lines.set_data(*approx.unbind(-1))
 
     def grab_frame(self):
         self.fig.canvas.draw()
