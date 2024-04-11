@@ -2,7 +2,7 @@ from typing import Callable, Any, Tuple
 
 import torch
 from torch import sign, sqrt, abs, tensor, Tensor
-from torch.func import jacfwd, jacrev
+from torch.func import grad, hessian, vmap
 from pan_integration.utils.plotting import LsPlotter
 from .factor import mod_chol
 
@@ -105,7 +105,6 @@ def _line_search(
     p: Tensor,
     c1=1e-3,
     c2=0.9,
-    a_max=tensor(10.0),
     max_iters=10,
     phi_0=None,
     Dphi_0=None,
@@ -117,19 +116,23 @@ def _line_search(
     using strong Wolfe conditions
 
     """
+    batches, dim = x.shape
 
     def phi(a):
         return f(x + a * p)
 
     def Dphi(a):
-        return (p[None] @ grad_f(x + a * p))[0]
+        return torch.squeeze(p @ grad_f(x + a * p).mT)
 
     if phi_0 is None or Dphi_0 is None:
         phi_0 = phi(0)
         Dphi_0 = Dphi(0)
 
-    a_prev = tensor(0.0)
-    a_cur = tensor(1.0)
+    # extremely convoluted way to vectorize line search to multiple batches
+    mask = torch.ones(batches)
+
+    a_prev = torch.tensor(0.)
+    a_cur = torch.tensor(1.)
     phi_prev = phi_0
     Dphi_prev = Dphi_0
 
@@ -140,13 +143,13 @@ def _line_search(
         plotter = LsPlotter(phi, Dphi)
 
     i = 1
-    while i < max_iters and a_cur < a_max:
+    while i < max_iters:
         # evaluate f at trial step (1 evaluation per loop)
         phi_cur = phi(a_cur)
         if plotting:
             plotter.line_search(a_cur, c1)
         # if sufficient decrease is violated at new point find min with zoom
-        if phi_cur > phi_0 + c1 * a_cur * Dphi_0 or (phi_cur >= phi_prev and i > 1):
+        if phi_cur > phi_0 + c1 * a_cur * Dphi_0 or phi_cur >= phi_prev and i > 1:
             return _zoom(
                 a_prev,
                 a_cur,
@@ -203,9 +206,8 @@ def _line_search(
 def newton(
     f: Callable,
     b_init: Tensor,
-    f_args: tuple = None,
-    f_kwargs: dict = None,
     has_aux=False,
+    modify=True,
     max_steps=50,
     etol: float = 1e-5,
     callback: Callable = None,
@@ -213,28 +215,27 @@ def newton(
     """
     :param f: scalar function to minimize
     :param b_init: tensor of parameters (tested only for 2d tensor)
-    f_args: additional positional arguments to pass to f
-    f_kwargs: additional keyword arguments to pass to f
     :param has_aux, whether the error function returns auxiliary outputs, error should be the first
+    :param modify: modify Hessian to be positive definite, if False assume it is
     :param max_steps: max amount of iterations to perform
     :param etol: tolerance for termination
     :param callback: a function to call at end of each iteration
     :return: b* that is a local minimum of f
     """
-    f_args = f_args or []
-    f_kwargs = f_kwargs or {}
 
+    # define this function to get both forward pass and gradients from a single jacrev call
+    # https://pytorch.org/functorch/stable/generated/functorch.jacrev.html#:~:text=If%20you%20would%20like%20to%20compute%20the%20output%20of%20the%20function%20as%20well%20as%20the%20jacobian%20of%20the%20function%2C%20use%20the%20has_aux%20flag%20to%20return%20the%20output%20as%20an%20auxiliary%20object%3A
     # TODO: utilize jit
     def ff(x):
         if has_aux:
-            res, aux = f(x, *f_args, **f_kwargs)
+            res, aux = f(x)
             return res, (res, aux)
         else:
-            res = f(x, *f_args, **f_kwargs)
+            res = f(x)
             return res, res
 
-    grad = jacrev(ff, has_aux=True)
-    hessian = jacfwd(grad, has_aux=True)
+    jac = vmap(grad(ff, has_aux=True))
+    hess = vmap(hessian(ff))
 
     b = b_init
     prev_grad_norm = 0
@@ -244,8 +245,8 @@ def newton(
             with torch.no_grad():
                 callback(b.cpu())
 
-        # calculate forward pass and
-        Df_k, aux = grad(b)
+        # calculate forward pass and jacobian in one pass
+        Df_k, aux = jac(b)
         if has_aux:
             f_k = aux[0]
         else:
@@ -254,40 +255,54 @@ def newton(
         grad_norm = torch.norm(Df_k)
         # check if gradient is within tolerance and if so return
         if grad_norm < etol or abs(grad_norm - prev_grad_norm) < etol:
-                return b, aux[1:] if has_aux else b
+            return (b, aux[1:],) if has_aux else b
 
         prev_grad_norm = grad_norm
 
         # calculate Hessian
-        Hf_k = hessian(b)[0]
+        Hf_k = hess(b)[0]
 
-        # make hessian positive definite if not using modified Cholesky factorisation
-        LD_compat = mod_chol(Hf_k, pivoting=False)
-        D_ch = torch.diag(LD_compat)[:, None].clone()
-        L_ch = torch.tril(LD_compat, -1).fill_diagonal_(1)
+        # WARNING: POSSIBLE BOTTLENECK, it's a pain to vectorize this so I loop in batch
+        # if I start from a convex region this can be skipped
 
-        # SOLVE LDL^T d_k = -Df_k
-        #  first solve uni-triangular system
-        Z = torch.linalg.solve_triangular(
-            L_ch, -Df_k[:, None], upper=False, unitriangular=True
-        )
-        # then solve diagonal system
-        Y = Z / D_ch  # + 1e-5) # for numerical stability
-        # then solve uni-triangular system
-        d_k = torch.linalg.solve_triangular(L_ch.T, Y, upper=True, unitriangular=True)
+        if modify:
+            d_k = []
+            for H, D in zip(Hf_k.unbind(dim=0), Df_k.unbind(dim=0)):
+                # make hessian positive definite if not using modified Cholesky factorisation
+                LD_compat = mod_chol(H, pivoting=False)
+                D_ch = torch.diag(LD_compat)[:, None].clone()
+                L_ch = torch.tril(LD_compat, -1).fill_diagonal_(1)
+
+                # SOLVE LDL^T d_k = -Df_k
+                #  first solve uni-triangular system
+                Z = torch.linalg.solve_triangular(
+                    L_ch, -D[:, None], upper=False, unitriangular=True
+                )
+                # then solve diagonal system
+                Y = Z / D_ch  # + 1e-5) # for numerical stability
+                # then solve uni-triangular system
+                d_k.append(
+                    torch.linalg.solve_triangular(
+                        L_ch.T, Y, upper=True, unitriangular=True
+                    )
+                )
+
+            d_k = torch.stack(d_k)
+        else:
+            d_k = torch.linalg.solve(Hf_k, Df_k)
 
         alpha = _line_search(
             lambda x: ff(x)[0],
-            lambda x: grad(x)[0],
+            lambda x: jac(x)[0],
             b,
             # local derivative is a batch of column vectors,
-            d_k[:, 0],  # pass it to linesearch as a batch of 1d vectors
-            phi_0=f_k,
-            Dphi_0=(d_k.T @ Df_k).squeeze(),
-            plot=False,
+            d_k[...,0],
+            phi_0=torch.squeeze(f_k),
+            Dphi_0=torch.squeeze(d_k.mT @ Df_k[..., None]),
+            plot=True,
         )
 
-        b = b + alpha * d_k[:, 0]
+        b = b + alpha * d_k[..., 0]
 
     print("Max iterations reached")
     if has_aux:
