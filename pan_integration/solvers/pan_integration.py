@@ -177,9 +177,9 @@ def lst_sq_solver(
             break
 
     if return_nfe:
-        return B.mT.reshape(-1), nfe
+        return cat((l(B), B), dim=1), nfe
     else:
-        return (B.mT.reshape(-1),)
+        return cat((l(B), B), dim=1)
 
 
 def pan_int(
