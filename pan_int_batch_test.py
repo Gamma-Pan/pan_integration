@@ -69,13 +69,13 @@ if __name__ == "__main__":
     # _, approx_ms = odeint_mshooting(f, var_y_init, var_t_span, solver, torch.empty(0))
 
     t_lims = [0.0, 5.0]
-    num_points = 10
-    num_coeff_per_dim = 8
+    num_points = 7
+    num_coeff_per_dim = 7
 
     B = lst_sq_solver(f,t_lims, y_init,num_coeff_per_dim,num_points, f_init=f_init)
 
     t_span = -torch.cos(torch.pi * (torch.arange(num_points+1) / num_points))
-    Phi, _ = _cheb_phis(t_span, num_coeff_per_dim)
+    Phi, _ = _cheb_phis(t_span, 1 , num_coeff_per_dim)
     approx = (Phi @ B).transpose(0, 1)
 
 

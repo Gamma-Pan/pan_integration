@@ -41,15 +41,11 @@ def U_grid(t, num_coeff_per_dim):
     return out
 
 
-def _cheb_phis(t: Tensor, num_coeff_per_dim, device=torch.device("cpu")):
+def _cheb_phis(t: Tensor, scaling, num_coeff_per_dim, device=torch.device("cpu")):
     num_points = len(t)
-    step = t[-1] - t[0]
-
-    # rescale t to [-1,1]
-    t = -1 + 2 * (t - t[0]) / step
 
     Phi = T_grid(t, num_coeff_per_dim)
-    DPhi = (2 / step) * torch.hstack(
+    DPhi = (2 / scaling) * torch.hstack(
         [
             torch.zeros(num_points, 1, dtype=torch.float),
             torch.arange(1, num_coeff_per_dim, dtype=torch.float)
@@ -125,10 +121,10 @@ def lst_sq_solver(
     if f_init is None:
         f_init = f(0, y_init)
 
-    t = -torch.cos(torch.pi * (torch.arange(num_points+1) / num_points))
+    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
 
     if Phi is None or DPhi is None:
-        Phi, DPhi = _cheb_phis(t, num_coeff_per_dim, device=device)
+        Phi, DPhi = _cheb_phis(t, t_lims[1] - t_lims[0], num_coeff_per_dim,  device=device)
 
     nfe = 0
 
@@ -149,7 +145,7 @@ def lst_sq_solver(
     # approximating Rieman integral with non uniformly spaced points requires to multiply
     # with the interval lenghts between points
     # TODO: approximate integral with sum using trapezoids instead of rectangles
-    d = t_lims[1] * torch.diff(torch.cat((t, tensor([1.0]))))[:, None]
+    d = t_lims[1] * torch.diff(torch.cat((t,tensor([1.]))))[:, None]
 
     inv0 = inv(stack((Phi[:, 0, [0, 1]], DPhi[:, 0, [0, 1]]), dim=1))
     Phi_aT = DPhi[:, :, [0, 1]] @ inv0 @ stack((y_init, f_init), dim=1)
