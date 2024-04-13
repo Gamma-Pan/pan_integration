@@ -7,57 +7,52 @@ from typing import Tuple
 # torch.set_default_dtype(torch.float64)
 torch.manual_seed(42)
 
-def T_grid(num_points, num_coeff_per_dim, include_end=False):
-    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
-    if include_end:
-        t = torch.cat((t, tensor([1.0])))
-    t = t[:, None]
 
-    out = torch.empty(num_points + include_end, num_coeff_per_dim)
-    out[:, [0]] = torch.ones(
-        num_points + include_end,
-        1,
+def T_grid(t, num_coeff_per_dim):
+    num_points = len(t)
+
+    out = torch.empty(num_points, num_coeff_per_dim)
+    out[:, 0] = torch.ones(
+        num_points,
     )
-    out[:, [1]] = t
+    out[:, 1] = t
 
     for i in range(2, num_coeff_per_dim):
-        out[:, [i]] = 2 * t * out[:, [i - 1]] - out[:, [i - 2]]
+        out[:, i] = 2 * t * out[:, i - 1] - out[:, i - 2]
 
     return out
 
 
-def U_grid(num_points, num_coeff_per_dim, include_end=False):
-    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
-    if include_end:
-        t = torch.cat((t, tensor([1.0])))
-    t = t[:, None]
+def U_grid(t, num_coeff_per_dim):
+    num_points = len(t)
+
     out = torch.empty(
-        num_points + include_end,
+        num_points,
         num_coeff_per_dim,
     )
-    out[:, [0]] = torch.ones(
-        num_points + include_end,
-        1,
+    out[:, 0] = torch.ones(
+        num_points,
     )
-    out[:, [1]] = 2 * t
+    out[:, 1] = 2 * t
 
     for i in range(2, num_coeff_per_dim):
-        out[:, [i]] = 2 * t * out[:, [i - 1]] - out[:, [i - 2]]
+        out[:, i] = 2 * t * out[:, i - 1] - out[:, i - 2]
 
     return out
 
 
-def _cheb_phis(num_points, num_coeff_per_dim, t_lims, include_end=False,device=torch.device("cpu")):
-    step = t_lims[1] - t_lims[0]
-    Phi = T_grid(num_points, num_coeff_per_dim, include_end)
-    DPhi = (2 / step) * torch.hstack(
+def DT_grid(t, num_coeff_per_dim):
+    num_points = len(t)
+
+    out = torch.hstack(
         [
-            torch.zeros(num_points + include_end, 1, dtype=torch.float),
+            torch.zeros(num_points, 1, dtype=torch.float),
             torch.arange(1, num_coeff_per_dim, dtype=torch.float)
-            * U_grid(num_points, num_coeff_per_dim - 1, include_end),
+            * U_grid(t, num_coeff_per_dim - 1),
         ]
     )
-    return Phi[None].to(device), DPhi[None].to(device)
+
+    return out
 
 
 def _B_init_cond(B_tail, y_init, f_init, Phi, DPhi):
@@ -107,11 +102,11 @@ def _coarse_euler_init(f, y_init, num_solver_steps, t_lims, num_coeff_per_dim):
 
 def lst_sq_solver(
     f,
-    y_init,
-    f_init,
     t_lims,
+    y_init,
     num_coeff_per_dim,
     num_points,
+    f_init=None,
     Phi=None,
     DPhi=None,
     max_steps=50,
@@ -122,8 +117,15 @@ def lst_sq_solver(
     callback=None,
 ) -> Tensor | Tuple[Tensor, int]:
     device = y_init.device
+
+    if f_init is None:
+        f_init = f(0, y_init)
+
+    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
+
     if Phi is None or DPhi is None:
-        Phi, DPhi = _cheb_phis(num_points, num_coeff_per_dim, t_lims)
+        Phi = T_grid(t, num_coeff_per_dim)[None]
+        DPhi = 2/(t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff_per_dim)[None]
 
     nfe = 0
 
@@ -141,11 +143,9 @@ def lst_sq_solver(
     else:
         raise "init must be either 'euler' or 'random'"
 
-    # TODO: figure out how to make this calculations into a function,
-    #  they are also used in euler solution
-
-    # integral interval lengths for non-uniform sampling
-    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
+    # approximating Rieman integral with non uniformly spaced points requires to multiply
+    # with the interval lenghts between points
+    # TODO: approximate integral with sum using trapezoids instead of rectangles
     d = t_lims[1] * torch.diff(torch.cat((t, tensor([1.0]))))[:, None]
 
     inv0 = inv(stack((Phi[:, 0, [0, 1]], DPhi[:, 0, [0, 1]]), dim=1))
