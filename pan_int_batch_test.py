@@ -96,7 +96,7 @@ f.requires_grad_(False)
 f.eval()
 
 if __name__ == "__main__":
-    var_batches = 1
+    var_batches = 10
     var_dims = 2
     var_y_init = torch.rand(var_batches, var_dims)
     f_init = f(0, var_y_init)
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     var_t_span = torch.linspace(*var_t_lims, 10)
 
     plotter = VfPlotter(f)
-    plotter.solve_ivp(var_t_span, var_y_init, set_lims=True)
+    plotter.solve_ivp(var_t_span, var_y_init, set_lims=True,plot_kwargs=dict(alpha=0.3))
 
     t_eval, y_tsit = odeint(f, var_y_init, var_t_span, "tsit5")
 

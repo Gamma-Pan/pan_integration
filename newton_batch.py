@@ -11,6 +11,7 @@ from pan_integration.optim.factor import mod_chol
 
 mpl.use("TkAgg")
 
+torch.manual_seed(42)
 
 class Rosenbrock(nn.Module):
     def __init__(self):
@@ -43,8 +44,9 @@ def plot_rosen():
 
 if __name__ == "__main__":
 
-    point_init = tensor([[-1.2, 0.4]])
-    # point_init = tensor([[-1.7, -0.7], [ -1.2, 0.4 ]])
+    point_init = 20*(torch.rand(10,2) - 0.5)
+    point_init= point_init[[0,1],:]
+    print(point_init)
 
     point_min = newton(rosenbrock, point_init, etol=1e-10)
     print(point_min)

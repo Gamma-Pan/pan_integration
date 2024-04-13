@@ -47,7 +47,7 @@ def U_grid(num_points, num_coeff_per_dim, include_end=False):
     return out
 
 
-def _cheb_phis(num_points, num_coeff_per_dim, t_lims, include_end=False):
+def _cheb_phis(num_points, num_coeff_per_dim, t_lims, include_end=False,device=torch.device("cpu")):
     step = t_lims[1] - t_lims[0]
     Phi = T_grid(num_points, num_coeff_per_dim, include_end)
     DPhi = (2 / step) * torch.hstack(
@@ -57,7 +57,7 @@ def _cheb_phis(num_points, num_coeff_per_dim, t_lims, include_end=False):
             * U_grid(num_points, num_coeff_per_dim - 1, include_end),
         ]
     )
-    return Phi[None], DPhi[None]
+    return Phi[None].to(device), DPhi[None].to(device)
 
 
 def _B_init_cond(B_tail, y_init, f_init, Phi, DPhi):
