@@ -1,7 +1,7 @@
-from typing import Callable, Any, Tuple
+from typing import Callable, Any, Tuple, Iterable, Dict
 
 import torch
-from torch import sign, sqrt, abs, tensor, Tensor, stack
+from torch import sign, sqrt, abs, tensor, Tensor, stack, dot, cat
 from torch.func import grad, hessian, vmap
 from pan_integration.utils.plotting import LsPlotter
 from .factor import mod_chol
@@ -40,96 +40,7 @@ def min_cubic_interpol(a0, phi0, D_phi0, a1, phi1, D_phi1):
         return 0.5 * (a1 + a0)
     elif a0 > a1 and (a_min < a1 or a_min > a0):
         return 0.5 * (a1 + a0)
-    return torch.squeeze(a_min)
-
-
-def _zoom_vec(
-    a_lo,
-    a_hi,
-    phi,
-    Dphi,
-    c1=10e-4,
-    c2=0.9,
-    max_iters=10,
-    phi_0=None,
-    Dphi_0=None,
-    phi_lo=None,
-    Dphi_lo=None,
-    phi_hi=None,
-    Dphi_hi=None,
-):
-    if phi_0 is None:
-        phi_0 = phi(0)
-    if Dphi_0 is None:
-        Dphi_0 = Dphi(0)
-    if phi_lo is None:
-        phi_lo = phi(a_lo)
-    if phi_hi is None:
-        phi_hi = phi(a_hi)
-    if Dphi_hi is None:
-        Dphi_hi = Dphi(a_hi)
-    if Dphi_lo is None:
-        Dphi_lo = Dphi(a_lo)
-
-    batches = a_lo.shape[0]
-
-    a_i_out = torch.zeros(batches)
-    mask_done = torch.zeros(batches)
-
-    i = 0
-    while i < max_iters:
-        i = i + 1
-
-        # no f evals in here, loop freely
-
-        if a_lo.size(0) == 1:
-            a_i = torch.stack(
-                [
-                    min_cubic_interpol(*args)
-                    for args in zip(
-                        a_lo[None],
-                        phi_lo[None],
-                        Dphi_lo[None],
-                        a_hi[None],
-                        phi_hi[None],
-                        Dphi_hi[None],
-                    )
-                ]
-            )
-        else:
-            a_i = torch.stack(
-                [
-                    min_cubic_interpol(*args)
-                    for args in zip(a_lo, phi_lo, Dphi_lo, a_hi, phi_hi, Dphi_hi)
-                ]
-            )
-
-        phi_i = phi(a_i)
-
-        mask_cond1 = (phi_i > phi_0 + c1 * a_i * Dphi_0).logical_or(phi_i >= phi_lo)
-        a_hi[mask_cond1] = a_i[mask_cond1]
-
-        Dphi_i = Dphi(a_i)
-        mask_cond2 = abs(Dphi_i) <= -c2 * Dphi_0
-        a_i_out[mask_cond1.logical_not().logical_and(mask_cond2)] = a_i[
-            mask_cond1.logical_not().logical_and(mask_cond2)
-        ]
-        mask_done[mask_cond1.logical_not().logical_and(mask_cond2)] = 1
-
-        if torch.all(mask_done):
-            return a_i_out
-
-        mask_cond3 = Dphi_i * (a_hi - a_lo) >= 0
-        a_hi[mask_cond1.logical_not().logical_and(mask_cond3)] = a_lo[
-            mask_cond1.logical_not().logical_and(mask_cond3)
-        ]
-
-        a_lo[mask_cond1.logical_not()] = a_i[mask_cond1.logical_not()]
-
-    a_i_out[mask_done.logical_not()] = (
-        a_lo[mask_done.logical_not()] + a_hi[mask_done.logical_not()]
-    ) / 2
-    return a_i_out
+    return a_min
 
 
 def _zoom(
@@ -169,10 +80,12 @@ def _zoom(
         if plotting:
             plotter.zoom(a_i, c1, c2, Dphi_0)
         phi_i = phi(a_i)
+        Dphi_i = Dphi(a_i)
         if phi_i > phi_0 + c1 * a_i * Dphi_0 or phi_i >= phi_lo:
             a_hi = a_i
+            phi_hi = phi_i
+            Dphi_hi = Dphi_hi
         else:
-            Dphi_i = Dphi(a_i)
             if abs(Dphi_i) <= -c2 * Dphi_0:
                 if plotting:
                     plotter.close_all()
@@ -180,106 +93,15 @@ def _zoom(
 
             if Dphi_i * (a_hi - a_lo) >= 0:
                 a_hi = a_lo
+                phi_hi = phi_lo
+                Dphi_hi = Dphi_lo
             a_lo = a_i
+            phi_lo = phi_i
+            Dphi_lo = Dphi_i
 
     if plotting:
         plotter.close_all()
     return (a_lo + a_hi) / 2
-
-
-def _line_search_vec(
-    f: Callable,
-    grad_f: Callable,
-    x: Tensor,
-    p: Tensor,
-    c1=1e-3,
-    c2=0.9,
-    max_iters=10,
-    phi_0=None,
-    Dphi_0=None,
-    plot=False,
-):
-    """
-    Algorithm 3.6 from Nocedal, Wright - Numerical Approximation pg.62; returns
-    an approximation of the step length a, along direction p, that minimises f(x + a*p)
-    using strong Wolfe conditions
-
-    """
-    batches, dim = x.shape
-
-    def phi(a,x,p):
-        return f(x + (a[:, None, None] * p)[...,0])
-
-    def Dphi(a,x,p):
-        return (p.mT @ grad_f(x + (a[:, None, None] * p)[...,0])[...,None])[:,0,0]
-
-    if phi_0 is None or Dphi_0 is None:
-        phi_0 = phi(0)
-        Dphi_0 = Dphi(0)
-
-    mask_done = torch.zeros(batches).to(torch.bool)
-
-    a_prev = torch.zeros(batches)
-    a_cur = torch.ones(batches)
-    phi_prev = phi_0
-    Dphi_prev = Dphi_0
-
-    i = 1
-    while i < max_iters:
-        phi_cur = phi(a_cur)
-        Dphi_cur = Dphi(a_cur)
-
-        mask_violates_w1 = mask_done.logical_not().logical_and(
-            (phi_cur > phi_0 + c1 * a_cur * Dphi_0).logical_or(
-                (phi_cur >= phi_prev).logical_and(tensor(torch.ones(batches) * i > 1))
-            )
-        )
-        # these are done
-        mask_holds_w2 = mask_done.logical_not().logical_and(
-            mask_violates_w1.logical_not().logical_and(abs(Dphi_cur) <= -c2 * Dphi_0)
-        )
-        mask_done[mask_holds_w2[0]] = True
-        if torch.all(mask_done):
-            return a_cur
-
-        mask_violates_w2 = mask_done.logical_not().logical_and(
-            mask_holds_w2.logical_not()
-            .logical_and(mask_violates_w1.logical_not())
-            .logical_and(abs(Dphi_cur) >= 0)
-        )
-
-        mask_zoom = mask_violates_w1.logical_or(mask_violates_w2)[0]
-        zoom_range = torch.arange(torch.sum(mask_zoom).to(torch.int))
-        a_cur[mask_zoom] = _zoom_vec(
-            torch.stack((a_cur[mask_zoom], a_prev[mask_zoom]))[
-                mask_violates_w1[mask_zoom].to(torch.long), zoom_range
-            ],
-            torch.stack((a_cur[mask_zoom], a_prev[mask_zoom]))[
-                mask_violates_w1[mask_zoom].logical_not().to(torch.long), zoom_range
-            ],
-            lambda a: f(x[mask_zoom, :] + a[:, None] * p[mask_zoom, :]),
-            lambda a: torch.squeeze(
-                p[mask_zoom, :][:, None, :]
-                @ grad_f(x[mask_zoom, :] + a[:, None] * p[mask_zoom, :])[:, :, None]
-            ),
-            c1,
-            c2,
-            max_iters=5,
-            phi_0=phi_0[mask_zoom],
-            Dphi_0=Dphi_0[mask_zoom],
-            phi_lo=phi_prev[mask_zoom],
-            Dphi_lo=Dphi_prev[mask_zoom],
-        )
-        mask_done[mask_zoom] = True
-
-        # increase step size
-        phi_prev = phi_cur
-        Dphi_prev = Dphi_cur
-        a_prev[mask_done.logical_not()] = a_cur[mask_done.logical_not()]
-        a_cur[mask_done.logical_not()] = 2 * a_cur[mask_done.logical_not()]
-        i = i + 1
-
-    return a_cur
 
 
 def _line_search(
@@ -300,20 +122,16 @@ def _line_search(
     using strong Wolfe conditions
 
     """
-    batches, dim = x.shape
 
     def phi(a):
         return f(x + a * p)
 
     def Dphi(a):
-        return torch.squeeze(p @ grad_f(x + a * p).mT)
+        return dot(p, grad_f(x + a * p))
 
     if phi_0 is None or Dphi_0 is None:
         phi_0 = phi(0)
         Dphi_0 = Dphi(0)
-
-    # extremely convoluted way to vectorize line search to multiple batches
-    mask = torch.ones(batches)
 
     a_prev = torch.tensor(0.0)
     a_cur = torch.tensor(1.0)
@@ -341,7 +159,6 @@ def _line_search(
                 Dphi,
                 c1,
                 c2,
-                max_iters=5,
                 phi_0=phi_0,
                 Dphi_0=Dphi_0,
                 phi_lo=phi_prev,
@@ -366,7 +183,6 @@ def _line_search(
                 Dphi,
                 c1,
                 c2,
-                max_iters=5,
                 phi_0=phi_0,
                 Dphi_0=Dphi_0,
                 phi_lo=phi_cur,
@@ -390,8 +206,8 @@ def _line_search(
 def newton(
     f: Callable,
     b_init: Tensor,
-    has_aux=False,
-    modify=True,
+    f_args: Iterable=None,
+    f_kwargs: Dict=None,
     max_steps=50,
     etol: float = 1e-5,
     callback: Callable = None,
@@ -400,26 +216,20 @@ def newton(
     :param f: scalar function to minimize
     :param b_init: tensor of parameters (tested only for 2d tensor)
     :param has_aux, whether the error function returns auxiliary outputs, error should be the first
-    :param modify: modify Hessian to be positive definite, if False assume it is
     :param max_steps: max amount of iterations to perform
     :param etol: tolerance for termination
     :param callback: a function to call at end of each iteration
     :return: b* that is a local minimum of f
     """
+    if f_args is None:
+        f_kwargs =()
+    if f_kwargs is None:
+        f_kwargs = {}
 
-    # define this function to get both forward pass and gradients from a single jacrev call
-    # https://pytorch.org/functorch/stable/generated/functorch.jacrev.html#:~:text=If%20you%20would%20like%20to%20compute%20the%20output%20of%20the%20function%20as%20well%20as%20the%20jacobian%20of%20the%20function%2C%20use%20the%20has_aux%20flag%20to%20return%20the%20output%20as%20an%20auxiliary%20object%3A
-    # TODO: utilize jit
-    def ff(x):
-        if has_aux:
-            res, aux = f(x)
-            return res, (res, aux)
-        else:
-            res = f(x)
-            return res, res
+    batches, dims = b_init.shape
 
-    jac = vmap(grad(ff, has_aux=True))
-    hess = vmap(hessian(ff))
+    jac = vmap(grad(f))
+    hess = vmap(hessian(f))
 
     b = b_init
     prev_grad_norm = 0
@@ -429,75 +239,61 @@ def newton(
             with torch.no_grad():
                 callback(b.cpu())
 
-        # calculate forward pass and jacobian in one pass
-        Df_k, aux = jac(b)
-        if has_aux:
-            f_k = aux[0]
-        else:
-            f_k = aux
+        Df_all = jac(b, *f_args, **f_kwargs)
 
-        grad_norm = torch.norm(Df_k)
+        grad_norm = torch.norm(Df_all)
         # check if gradient is within tolerance and if so return
         if grad_norm < etol or abs(grad_norm - prev_grad_norm) < etol:
-            return (
-                (
-                    b,
-                    aux[1:],
-                )
-                if has_aux
-                else b
-            )
+            return b
 
         prev_grad_norm = grad_norm
 
         # calculate Hessian
-        Hf_k = hess(b)[0]
+        Hf_all = hess(b, *f_args, **f_kwargs)
 
-        # WARNING: POSSIBLE BOTTLENECK, it's a pain to vectorize this so I loop in batch
-        # if I start from a convex region this can be skipped
+        p_all = []
+        for Hf_k, Df_k in zip(Hf_all, Df_all):
+            # make hessian positive definite if not using modified Cholesky factorisation
+            LD_compat = mod_chol(Hf_k, pivoting=False)
+            D_ch = torch.diag(LD_compat)[:, None].clone()
+            L_ch = torch.tril(LD_compat, -1).fill_diagonal_(1)
 
-        if modify:
-            d_k = []
-            for H, D in zip(Hf_k.unbind(dim=0), Df_k.unbind(dim=0)):
-                # make hessian positive definite if not using modified Cholesky factorisation
-                LD_compat = mod_chol(H, pivoting=False)
-                D_ch = torch.diag(LD_compat)[:, None].clone()
-                L_ch = torch.tril(LD_compat, -1).fill_diagonal_(1)
+            # SOLVE LDL^T d_k = -Df_k
+            #  first solve uni-triangular system
+            Z = torch.linalg.solve_triangular(
+                L_ch, -Df_k[:, None], upper=False, unitriangular=True
+            )
+            # then solve diagonal system
+            Y = Z / D_ch  # + 1e-5) # for numerical stability
+            # then solve uni-triangular system
+            p_all.append(
+                torch.linalg.solve_triangular(
+                    L_ch.T, Y, upper=True, unitriangular=True
+                )[:, 0]
+            )
 
-                # SOLVE LDL^T d_k = -Df_k
-                #  first solve uni-triangular system
-                Z = torch.linalg.solve_triangular(
-                    L_ch, -D[:, None], upper=False, unitriangular=True
-                )
-                # then solve diagonal system
-                Y = Z / D_ch  # + 1e-5) # for numerical stability
-                # then solve uni-triangular system
-                d_k.append(
-                    torch.linalg.solve_triangular(
-                        L_ch.T, Y, upper=True, unitriangular=True
-                    )
-                )
+        p_k = torch.cat(p_all, dim=0)
 
-            d_k = torch.stack(d_k)
-        else:
-            d_k = torch.linalg.solve(Hf_k, Df_k)
+        def batch_f(b_vec):
+            b = b_vec.reshape(batches, dims)
+            return torch.sum(  vmap(f)(b, *f_args, **f_kwargs)  )
 
-        alpha = _line_search_vec(
-            lambda x: ff(x)[0],
-            lambda x: jac(x)[0],
-            b,
-            # local derivative is a batch of column vectors,
-            d_k,
-            phi_0=f_k,
-            Dphi_0=(d_k.mT @ Df_k[..., None])[:,0,0],
-            plot=True,
+        def batch_jac(b_vec):
+            b = b_vec.reshape(batches, dims)
+            return jac(b, *f_args, **f_kwargs).reshape(-1)
+
+        b_vec = b.reshape(-1)
+        alpha = _line_search(
+            batch_f,
+            batch_jac,
+            b_vec,
+            p_k,
+            phi_0=batch_f(b_vec),
+            Dphi_0=dot(p_k, Df_all.reshape(-1)),
+            plot=False,
         )
 
-        b = b + alpha[:, None] * d_k[..., 0]
-        # b = b + alpha * d_k[..., 0]
+        b = b + alpha * p_k.reshape(batches, dims)
 
     print("Max iterations reached")
-    if has_aux:
-        return b, aux[1:]
-    else:
-        return b
+    return b.reshape(batches, dims)

@@ -8,10 +8,13 @@ import matplotlib as mpl
 
 from pan_integration.optim import newton
 from pan_integration.optim.factor import mod_chol
+from pan_integration.utils.plotting import wait
 
 mpl.use("TkAgg")
 
 torch.manual_seed(42)
+
+torch.set_default_dtype(torch.float64)
 
 class Rosenbrock(nn.Module):
     def __init__(self):
@@ -28,6 +31,7 @@ class Rosenbrock(nn.Module):
 
 rosenbrock = Rosenbrock()
 
+
 def plot_rosen():
     xs = torch.linspace(-2, 2, 100)
     ys = torch.linspace(-1, 3, 100)
@@ -42,11 +46,15 @@ def plot_rosen():
     ax.plot_surface(Xs, Ys, Zs, cmap="viridis")
     return ax
 
+
 if __name__ == "__main__":
+    points_init = torch.rand(3, 2)
+    points_init = points_init[[1], :]
 
-    point_init = 20*(torch.rand(10,2) - 0.5)
-    point_init= point_init[[0,1],:]
-    print(point_init)
+    # ax = plot_rosen()
+    # ax.plot(*points_init[0], rosenbrock(points_init)[0], "o")
+    # ax.plot(1.0, 1.0, rosenbrock(tensor([1, 1])), "ro")
+    # wait()
 
-    point_min = newton(rosenbrock, point_init, etol=1e-10)
+    point_min = newton(rosenbrock, points_init, etol=1e-5, callback=None)
     print(point_min)

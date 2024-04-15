@@ -1,5 +1,6 @@
 from pan_integration.solvers.pan_integration import (
     lst_sq_solver,
+    newton_solver,
     _B_init_cond,
     T_grid,
 )
@@ -34,50 +35,40 @@ f.requires_grad_(False)
 f.eval()
 
 if __name__ == "__main__":
-    batches = 1
+    batches = 5
     dims = 2
     y_init = torch.rand(batches, dims)
     f_init = f(0, y_init)
 
-    # t_eval, y_tsit = odeint(f, y_init, t_span, "tsit5")
+    t_lims = [0.0, 5.0]
+    num_points = 10
+    num_coeff_per_dim = 10
 
     def callback(B_vec):
-        Phi, DPhi = _cheb_phis(
-            num_coeff_per_dim=num_coeff_per_dim,
-            num_points=num_points,
-            t_lims=t_lims,
-            include_end=True,
-        )
-        B = _B_init_cond(
-            B_vec.reshape(
-                2,
-                num_coeff_per_dim - 2,
-            ).T,
-            y_init,
-            f_init,
-            Phi,
-            DPhi,
-        )
-        approx = Phi @ B
-        Dapprox = DPhi @ B
-        plotter.approx(approx, t_lims[0], Dapprox=Dapprox)
+        t_span = -1 + 2 * torch.linspace(*t_lims, steps=100) / (t_lims[1] - t_lims[0])
+        Phi = T_grid(t_span, num_coeff_per_dim)
+        approx = (Phi @ B).transpose(0, 1)
+        plotter.approx(approx, t_lims[0])
         wait()
 
-    # solver = LSZero(var_num_coeff_per_dim, var_num_points)
-    # _, approx_ms = odeint_mshooting(f, var_y_init, var_t_span, solver, torch.empty(0))
+    # B = lst_sq_solver(f, t_lims, y_init, num_coeff_per_dim, num_points, f_init=f_init)
+    B_init = torch.rand(batches, num_coeff_per_dim - 2, dims).reshape(batches, -1)
+    B = newton_solver(
+        f,
+        t_lims,
+        y_init,
+        num_coeff_per_dim,
+        num_points,
+        f_init=f_init,
+        B_init=B_init,
+    )
 
-    t_lims = [0.0, 5.0]
-    num_points = 7
-    num_coeff_per_dim = 7
-
-    B = lst_sq_solver(f, t_lims, y_init, num_coeff_per_dim, num_points, f_init=f_init)
-
-    t_span = torch.linspace(*t_lims, steps=100)
-    Phi = T_grid(-1 + 2 * (t_span/ 5.), num_coeff_per_dim)
+    t_span = -1 + 2 * torch.linspace(*t_lims, steps=100) / (t_lims[1] - t_lims[0])
+    Phi = T_grid(t_span, num_coeff_per_dim)
     approx = (Phi @ B).transpose(0, 1)
 
     plotter = VfPlotter(f)
-    plotter.solve_ivp(t_span, y_init, set_lims=True, plot_kwargs=dict(alpha=0.3))
+    plotter.solve_ivp(torch.linspace(*t_lims, steps=100), y_init, set_lims=True, plot_kwargs=dict(alpha=0.3))
     wait()
     plotter.approx(approx, t_lims[0], color="orange")
     wait()

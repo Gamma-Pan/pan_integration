@@ -175,7 +175,7 @@ class LsPlotter:
 
     def line_search(self, a_cur, c1):
         # plot the line along the search direction
-        a = torch.linspace(0, a_cur + 1, self.plot_res)
+        a = torch.linspace(0, 1.5*a_cur, self.plot_res)
         phi_a = torch.stack([self.phi(a) for a in a])
         self.alpha_line_art.set_xdata(a)
         self.alpha_line_art.set_ydata(phi_a)
@@ -188,8 +188,8 @@ class LsPlotter:
             ]
         )
 
-        self.ax.set_xlim(-0.1, a_cur + 1)
-        self.ax.set_ylim([0.8 * torch.min(phi_a), self.phi(a_cur + 1) * 2.5])
+        self.ax.set_xlim(-0.1*a_cur, 1.5*a_cur )
+        self.ax.set_ylim([0.8 * torch.min(phi_a), self.phi(a_cur *1.5) * 1.5])
 
         # plot the current point
         self.curpoint.set_xdata([a_cur])
