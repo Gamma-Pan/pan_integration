@@ -82,7 +82,7 @@ class VfPlotter:
         Xs, Ys = torch.meshgrid(xs, ys, indexing="xy")
 
         batch = torch.stack((Xs, Ys), dim=-1).reshape(-1, 2)
-        derivatives = self.f(0,batch).reshape(
+        derivatives = self.f(batch).reshape(
             self.grid_definition[0], self.grid_definition[1], 2
         )
         Us, Vs = derivatives.unbind(dim=-1)
@@ -138,7 +138,7 @@ class VfPlotter:
 
 
 class LsPlotter:
-    def __init__(self, func, Dfunc, plot_res=1000, alpha_max=10):
+    def __init__(self, func, Dfunc, plot_res=10_000, alpha_max=10):
         self.fig, self.ax = plt.subplots()
         self.phi = func
         self.Dphi = Dfunc

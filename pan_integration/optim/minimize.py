@@ -50,7 +50,7 @@ def _zoom(
     Dphi,
     c1=10e-4,
     c2=0.9,
-    max_iters=10,
+    max_iters=20,
     phi_0=None,
     Dphi_0=None,
     phi_lo=None,
@@ -111,7 +111,8 @@ def _line_search(
     p: Tensor,
     c1=1e-3,
     c2=0.9,
-    max_iters=10,
+    max_iters=20,
+    max_zoom_iters=5,
     phi_0=None,
     Dphi_0=None,
     plot=False,
@@ -134,7 +135,7 @@ def _line_search(
         Dphi_0 = Dphi(0)
 
     a_prev = torch.tensor(0.0)
-    a_cur = torch.tensor(1.0)
+    a_cur = torch.tensor(0.1)
     phi_prev = phi_0
     Dphi_prev = Dphi_0
 
@@ -163,6 +164,7 @@ def _line_search(
                 Dphi_0=Dphi_0,
                 phi_lo=phi_prev,
                 Dphi_lo=Dphi_prev,
+                max_iters=max_zoom_iters
             )
 
         # evaluate grad f at trial step (~2 evaluations per loop)
@@ -189,6 +191,7 @@ def _line_search(
                 Dphi_lo=Dphi_cur,
                 phi_hi=phi_prev,
                 Dphi_hi=Dphi_prev,
+                max_iters=max_zoom_iters
             )
 
         # increase step size
@@ -209,7 +212,9 @@ def newton(
     f_args: Iterable=None,
     f_kwargs: Dict=None,
     max_steps=50,
-    etol: float = 1e-5,
+    max_linesearch_iters=10,
+    max_zoom_iters=10,
+    etol: float = 1e-7,
     callback: Callable = None,
 ) -> Tensor | tuple[Tensor | Any]:
     """
@@ -222,7 +227,7 @@ def newton(
     :return: b* that is a local minimum of f
     """
     if f_args is None:
-        f_kwargs =()
+        f_args =()
     if f_kwargs is None:
         f_kwargs = {}
 
@@ -243,6 +248,7 @@ def newton(
 
         grad_norm = torch.norm(Df_all)
         # check if gradient is within tolerance and if so return
+        print(grad_norm)
         if grad_norm < etol or abs(grad_norm - prev_grad_norm) < etol:
             return b
 
@@ -291,6 +297,8 @@ def newton(
             phi_0=batch_f(b_vec),
             Dphi_0=dot(p_k, Df_all.reshape(-1)),
             plot=False,
+            max_iters=max_linesearch_iters,
+            max_zoom_iters=max_zoom_iters
         )
 
         b = b + alpha * p_k.reshape(batches, dims)

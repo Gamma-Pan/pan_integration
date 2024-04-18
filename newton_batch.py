@@ -12,7 +12,7 @@ from pan_integration.utils.plotting import wait
 
 mpl.use("TkAgg")
 
-torch.manual_seed(42)
+torch.manual_seed(43)
 
 torch.set_default_dtype(torch.float64)
 
@@ -48,8 +48,7 @@ def plot_rosen():
 
 
 if __name__ == "__main__":
-    points_init = torch.rand(3, 2)
-    points_init = points_init[[1], :]
+    points_init = torch.rand(4, 2)
 
     # ax = plot_rosen()
     # ax.plot(*points_init[0], rosenbrock(points_init)[0], "o")
