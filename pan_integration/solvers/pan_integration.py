@@ -14,12 +14,13 @@ import pdb
 torch.manual_seed(42)
 
 
-def T_grid(t, num_coeff_per_dim):
+def T_grid(t, num_coeff_per_dim, device):
     num_points = len(t)
 
-    out = torch.empty(num_points, num_coeff_per_dim)
+    out = torch.empty(num_points, num_coeff_per_dim, device=device)
     out[:, 0] = torch.ones(
         num_points,
+        device=device
     )
     out[:, 1] = t
 
@@ -29,12 +30,13 @@ def T_grid(t, num_coeff_per_dim):
     return out
 
 
-def U_grid(t, num_coeff_per_dim):
+def U_grid(t, num_coeff_per_dim, device):
     num_points = len(t)
 
     out = torch.empty(
         num_points,
         num_coeff_per_dim,
+        device=device
     )
     out[:, 0] = torch.ones(
         num_points,
@@ -47,14 +49,14 @@ def U_grid(t, num_coeff_per_dim):
     return out
 
 
-def DT_grid(t, num_coeff_per_dim):
+def DT_grid(t, num_coeff_per_dim, device):
     num_points = len(t)
 
     out = torch.hstack(
         [
-            torch.zeros(num_points, 1, dtype=torch.float),
-            torch.arange(1, num_coeff_per_dim, dtype=torch.float)
-            * U_grid(t, num_coeff_per_dim - 1),
+            torch.zeros(num_points, 1, dtype=torch.float,device=device),
+            torch.arange(1, num_coeff_per_dim, dtype=torch.float, device=device)
+            * U_grid(t, num_coeff_per_dim - 1, device),
         ]
     )
 
@@ -121,30 +123,25 @@ def lst_sq_solver(
     callback=None,
 ) -> Tensor | Tuple[Tensor, int]:
     device = y_init.device
-    torch.set_default_dtype(torch.float64)
-    B_init = B_init.to(torch.float64)
 
-    t_hat = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
-    t = (t_lims[0] + (t_hat - t_hat[0]) *
-         (t_lims[1] - t_lims[0]) / (t_hat[-1] - t_hat[0]
-    ))
+    t_hat = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
+    t = t_lims[0] + (t_hat - t_hat[0]) * (t_lims[1] - t_lims[0]) / (
+        t_hat[-1] - t_hat[0]
+    )
 
     batches, dims = y_init.shape
 
     if f_init is None:
         f_init = f(t[0], y_init)
 
-    f_init = f_init.to(torch.float64)
-    y_init = y_init.to(torch.float64)
-
     if Phi is None or DPhi is None:
-        Phi = T_grid(t_hat, num_coeff_per_dim)[None]
-        DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t_hat, num_coeff_per_dim)[None]
+        Phi = T_grid(t_hat, num_coeff_per_dim, device)[None]
+        DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t_hat, num_coeff_per_dim, device)[None]
 
     # approximating Rieman integral with non uniformly spaced points requires to multiply
     # with the interval lenghts between points
     # TODO: approximate integral with sum using trapezoids instead of rectangles
-    d = torch.diff(torch.cat((t, tensor(t_lims[1])[None])))[:, None].to(device)
+    d = torch.diff(torch.cat((t, tensor(t_lims[1], device=device)[None])))[:, None].to(device)
 
     inv0 = inv(stack((Phi[:, 0, [0, 1]], DPhi[:, 0, [0, 1]]), dim=1))
     Phi_aT = DPhi[:, :, [0, 1]] @ inv0 @ stack((y_init, f_init), dim=1).to(device)
@@ -167,21 +164,14 @@ def lst_sq_solver(
         B_prev = B
         # B update
         B = Q @ (
-            Phi_bT.mT
-            @ (
-                d
-                * f(
-                    t.to(torch.float32), (Phi @ cat((l(B), B), dim=1)).to(torch.float32)
-                ).to(torch.float64)
-            )
+            Phi_bT.mT @ (d * f(t, (Phi @ cat((l(B), B), dim=1))))
             - Phi_bT.mT @ (d * Phi_aT)
         )
 
         if torch.norm(B - B_prev) < etol:
             break
 
-    torch.set_default_dtype(torch.float32)
-    return cat((l(B), B), dim=1).to(torch.float32)
+    return cat((l(B), B), dim=1)
 
 
 def newton_solver(
@@ -198,10 +188,8 @@ def newton_solver(
     etol=1e-5,
 ) -> Tensor:
     device = y_init.device
-    torch.set_default_dtype(torch.float64)
-    B_init = B_init.to(torch.float64)
 
-    t_hat = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
+    t_hat = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
     t = t_lims[0] + (t_hat - t_hat[0]) * (
         (t_lims[1] - t_lims[0]) / (t_hat[-1] - t_hat[0])
     )
@@ -210,13 +198,10 @@ def newton_solver(
     if f_init is None:
         f_init = f(t[0], y_init)
 
-    f_init = f_init.to(torch.float64)
-    y_init = y_init.to(torch.float64)
-
     if Phi is None or DPhi is None:
-        Phi = T_grid(t_hat, num_coeff_per_dim).to(device)
+        Phi = T_grid(t_hat, num_coeff_per_dim,device)
         DPhi = (
-            2 / (t_lims[1] - t_lims[0]) * DT_grid(t_hat, num_coeff_per_dim).to(device)
+            2 / (t_lims[1] - t_lims[0]) * DT_grid(t_hat, num_coeff_per_dim,device)
         )
 
     # approximating Rieman integral with non uniformly spaced points requires to multiply
@@ -224,7 +209,7 @@ def newton_solver(
     # TODO: approximate integral with sum using trapezoids instead of rectangles
     d = torch.diff(torch.cat((t, tensor(t_lims[1])[None])))[:, None].to(device)
 
-    inv0 = inv(cat((Phi[0, [0, 1]], DPhi[0, [0, 1]]), dim=0))
+    inv0 = inv(cat((Phi[0:1, [0, 1]], DPhi[0:1, [0, 1]]), dim=0))
     l = lambda B, y_init, f_init: inv0 @ (
         stack((y_init, f_init), dim=0) - cat((Phi[0:1, 2:], DPhi[0:1, 2:]), dim=0) @ B
     )
@@ -237,12 +222,8 @@ def newton_solver(
         B = torch.cat((B_head, B_tail), dim=0)
 
         error = (
-            (1 / (dims * num_coeff_per_dim * num_points))
-            * (
-                DPhi @ B
-                - f(t.to(torch.float32), (Phi @ B).to(torch.float32)).to(torch.float64)
-            )
-            ** 2
+            (1 / (dims * num_coeff_per_dim * num_points))*
+            (DPhi @ B - f(t, (Phi @ B))) ** 2
             * d
         )
         return torch.sum(error)
@@ -251,8 +232,7 @@ def newton_solver(
         error, B_init.reshape(batches, -1), f_args=(y_init, f_init), etol=etol
     ).reshape(batches, num_coeff_per_dim - 2, dims)
 
-    torch.set_default_dtype(torch.float32)
-    return torch.cat((vmap(l)(B_tail, y_init, f_init), B_tail), dim=1).to(torch.float32)
+    return torch.cat((vmap(l)(B_tail, y_init, f_init), B_tail), dim=1)
 
 
 def pan_int(
@@ -268,18 +248,19 @@ def pan_int(
 ):
     t_lims = [t_eval[0], t_eval[-1]]
 
-    torch.set_default_dtype(torch.float64)
-    f_init = f(t_lims[0], y_init).to(torch.float64)
+    device=y_init.device
+    f_init = f(t_lims[0], y_init)
     batches, dims = y_init.shape
 
-    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points))
-    Phi = T_grid(t, num_coeff_per_dim)
-    DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff_per_dim)
+    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
+    Phi = T_grid(t, num_coeff_per_dim, device)
+    DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff_per_dim, device)
 
     B_init = torch.rand(
-        batches,
+        (batches,
         num_coeff_per_dim - 2,
-        dims,
+        dims),
+        device=device
     )
 
     # first apply
@@ -293,30 +274,32 @@ def pan_int(
         Phi[None],
         DPhi[None],
         B_init=B_init,
+        etol=etol_ls,
     )
 
-    B_newton = newton_solver(
-        f,
-        t_lims,
-        y_init,
-        num_coeff_per_dim,
-        num_points,
-        f_init,
-        Phi,
-        DPhi,
-        # B_init=B_init[:, :-2, :],
-        B_init=B_ls[:, :-2, :],
-    )
+    # B_newton = newton_solver(
+    #     f,
+    #     t_lims,
+    #     y_init,
+    #     num_coeff_per_dim,
+    #     num_points,
+    #     f_init,
+    #     Phi,
+    #     DPhi,
+    #     # B_init=B_init[:, :-2, :],
+    #     B_init=B_ls[:, 2:, :],
+    #     etol=etol_newton,
+    # )
 
     t_phi = -1 + 2 * (t_eval - t_lims[0]) / (t_lims[1] - t_lims[0])
-    Phi_traj = T_grid(t_phi, num_coeff_per_dim)
+    Phi_traj = T_grid(t_phi, num_coeff_per_dim, device)
 
-    traj = Phi_traj @ B_newton
+    traj = Phi_traj @ B_ls
     # transpose to comply with torchdyn
-    traj.transpose_(0, 1).to(torch.float32)
+    traj.transpose_(0, 1)
 
     if return_B:
-        return traj, B_newton
+        return traj, B_ls
     else:
         return traj
 
@@ -327,7 +310,7 @@ def make_pan_adjoint(
     num_coeff_per_dim,
     num_points,
     etol_ls=1e-5,
-    etol_newton=1e-9,
+    etol_newton=1e-3,
     callback=None,
 ):
     class _PanInt(Function):
@@ -375,7 +358,7 @@ def make_pan_adjoint(
                 with torch.set_grad_enabled(True):
                     Dys = f(t_eval, ys)
 
-                # pdb.set_trace()
+                pdb.set_trace()
                 return torch.autograd.grad(dy, ys, -a_y)
 
             a_y_traj = pan_int(

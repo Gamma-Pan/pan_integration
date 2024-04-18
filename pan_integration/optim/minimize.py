@@ -135,7 +135,7 @@ def _line_search(
         Dphi_0 = Dphi(0)
 
     a_prev = torch.tensor(0.0)
-    a_cur = torch.tensor(0.1)
+    a_cur = torch.tensor(1)
     phi_prev = phi_0
     Dphi_prev = Dphi_0
 
@@ -248,7 +248,6 @@ def newton(
 
         grad_norm = torch.norm(Df_all)
         # check if gradient is within tolerance and if so return
-        print(grad_norm)
         if grad_norm < etol or abs(grad_norm - prev_grad_norm) < etol:
             return b
 
@@ -257,28 +256,30 @@ def newton(
         # calculate Hessian
         Hf_all = hess(b, *f_args, **f_kwargs)
 
-        p_all = []
-        for Hf_k, Df_k in zip(Hf_all, Df_all):
-            # make hessian positive definite if not using modified Cholesky factorisation
-            LD_compat = mod_chol(Hf_k, pivoting=False)
-            D_ch = torch.diag(LD_compat)[:, None].clone()
-            L_ch = torch.tril(LD_compat, -1).fill_diagonal_(1)
+        # p_all = []
+        # for Hf_k, Df_k in zip(Hf_all, Df_all):
+        #     # make hessian positive definite if not using modified Cholesky factorisation
+        #     LD_compat = mod_chol(Hf_k, pivoting=False)
+        #     D_ch = torch.diag(LD_compat)[:, None].clone()
+        #     L_ch = torch.tril(LD_compat, -1).fill_diagonal_(1)
+        #
+        #     # SOLVE LDL^T d_k = -Df_k
+        #     #  first solve uni-triangular system
+        #     Z = torch.linalg.solve_triangular(
+        #         L_ch, -Df_k[:, None], upper=False, unitriangular=True
+        #     )
+        #     # then solve diagonal system
+        #     Y = Z / D_ch  # + 1e-5) # for numerical stability
+        #     # then solve uni-triangular system
+        #     p_all.append(
+        #         torch.linalg.solve_triangular(
+        #             L_ch.T, Y, upper=True, unitriangular=True
+        #         )[:, 0]
+        #     )
+        #
+        # p_k = torch.cat(p_all, dim=0)
 
-            # SOLVE LDL^T d_k = -Df_k
-            #  first solve uni-triangular system
-            Z = torch.linalg.solve_triangular(
-                L_ch, -Df_k[:, None], upper=False, unitriangular=True
-            )
-            # then solve diagonal system
-            Y = Z / D_ch  # + 1e-5) # for numerical stability
-            # then solve uni-triangular system
-            p_all.append(
-                torch.linalg.solve_triangular(
-                    L_ch.T, Y, upper=True, unitriangular=True
-                )[:, 0]
-            )
-
-        p_k = torch.cat(p_all, dim=0)
+        p_k = torch.linalg.solve( Hf_all, Df_all ).reshape(-1)
 
         def batch_f(b_vec):
             b = b_vec.reshape(batches, dims)
@@ -296,10 +297,11 @@ def newton(
             p_k,
             phi_0=batch_f(b_vec),
             Dphi_0=dot(p_k, Df_all.reshape(-1)),
-            plot=False,
+            plot=True,
             max_iters=max_linesearch_iters,
             max_zoom_iters=max_zoom_iters
         )
+        print(alpha)
 
         b = b + alpha * p_k.reshape(batches, dims)
 
