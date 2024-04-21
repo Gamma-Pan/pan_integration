@@ -1,6 +1,7 @@
 import torch
 from torch import nn, tensor
 from pan_integration.solvers.pan_integration import make_pan_adjoint
+from torchdyn.core import NeuralODE
 
 
 class NeurODE(nn.Module):
@@ -11,7 +12,7 @@ class NeurODE(nn.Module):
 
     def forward(self, t, y_init):
         t_eval, traj = self.pan_int(y_init, t)
-        return traj
+        return t_eval, traj
 
 
 class VF(nn.Module):
@@ -19,7 +20,7 @@ class VF(nn.Module):
         super().__init__()
         self.seq = nn.Sequential(nn.Linear(2, 64), nn.ReLU(), nn.Linear(64, 2))
 
-    def forward(self, t, y):
+    def forward(self, t, y, *args, **kwargs):
         return self.seq(y)
 
 
@@ -27,11 +28,14 @@ if __name__ == "__main__":
     y_init = torch.rand(10, 2).requires_grad_(True)
 
     vf = VF()
-    node = NeurODE(vf, 15, 20)
+    t_span = torch.linspace(0, 1, 5)
 
-    t_eval = torch.linspace(0,1,5)
-    yT = node(t_eval, y_init)[-1]
+    model = NeurODE(vf, 15, 20)
+    t_eval, traj = model(t_span, y_init )
+
+    # model = NeuralODE(vf, sensitivity="adjoint")
+    # t_eval, traj = model(y_init, t_span)
+
+    yT = traj[-1]
     L = torch.nn.MSELoss()(yT, torch.ones_like(yT))
     L.backward()
-
-

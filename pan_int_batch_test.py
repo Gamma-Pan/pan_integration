@@ -3,6 +3,7 @@ from pan_integration.solvers.pan_integration import (
     pan_int,
     newton_solver,
     T_grid,
+    U_grid,
     lst_sq_solver,
 )
 
@@ -31,12 +32,12 @@ class Spiral(nn.Module):
 
     def forward(self, t, x):
         self.nfe += 1
-        return self.linear(x) * t[..., None]**2
+        return self.linear(torch.tanh(self.linear(x) + t[..., None]**2))
 
 
 if __name__ == "__main__":
     batches = 32
-    dims = 700
+    dims = 10
 
     device = torch.device("cpu")
     # device = torch.device("cuda")
@@ -48,8 +49,8 @@ if __name__ == "__main__":
     y_init = torch.rand(batches, dims).to(device)
     t_lims = [0.0, 1.0]
 
-    num_points = 200
-    num_coeff_per_dim = 150
+    num_points = 7
+    num_coeff_per_dim = 7
 
     t_span = torch.linspace(t_lims[0], t_lims[1], num_points, device=device)
     t_phi = (-1 + 2 * (t_span - t_lims[0]) / (t_lims[1] - t_lims[0]) ).to(device)

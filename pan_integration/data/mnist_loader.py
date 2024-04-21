@@ -11,7 +11,7 @@ from math import floor
 
 class MNISTDataModule(L.LightningDataModule):
     def __init__(
-        self, data_dir: str = "/data/mnist", batch_size: int = 64, num_workers: int = 1
+        self, data_dir: str = "./data/mnist", batch_size: int = 64, num_workers: int = 1
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -32,7 +32,7 @@ class MNISTDataModule(L.LightningDataModule):
             self.mnist_train, self.mnist_val = random_split(
                 mnist_full,
                 [floor(dataset_sz * 0.9), floor(dataset_sz * 0.1)],
-                generator=torch.Generator.nanual_seed(42),
+                generator=torch.Generator().manual_seed(42),
             )
 
         if stage == "test":

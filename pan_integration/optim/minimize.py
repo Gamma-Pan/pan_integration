@@ -164,6 +164,7 @@ def _line_search(
                 Dphi_0=Dphi_0,
                 phi_lo=phi_prev,
                 Dphi_lo=Dphi_prev,
+                phi_hi=phi_cur,
                 max_iters=max_zoom_iters
             )
 
@@ -215,6 +216,7 @@ def newton(
     max_linesearch_iters=10,
     max_zoom_iters=10,
     etol: float = 1e-7,
+    plot= False,
     callback: Callable = None,
 ) -> Tensor | tuple[Tensor | Any]:
     """
@@ -279,7 +281,7 @@ def newton(
         #
         # p_k = torch.cat(p_all, dim=0)
 
-        p_k = torch.linalg.solve( Hf_all, Df_all ).reshape(-1)
+        p_k = torch.linalg.solve( Hf_all,-Df_all ).reshape(-1)
 
         def batch_f(b_vec):
             b = b_vec.reshape(batches, dims)
@@ -297,13 +299,12 @@ def newton(
             p_k,
             phi_0=batch_f(b_vec),
             Dphi_0=dot(p_k, Df_all.reshape(-1)),
-            plot=True,
+            plot=plot,
             max_iters=max_linesearch_iters,
             max_zoom_iters=max_zoom_iters
         )
-        print(alpha)
-
         b = b + alpha * p_k.reshape(batches, dims)
+        print(alpha)
 
     print("Max iterations reached")
     return b.reshape(batches, dims)

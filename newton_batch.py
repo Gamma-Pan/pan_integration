@@ -12,19 +12,23 @@ from pan_integration.utils.plotting import wait
 
 mpl.use("TkAgg")
 
-torch.manual_seed(43)
+torch.manual_seed(45)
 
 torch.set_default_dtype(torch.float64)
+
 
 class Rosenbrock(nn.Module):
     def __init__(self):
         super().__init__()
+        self.nfe = 0
 
     def forward(self, p):
         x = p[..., 0]
         y = p[..., 1]
         a = 1
         b = 100
+        self.nfe += 1
+        print(self.nfe)
 
         return (a - x) ** 2 + b * (y - x**2) ** 2
 
@@ -48,12 +52,21 @@ def plot_rosen():
 
 
 if __name__ == "__main__":
-    points_init = torch.rand(4, 2)
-
+    points_init = torch.rand(1, 2)
     # ax = plot_rosen()
     # ax.plot(*points_init[0], rosenbrock(points_init)[0], "o")
     # ax.plot(1.0, 1.0, rosenbrock(tensor([1, 1])), "ro")
     # wait()
 
-    point_min = newton(rosenbrock, points_init, etol=1e-5, callback=None)
+    point_min = newton(
+        rosenbrock,
+        points_init,
+        etol=1e-5,
+        callback=None,
+        plot=False,
+        max_linesearch_iters=30,
+        max_zoom_iters=30,
+    )
+    print(points_init)
+
     print(point_min)

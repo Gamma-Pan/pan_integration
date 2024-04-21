@@ -9,7 +9,9 @@ For an implementation of Neural DEs in PyTorch see [[2](https://github.com/DiffE
 
 ### In this repo:
 - Functional interface for the `pan_solver`
-- Experiments for the solution of ODEs
+- A batched Newton implementation with line search
+- A PyTorch implementation of the modified Cholesky Factorization from Gill, Murray, Wright - Practical Optimization
+- Experiments comparing PAN with other commonly used solvers
 - Latex code for (hopefully) future publication
 - Matplotlib plots source 
 

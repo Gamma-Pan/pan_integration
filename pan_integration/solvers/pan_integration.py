@@ -2,25 +2,27 @@ import torch
 from torch import Tensor, vstack, tensor, cat, stack
 from torch.linalg import inv
 from torch.func import vmap
-from ..optim import newton
+
+# from ..optim import newton
 from typing import Tuple
 from functools import partial
 
 from torch.autograd import Function
-
-import pdb
+import ipdb
 
 # torch.set_default_dtype(torch.float64)
 torch.manual_seed(42)
 
 
 def T_grid(t, num_coeff_per_dim, device):
+    if len(t.size()) == 0:
+        t = t[None]
+
     num_points = len(t)
 
     out = torch.empty(num_points, num_coeff_per_dim, device=device)
     out[:, 0] = torch.ones(
         num_points,
-        device=device
     )
     out[:, 1] = t
 
@@ -33,11 +35,7 @@ def T_grid(t, num_coeff_per_dim, device):
 def U_grid(t, num_coeff_per_dim, device):
     num_points = len(t)
 
-    out = torch.empty(
-        num_points,
-        num_coeff_per_dim,
-        device=device
-    )
+    out = torch.empty(num_points, num_coeff_per_dim, device=device)
     out[:, 0] = torch.ones(
         num_points,
     )
@@ -54,7 +52,7 @@ def DT_grid(t, num_coeff_per_dim, device):
 
     out = torch.hstack(
         [
-            torch.zeros(num_points, 1, dtype=torch.float,device=device),
+            torch.zeros(num_points, 1, dtype=torch.float, device=device),
             torch.arange(1, num_coeff_per_dim, dtype=torch.float, device=device)
             * U_grid(t, num_coeff_per_dim - 1, device),
         ]
@@ -136,12 +134,18 @@ def lst_sq_solver(
 
     if Phi is None or DPhi is None:
         Phi = T_grid(t_hat, num_coeff_per_dim, device)[None]
-        DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t_hat, num_coeff_per_dim, device)[None]
+        DPhi = (
+            2
+            / (t_lims[1] - t_lims[0])
+            * DT_grid(t_hat, num_coeff_per_dim, device)[None]
+        )
 
     # approximating Rieman integral with non uniformly spaced points requires to multiply
     # with the interval lenghts between points
     # TODO: approximate integral with sum using trapezoids instead of rectangles
-    d = torch.diff(torch.cat((t, tensor(t_lims[1], device=device)[None])))[:, None].to(device)
+    d = torch.diff(torch.cat((t_hat, tensor(1, device=device)[None])))[:, None].to(
+        device
+    )
 
     inv0 = inv(stack((Phi[:, 0, [0, 1]], DPhi[:, 0, [0, 1]]), dim=1))
     Phi_aT = DPhi[:, :, [0, 1]] @ inv0 @ stack((y_init, f_init), dim=1).to(device)
@@ -164,7 +168,7 @@ def lst_sq_solver(
         B_prev = B
         # B update
         B = Q @ (
-            Phi_bT.mT @ (d * f(t, (Phi @ cat((l(B), B), dim=1))))
+            Phi_bT.mT @ (d * f(t_hat, (Phi @ cat((l(B), B), dim=1))))
             - Phi_bT.mT @ (d * Phi_aT)
         )
 
@@ -199,10 +203,8 @@ def newton_solver(
         f_init = f(t[0], y_init)
 
     if Phi is None or DPhi is None:
-        Phi = T_grid(t_hat, num_coeff_per_dim,device)
-        DPhi = (
-            2 / (t_lims[1] - t_lims[0]) * DT_grid(t_hat, num_coeff_per_dim,device)
-        )
+        Phi = T_grid(t_hat, num_coeff_per_dim, device)
+        DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t_hat, num_coeff_per_dim, device)
 
     # approximating Rieman integral with non uniformly spaced points requires to multiply
     # with the interval lenghts between points
@@ -222,8 +224,8 @@ def newton_solver(
         B = torch.cat((B_head, B_tail), dim=0)
 
         error = (
-            (1 / (dims * num_coeff_per_dim * num_points))*
-            (DPhi @ B - f(t, (Phi @ B))) ** 2
+            (1 / (dims * num_coeff_per_dim * num_points))
+            * (DPhi @ B - f(t, (Phi @ B))) ** 2
             * d
         )
         return torch.sum(error)
@@ -248,7 +250,7 @@ def pan_int(
 ):
     t_lims = [t_eval[0], t_eval[-1]]
 
-    device=y_init.device
+    device = y_init.device
     f_init = f(t_lims[0], y_init)
     batches, dims = y_init.shape
 
@@ -256,12 +258,7 @@ def pan_int(
     Phi = T_grid(t, num_coeff_per_dim, device)
     DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff_per_dim, device)
 
-    B_init = torch.rand(
-        (batches,
-        num_coeff_per_dim - 2,
-        dims),
-        device=device
-    )
+    B_init = torch.rand((batches, num_coeff_per_dim - 2, dims), device=device)
 
     # first apply
     B_ls = lst_sq_solver(
@@ -316,7 +313,7 @@ def make_pan_adjoint(
     class _PanInt(Function):
         @staticmethod
         def forward(ctx, thetas, y_init, t_eval):
-            traj, B = pan_int(
+            traj, B_fwd = pan_int(
                 f,
                 t_eval,
                 y_init,
@@ -327,50 +324,81 @@ def make_pan_adjoint(
                 callback,
                 return_B=True,
             )
-            ctx.save_for_backward(t_eval, traj, B)
+            ctx.save_for_backward(t_eval, traj, B_fwd)
 
             return t_eval, traj
 
         @staticmethod
         def backward(ctx, *grad_output):
-            """
-            heavily inspired by https://github.com/DiffEqML/torchdyn/blob/master/torchdyn/numerics/sensitivity.py#L32
-            """
-            t_eval, ys, B = ctx.saved_tensors
+            t_eval, ys, B_fwd = ctx.saved_tensors
 
-            num_points, batches, dims = ys.shape
+            points, batch_sz, dims = ys.shape
 
-            dLdy = grad_output[1][-1]
-            dLdt = grad_output[1]
-            theta = torch.cat([p.contiguous().flatten() for p in f.parameters()])
+            # dL/dz(T) -> (1xBxD)
+            a_y_T = grad_output[1][-1]
 
-            # pdb.set_trace()
+            theta = torch.cat(
+                [v.contiguous().flatten() for k, v in f.named_parameters()]
+            )
+            a_theta_sz = torch.numel(theta)
+            a_theta_T = torch.zeros(batch_sz, a_theta_sz)
 
-            a_theta_T = torch.zeros_like(theta)
-            a_theta_shape = a_theta_T.shape
-            # TODO: gradients wrt to t
+            # DEFINE AUGMENTED SYSTEM OF A_Y AND A_THETA
+            # initial state (B,dims + weights_sz)
+            A_T = torch.cat([a_y_T, a_theta_T], dim=1)
 
-            t_phi = -1 + 2 * (t_eval - t_eval[0]) / (t_eval[1] - t_eval[0])
-            Phi = T_grid(t_eval, num_coeff_per_dim)
+            def adjoint_dynamics(t, A):
+                # get y(t)
+                num_points = t.numel()
+                a_y = A[..., :dims]
+                if num_points == 1:
+                    a_y.unsqueeze_(1)
 
-            def adjoint_dynamics(t, a_y):
-                # set batch as first dimension
-                with torch.set_grad_enabled(True):
-                    Dys = f(t_eval, ys)
+                yt = T_grid(t, num_coeff_per_dim, device=t.device) @ B_fwd
 
-                pdb.set_trace()
-                return torch.autograd.grad(dy, ys, -a_y)
+                _, _vjp_func_ay = torch.func.vjp(lambda y: f(t, y), yt)
+                (Da_y,) = _vjp_func_ay(a_y)
 
-            a_y_traj = pan_int(
+                def single_Da_theta(y_t, a_y_t):
+                    _, _vjp_func_a_theta = torch.func.vjp(
+                        lambda x: torch.func.functional_call(f, x, (t, y_t)),
+                        {k: v.detach() for k, v in f.named_parameters()},
+                    )
+                    (Da_theta_sample,) = _vjp_func_a_theta(a_y_t)
+                    return Da_theta_sample
+
+                # first map over batches, then over time
+                Da_theta = vmap(vmap(single_Da_theta, in_dims=(0, 0)), in_dims=(0, 0))(
+                    yt, a_y
+                )
+
+                Da_theta = torch.cat(
+                    [
+                        v.flatten(start_dim=2) if v is not None else torch.zeros(batch_sz,num_points, 1)
+                        for v in Da_theta.values()
+                    ],
+                    dim=2
+                )
+
+                DA_T = torch.cat([Da_y, Da_theta], dim=2)
+                if num_points ==1:
+                    DA_T.squeeze_(1)
+                return DA_T
+
+            A_traj = pan_int(
                 adjoint_dynamics,
-                t_eval,
-                dLdy,
+                t_eval.flip(0),
+                A_T,
                 num_coeff_per_dim,
                 num_points,
                 etol_ls,
                 etol_newton,
                 callback,
             )
+
+            DlDtheta = A_traj[-1, a_theta_numel:]
+
+            ipdb.set_trace()
 
     def _pan_int_adjoint(y_init, t_eval):
         return _PanInt.apply(thetas, y_init, t_eval)
