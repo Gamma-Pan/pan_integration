@@ -178,63 +178,63 @@ def lst_sq_solver(
     return cat((l(B), B), dim=1)
 
 
-def newton_solver(
-    f,
-    t_lims,
-    y_init,
-    num_coeff_per_dim,
-    num_points,
-    f_init=None,
-    Phi=None,
-    DPhi=None,
-    B_init=None,
-    max_steps=50,
-    etol=1e-5,
-) -> Tensor:
-    device = y_init.device
-
-    t_hat = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
-    t = t_lims[0] + (t_hat - t_hat[0]) * (
-        (t_lims[1] - t_lims[0]) / (t_hat[-1] - t_hat[0])
-    )
-    batches, dims = y_init.shape
-
-    if f_init is None:
-        f_init = f(t[0], y_init)
-
-    if Phi is None or DPhi is None:
-        Phi = T_grid(t_hat, num_coeff_per_dim, device)
-        DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t_hat, num_coeff_per_dim, device)
-
-    # approximating Rieman integral with non uniformly spaced points requires to multiply
-    # with the interval lenghts between points
-    # TODO: approximate integral with sum using trapezoids instead of rectangles
-    d = torch.diff(torch.cat((t, tensor(t_lims[1])[None])))[:, None].to(device)
-
-    inv0 = inv(cat((Phi[0:1, [0, 1]], DPhi[0:1, [0, 1]]), dim=0))
-    l = lambda B, y_init, f_init: inv0 @ (
-        stack((y_init, f_init), dim=0) - cat((Phi[0:1, 2:], DPhi[0:1, 2:]), dim=0) @ B
-    )
-
-    # define error for one sample of batch as a function of B vectorised
-    def error(B_vec, y_init, f_init):
-        B_tail = B_vec.reshape(num_coeff_per_dim - 2, dims)
-        B_head = l(B_tail, y_init, f_init)
-
-        B = torch.cat((B_head, B_tail), dim=0)
-
-        error = (
-            (1 / (dims * num_coeff_per_dim * num_points))
-            * (DPhi @ B - f(t, (Phi @ B))) ** 2
-            * d
-        )
-        return torch.sum(error)
-
-    B_tail = newton(
-        error, B_init.reshape(batches, -1), f_args=(y_init, f_init), etol=etol
-    ).reshape(batches, num_coeff_per_dim - 2, dims)
-
-    return torch.cat((vmap(l)(B_tail, y_init, f_init), B_tail), dim=1)
+# def newton_solver(
+#     f,
+#     t_lims,
+#     y_init,
+#     num_coeff_per_dim,
+#     num_points,
+#     f_init=None,
+#     Phi=None,
+#     DPhi=None,
+#     B_init=None,
+#     max_steps=50,
+#     etol=1e-5,
+# ) -> Tensor:
+#     device = y_init.device
+#
+#     t_hat = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
+#     t = t_lims[0] + (t_hat - t_hat[0]) * (
+#         (t_lims[1] - t_lims[0]) / (t_hat[-1] - t_hat[0])
+#     )
+#     batches, dims = y_init.shape
+#
+#     if f_init is None:
+#         f_init = f(t[0], y_init)
+#
+#     if Phi is None or DPhi is None:
+#         Phi = T_grid(t_hat, num_coeff_per_dim, device)
+#         DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t_hat, num_coeff_per_dim, device)
+#
+#     # approximating Rieman integral with non uniformly spaced points requires to multiply
+#     # with the interval lenghts between points
+#     # TODO: approximate integral with sum using trapezoids instead of rectangles
+#     d = torch.diff(torch.cat((t, tensor(t_lims[1])[None])))[:, None].to(device)
+#
+#     inv0 = inv(cat((Phi[0:1, [0, 1]], DPhi[0:1, [0, 1]]), dim=0))
+#     l = lambda B, y_init, f_init: inv0 @ (
+#         stack((y_init, f_init), dim=0) - cat((Phi[0:1, 2:], DPhi[0:1, 2:]), dim=0) @ B
+#     )
+#
+#     # define error for one sample of batch as a function of B vectorised
+#     def error(B_vec, y_init, f_init):
+#         B_tail = B_vec.reshape(num_coeff_per_dim - 2, dims)
+#         B_head = l(B_tail, y_init, f_init)
+#
+#         B = torch.cat((B_head, B_tail), dim=0)
+#
+#         error = (
+#             (1 / (dims * num_coeff_per_dim * num_points))
+#             * (DPhi @ B - f(t, (Phi @ B))) ** 2
+#             * d
+#         )
+#         return torch.sum(error)
+#
+#     B_tail = newton(
+#         error, B_init.reshape(batches, -1), f_args=(y_init, f_init), etol=etol
+#     ).reshape(batches, num_coeff_per_dim - 2, dims)
+#
+#     return torch.cat((vmap(l)(B_tail, y_init, f_init), B_tail), dim=1)
 
 
 def pan_int(
@@ -273,20 +273,6 @@ def pan_int(
         B_init=B_init,
         etol=etol_ls,
     )
-
-    # B_newton = newton_solver(
-    #     f,
-    #     t_lims,
-    #     y_init,
-    #     num_coeff_per_dim,
-    #     num_points,
-    #     f_init,
-    #     Phi,
-    #     DPhi,
-    #     # B_init=B_init[:, :-2, :],
-    #     B_init=B_ls[:, 2:, :],
-    #     etol=etol_newton,
-    # )
 
     t_phi = -1 + 2 * (t_eval - t_lims[0]) / (t_lims[1] - t_lims[0])
     Phi_traj = T_grid(t_phi, num_coeff_per_dim, device)
@@ -331,6 +317,7 @@ def make_pan_adjoint(
         @staticmethod
         def backward(ctx, *grad_output):
             t_eval, yS, B_fwd = ctx.saved_tensors
+            device = yS.device
 
             points, batch_sz, dims = yS.shape
 
@@ -338,7 +325,7 @@ def make_pan_adjoint(
             a_y_T = grad_output[1][-1]
 
             a_theta_sz = torch.numel(thetas)
-            a_theta_T = torch.zeros(batch_sz, a_theta_sz)
+            a_theta_T = torch.zeros(batch_sz, a_theta_sz, device=device)
 
             a_t_T = vmap(torch.dot)(a_y_T, yS[-1])[..., None]
 

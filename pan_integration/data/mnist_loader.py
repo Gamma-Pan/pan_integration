@@ -18,7 +18,7 @@ class MNISTDataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+            [transforms.ToTensor(),  transforms.Normalize((0.1307,), (0.3081,))]
         )
 
     def prepare_data(self):

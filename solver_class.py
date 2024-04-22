@@ -57,15 +57,11 @@ class Learner(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        x.reshape(-1, 28 * 28)
-        t_eval, y_hat = self.model(x, self.t_span)
-        logits = sigmoid(self.linear(y_hat[-1]))[:, 0]
+        t_eval, y_hat = self.model(x.reshape(-1, 28*28), self.t_span)
+        logits = self.linear(y_hat[-1])
+        loss = nn.CrossEntropyLoss()(logits, y)
 
         nfe = self.model.vf.nfe
-        loss = nn.BCELoss()(logits, y)
-
-        self.nfes.append(nfe)
-        self.losses.append(loss.detach().cpu())
 
         self.log("loss", loss, prog_bar=True)
         self.log("nfe", nfe, prog_bar=True)
@@ -74,16 +70,12 @@ class Learner(L.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        x.reshape(-1,28*28)
-        t_eval, y_hat = self.model(x, self.t_span)
-        logits = sigmoid(self.linear(y_hat[-1]))[:, 0]
+        t_eval, y_hat = self.model(x.reshape(-1, 28*28), self.t_span)
+        logits = self.linear(y_hat[-1])
+        loss = nn.CrossEntropyLoss()(logits, y)
 
-        labels = logits > 0.5
-        acc = torch.sum(labels == y) / 100
-        loss = nn.BCELoss()(logits, y)
-
-        self.vals.append(acc.detach().cpu())
-        self.val_nfes.append(self.model.vf.nfe)
+        _, preds= torch.max(logits, dim=1 )
+        acc = torch.sum(preds== y) / y.shape[0]
 
         self.log("val_loss", loss, prog_bar=True)
         self.log("val_acc", acc, prog_bar=True)
@@ -102,30 +94,34 @@ if __name__ == "__main__":
             self.lin1 = nn.Linear(28 * 28, 256)
             self.lin2 = nn.Linear(256, 256)
             self.lin3 = nn.Linear(256, 28 * 28)
+            self.nfe = 0
 
         def forward(self, t, x):
+            self.nfe +=1
             x = tanh(self.lin1(x))
-            x = tanh(self.lin2(x))
+            # x = tanh(self.lin2(x))
             x = tanh(self.lin3(x))
+            return x
 
     f = F()
 
-    solver = LSZero(30, 50, etol=1e-6)
+    solver = LSZero(50, 100, etol=1e-4)
 
     model = MultipleShootingLayer(
         f,
-        solver="zero"
+        # solver="zero"
+        solver=solver,
         # return_t_eval=False
     ).to(device)
 
     learner = Learner(model)
     trainer = L.Trainer(
-        max_epochs=3,
-        # callbacks=[
-        #     EarlyStopping(
-        #         monitor="val_acc", stopping_threshold=0.99, mode="max", patience=100
-        #     )
-        # ],
+        max_epochs=100,
+        callbacks=[
+            EarlyStopping(
+                monitor="val_acc", stopping_threshold=0.9, mode="max", patience=5
+            )
+        ],
     )
-    dmodule = MNISTDataModule()
+    dmodule = MNISTDataModule(batch_size=32, num_workers=8)
     trainer.fit(learner, datamodule=dmodule)
