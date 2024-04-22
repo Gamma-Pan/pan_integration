@@ -330,60 +330,63 @@ def make_pan_adjoint(
 
         @staticmethod
         def backward(ctx, *grad_output):
-            t_eval, ys, B_fwd = ctx.saved_tensors
+            t_eval, yS, B_fwd = ctx.saved_tensors
 
-            points, batch_sz, dims = ys.shape
+            points, batch_sz, dims = yS.shape
 
             # dL/dz(T) -> (1xBxD)
             a_y_T = grad_output[1][-1]
 
-            theta = torch.cat(
-                [v.contiguous().flatten() for k, v in f.named_parameters()]
-            )
-            a_theta_sz = torch.numel(theta)
+            a_theta_sz = torch.numel(thetas)
             a_theta_T = torch.zeros(batch_sz, a_theta_sz)
+
+            a_t_T = vmap(torch.dot)(a_y_T, yS[-1])[..., None]
 
             # DEFINE AUGMENTED SYSTEM OF A_Y AND A_THETA
             # initial state (B,dims + weights_sz)
-            A_T = torch.cat([a_y_T, a_theta_T], dim=1)
+            A_T = torch.cat([a_y_T, a_t_T, a_theta_T], dim=1)
 
             def adjoint_dynamics(t, A):
                 # get y(t)
                 num_points = t.numel()
                 a_y = A[..., :dims]
                 if num_points == 1:
+                    t = t[None]
                     a_y.unsqueeze_(1)
 
-                yt = T_grid(t, num_coeff_per_dim, device=t.device) @ B_fwd
+                y = T_grid(t, num_coeff_per_dim, device=t.device) @ B_fwd
 
-                _, _vjp_func_ay = torch.func.vjp(lambda y: f(t, y), yt)
-                (Da_y,) = _vjp_func_ay(a_y)
+                def single_DA(y_t, t_t, a_y_t):
+                    primals = y_t, {k: v.detach() for k, v in f.named_parameters()}, t_t
 
-                def single_Da_theta(y_t, a_y_t):
-                    _, _vjp_func_a_theta = torch.func.vjp(
-                        lambda x: torch.func.functional_call(f, x, (t, y_t)),
-                        {k: v.detach() for k, v in f.named_parameters()},
+                    _, _vjp_func_sample = torch.func.vjp(
+                        lambda y_1, theta, t_1: torch.func.functional_call(
+                            f, theta, (t_1, y_1)
+                        ),
+                        *primals,
                     )
-                    (Da_theta_sample,) = _vjp_func_a_theta(a_y_t)
-                    return Da_theta_sample
+
+                    return _vjp_func_sample(a_y_t)
 
                 # first map over batches, then over time
-                Da_theta = vmap(vmap(single_Da_theta, in_dims=(0, 0)), in_dims=(0, 0))(
-                    yt, a_y
-                )
+                Da_y, Da_theta, Da_t = vmap(
+                    vmap(single_DA, in_dims=(0, 0, 0)), in_dims=(0, 0, 0)
+                )(y, t.expand(batch_sz, -1), a_y)
 
                 Da_theta = torch.cat(
                     [
-                        v.flatten(start_dim=2) if v is not None else torch.zeros(batch_sz,num_points, 1)
+                        v.flatten(start_dim=2)
+                        if v is not None
+                        else torch.zeros(batch_sz, num_points, 1)
                         for v in Da_theta.values()
                     ],
-                    dim=2
+                    dim=2,
                 )
 
-                DA_T = torch.cat([Da_y, Da_theta], dim=2)
-                if num_points ==1:
+                DA_T = torch.cat([Da_y, Da_theta, Da_t[..., None]], dim=2)
+                if num_points == 1:
                     DA_T.squeeze_(1)
-                return DA_T
+                return -DA_T
 
             A_traj = pan_int(
                 adjoint_dynamics,
@@ -396,9 +399,11 @@ def make_pan_adjoint(
                 callback,
             )
 
-            DlDtheta = A_traj[-1, a_theta_numel:]
+            DlDy = A_traj[-1, :, :dims]
+            DlDtheta = A_traj[-1, :, dims:a_theta_sz+dims]
+            DlDt = A_traj[-1, :, a_theta_sz+1:-1]
 
-            ipdb.set_trace()
+            return torch.sum(DlDtheta, dim=0), None, None
 
     def _pan_int_adjoint(y_init, t_eval):
         return _PanInt.apply(thetas, y_init, t_eval)
