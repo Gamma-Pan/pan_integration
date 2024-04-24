@@ -2,7 +2,7 @@ import torch
 from torch import tensor, abs, norm, squeeze, tensor, Tensor
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from pan_integration.optim.minimize import _line_search
+from pan_integration.optim.newton import _line_search
 from pan_integration.utils.plotting import wait
 from torch.func import jacfwd, jacrev, hessian
 

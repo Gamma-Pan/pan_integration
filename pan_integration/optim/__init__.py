@@ -1,1 +1,1 @@
-from .minimize import newton
+from .newton import newton

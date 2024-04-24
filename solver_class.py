@@ -82,7 +82,7 @@ class Learner(L.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=0.01)
+        return torch.optim.Adam(self.model.parameters(), lr=0.001)
 
 
 if __name__ == "__main__":
@@ -99,17 +99,18 @@ if __name__ == "__main__":
         def forward(self, t, x):
             self.nfe +=1
             x = tanh(self.lin1(x))
-            # x = tanh(self.lin2(x))
+            x = tanh(self.lin2(x))
+            # x = nn.BatchNorm1d(64)(x)
             x = tanh(self.lin3(x))
             return x
 
     f = F()
 
-    solver = LSZero(50, 100, etol=1e-4)
+    solver = LSZero(50, 100, etol=1e-6)
 
     model = MultipleShootingLayer(
         f,
-        # solver="zero"
+        # solver="zero",
         solver=solver,
         # return_t_eval=False
     ).to(device)
@@ -123,5 +124,5 @@ if __name__ == "__main__":
             )
         ],
     )
-    dmodule = MNISTDataModule(batch_size=32, num_workers=8)
+    dmodule = MNISTDataModule(batch_size=64, num_workers=12)
     trainer.fit(learner, datamodule=dmodule)
