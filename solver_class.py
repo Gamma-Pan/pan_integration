@@ -124,5 +124,5 @@ if __name__ == "__main__":
             )
         ],
     )
-    dmodule = MNISTDataModule(batch_size=64, num_workers=12)
-    trainer.fit(learner, datamodule=dmodule)
+    # dmodule = MNISTDataModule(batch_size=64, num_workers=12)
+    # trainer.fit(learner, datamodule=dmodule)
