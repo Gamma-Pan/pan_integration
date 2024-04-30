@@ -3,7 +3,6 @@ from torch import Tensor, vstack, tensor, cat, stack
 from torch.linalg import inv
 from torch.func import vmap
 
-# from ..optim import newton
 from typing import Tuple
 from functools import partial
 
@@ -106,7 +105,7 @@ def _B_init_cond(B_tail, y_init, f_init, Phi, DPhi):
 #     return B_ls.T.reshape(-1)
 
 
-def lst_sq_solver(
+def zero_order_pan_solver(
     f,
     t_lims,
     y_init,
@@ -116,7 +115,7 @@ def lst_sq_solver(
     Phi=None,
     DPhi=None,
     B_init=None,
-    max_steps=50,
+    max_steps=20,
     etol=1e-5,
     callback=None,
 ) -> Tensor | Tuple[Tensor, int]:
@@ -166,7 +165,10 @@ def lst_sq_solver(
         B_prev = B
         # B update
         B = Q @ (
-            Phi_bT.mT @ (d * f(t_hat, (Phi @ cat((l(B), B), dim=1))))
+            Phi_bT.mT @ (d *
+                        # vectorize f along time dimension
+                         vmap(f, in_dims=(0, 1))(t_hat, (Phi @ cat((l(B), B), dim=1)))
+                         )
             - Phi_bT.mT @ (d * Phi_aT)
         )
 
@@ -178,8 +180,6 @@ def lst_sq_solver(
 
     return cat((l(B), B), dim=1)
 
-#
-# def l_bgfs_solver()
 
 
 def pan_int(
@@ -189,6 +189,7 @@ def pan_int(
     num_coeff_per_dim,
     num_points,
     etol_ls=1e-5,
+    max_iters_ls=20,
     callback=None,
     f_init=None,
     return_B=False,
@@ -207,7 +208,7 @@ def pan_int(
     B_init = torch.rand((batches, num_coeff_per_dim - 2, dims), device=device)
 
     # first apply
-    B_ls = lst_sq_solver(
+    B_ls = zero_order_pan_solver(
         f,
         t_lims,
         y_init,
@@ -218,6 +219,7 @@ def pan_int(
         DPhi[None],
         B_init=B_init,
         etol=etol_ls,
+        max_steps=max_iters_ls
     )
 
     t_phi = -1 + 2 * (t_eval - t_lims[0]) / (t_lims[1] - t_lims[0])
@@ -241,6 +243,7 @@ def make_pan_adjoint(
     num_coeff_per_dim_adjoint,
     num_points_adjoint,
     etol_ls=1e-5,
+    max_iters_ls=20,
     callback=None,
 ):
     class _PanInt(Function):
@@ -253,7 +256,8 @@ def make_pan_adjoint(
                 num_coeff_per_dim,
                 num_points,
                 etol_ls,
-                callback,
+                max_iters_ls=max_iters_ls,
+                callback=callback,
                 return_B=True,
             )
             ctx.save_for_backward(t_eval, traj, B_fwd)

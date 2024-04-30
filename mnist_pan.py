@@ -1,6 +1,6 @@
 import torch
 from torch import nn, tensor
-from torch.nn.functional import tanh, relu
+from torch.nn import functional as F
 from pan_integration.solvers.pan_integration import make_pan_adjoint
 from lightning.pytorch import LightningModule, Trainer
 from pan_integration.data import MNISTDataModule
@@ -8,6 +8,8 @@ from torchdyn.core import MultipleShootingLayer, NeuralODE
 from torchdyn.numerics.solvers.ode import MultipleShootingDiffeqSolver, MSZero
 
 torch.manual_seed(42)
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Learner(LightningModule):
@@ -71,6 +73,7 @@ class PanODE(nn.Module):
         num_coeff_per_dim_adjoint=None,
         num_points_adjoint=None,
         etol_ls=1e-5,
+        max_iters_ls=30,
     ):
         super().__init__()
 
@@ -89,6 +92,7 @@ class PanODE(nn.Module):
             num_coeff_per_dim_adjoint,
             num_points_adjoint,
             etol_ls=etol_ls,
+            max_iters_ls=max_iters_ls,
         )
 
     def forward(self, y_init, t):
@@ -97,54 +101,61 @@ class PanODE(nn.Module):
 
 
 class VF(nn.Module):
-    def __init__(self, dim=64):
+    def __init__(self):
         super().__init__()
-        self.lin1 = nn.Linear(64, 128)
-        self.lin2 = nn.Linear(128, 64)
-        self.lin3 = nn.Linear(64, 64)
-        self.batch_norm = nn.BatchNorm1d(64)
         self.nfe = 0
+        self.norm1 = nn.GroupNorm(4, 64)
+        self.norm2 = nn.GroupNorm(4, 64)
+        self.norm3 = nn.GroupNorm(4, 64)
+
+        self.conv1 = nn.Conv2d(64, 64, 3, padding=1)
+        self.conv2 = nn.Conv2d(64, 64, 3, padding=1)
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-        x = relu(self.lin1(x))
-        x = relu(self.lin2(x))
-        x = relu(self.lin3(x))
-        # batchnorm wants (BxFxT)
-        if len(x.shape) == 3:
-            return self.batch_norm(x.permute(1,2,0)).permute(2,0,1)
-        else:
-            return self.batch_norm(x)
+
+        x = self.conv1(F.relu(self.norm1(x)))
+        x = self.conv2(F.relu(self.norm2(x)))
+        x = self.norm3(x)
+
+        return x
+
+
+embedding = nn.Sequential(
+    nn.Conv2d(1, 64, 3, 1),
+    nn.GroupNorm(8, 64),
+    nn.ReLU(),
+    nn.Conv2d(64, 64, 4, 2, 1),
+    nn.GroupNorm(8, 64),
+    nn.ReLU(),
+    nn.Conv2d(64, 64, 4, 2, 1),
+).to(device)
+
+classifier = nn.Sequential(
+    nn.GroupNorm(8, 64),
+    nn.ReLU(),
+    nn.AdaptiveAvgPool2d((1, 1)),
+    nn.Flatten(),
+    nn.Linear(64, 10),
+)
 
 
 def train_mnist_ode(
     mode: str, solver_args: dict, learner_args: dict, trainer_args: dict, test=False
 ):
-    vf = VF()
-    embedding = nn.Sequential(
-        nn.Conv2d(1, 16, kernel_size=3, stride=2, padding_mode="zeros", padding=1),
-        nn.ReLU(),
-        nn.BatchNorm2d(16),
-        nn.Conv2d(16, out_channels=64, kernel_size=3, padding=1),
-        nn.ReLU(),
-        nn.BatchNorm2d(64),
-        nn.Conv2d(in_channels=64, out_channels=1, kernel_size=2, stride=2, padding=1),
-        nn.Flatten(),  # (B,64)
-    )
-    classifier = nn.Sequential(nn.Linear(64, 10))
-
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    vf = VF().to(device)
 
     if mode == "pan":
         ode_model = PanODE(vf, **solver_args)
     if mode == "ms":
         ode_model = MultipleShootingLayer(vf, **solver_args)
     if mode == "stepping":
-        ode_model = NeuralODE(**solver_args)
+        ode_model = NeuralODE(vf, **solver_args)
 
-    learner = Learner(embedding, ode_model, classifier)
+    ode_model = ode_model.to(device)
+    learner = Learner(embedding, ode_model, classifier, **learner_args)
 
-    dmodule = MNISTDataModule(batch_size=64)
+    dmodule = MNISTDataModule(batch_size=64, num_workers=0)
 
     trainer = Trainer(**trainer_args)
     trainer.fit(learner, datamodule=dmodule)
@@ -152,13 +163,18 @@ def train_mnist_ode(
 
 
 if __name__ == "__main__":
-    mode= 'ms'
-    solver_args = dict( solver='mszero', maxiter=4, fine_steps=4)
+    # mode = "ms"
+    # solver_args = dict(solver="mszero", maxiter=4, fine_steps=4)
 
-    t_span= torch.linspace(0,1,10)
+    mode = "pan"
+    solver_args = dict(
+        num_coeff_per_dim=40, num_points=60, etol_ls=1e-3, max_iters_ls=30
+    )
+
+    # mode='stepping'
+
+    t_span = torch.linspace(0, 1, 10).cuda()
     learner_args = dict(t_span=t_span)
 
     trainer_args = dict(max_epochs=3, enable_checkpointing=False, fast_dev_run=False)
     train_mnist_ode(mode, solver_args, learner_args, trainer_args, test=True)
-
-

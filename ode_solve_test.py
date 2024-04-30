@@ -4,7 +4,7 @@ from pan_integration.solvers.pan_integration import (
     newton_solver,
     T_grid,
     U_grid,
-    lst_sq_solver,
+    zero_order_pan_solver,
 )
 
 import torch
