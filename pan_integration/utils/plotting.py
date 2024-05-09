@@ -14,7 +14,7 @@ from torchdyn.numerics import odeint
 mpl.use("TkAgg")
 
 quiver_args = {
-    "headwidth": 2,
+    "headwidth": 0.5,
     "headlength": 1,
     "headaxislength": 1.5,
     "linewidth": 0.1,
@@ -73,16 +73,20 @@ class VfPlotter:
         ymax = torch.max(trajectories) + padding
         ymin = torch.min(trajectories) - padding
 
-        self.ax.set_xlim(xmin , xmax )
-        self.ax.set_ylim(ymin , ymax )
+        self.ax.set_xlim(xmin, xmax)
+        self.ax.set_ylim(ymin, ymax)
 
-        xs = torch.linspace(float(xmin), float(xmax), self.grid_definition[0])
-        ys = torch.linspace(float(ymin), float(ymax), self.grid_definition[1])
+        xs = torch.linspace(float(xmin), float(xmax), self.grid_definition[0]).to(
+            self.device
+        )
+        ys = torch.linspace(float(ymin), float(ymax), self.grid_definition[1]).to(
+            self.device
+        )
 
         Xs, Ys = torch.meshgrid(xs, ys, indexing="xy")
 
         batch = torch.stack((Xs, Ys), dim=-1).reshape(-1, 2)
-        derivatives = self.f(batch).reshape(
+        derivatives = self.f(0, batch).reshape(
             self.grid_definition[0], self.grid_definition[1], 2
         )
         Us, Vs = derivatives.unbind(dim=-1)
@@ -106,11 +110,12 @@ class VfPlotter:
         if plot_kwargs is None:
             plot_kwargs = {"color": "red"}
         if ivp_kwargs is None:
-            ivp_kwargs = {"solver": "tsit5", 'atol': 1e-9, 'rtol': 1e-12}
+            ivp_kwargs = {"solver": "tsit5", "atol": 1e-9, "rtol": 1e-12}
 
+        self.device = y_init.device
         t_eval, trajectories = odeint(self.f, y_init, t_span, **ivp_kwargs)
 
-        self.ax.plot( *trajectories.unbind(dim=-1), **plot_kwargs)
+        self.ax.plot(*trajectories.unbind(dim=-1), **plot_kwargs)
 
         if set_lims:
             self._plot_vector_field(trajectories)
@@ -129,12 +134,30 @@ class VfPlotter:
         if self.t_init != t_init:
             self.t_init = t_init
             self.lines = self.ax.plot(*approx.unbind(-1), **kwargs)
+            if Dapprox is not None:
+                self.arrows = self.ax.quiver(
+                    *approx.unbind(-1), *Dapprox.unbind(-1), **quiver_args
+                )
+                self.farrows = self.ax.quiver(
+                    *approx.unbind(-1), *self.f(0, approx).unbind(-1), **quiver_args, color='red'
+                )
         else:
-            self.lines.set_data(*approx.unbind(-1))
+            for line, data in zip(self.lines, approx.unbind(1)):
+                line.set_data(*data.unbind(-1))
+
+            if Dapprox is not None:
+                self.arrows.set_offsets(approx[:, 0, ...])
+                self.arrows.set_UVC(*Dapprox.unbind(-1))
+
+                self.farrows.set_offsets(approx[:, 0, ...])
+                self.farrows.set_UVC(*self.f(0, approx).unbind(-1))
 
     def grab_frame(self):
         self.fig.canvas.draw()
         self.writer.grab_frame()
+
+    def wait(self):
+        wait()
 
 
 class LsPlotter:
@@ -175,7 +198,7 @@ class LsPlotter:
 
     def line_search(self, a_cur, c1):
         # plot the line along the search direction
-        a = torch.linspace(0, 1.5*a_cur, self.plot_res)
+        a = torch.linspace(0, 1.5 * a_cur, self.plot_res)
         phi_a = torch.stack([self.phi(a) for a in a])
         self.alpha_line_art.set_xdata(a)
         self.alpha_line_art.set_ydata(phi_a)
@@ -188,8 +211,8 @@ class LsPlotter:
             ]
         )
 
-        self.ax.set_xlim(-0.1*a_cur, 1.5*a_cur )
-        self.ax.set_ylim([0.8 * torch.min(phi_a), self.phi(a_cur *1.5) * 1.5])
+        self.ax.set_xlim(-0.1 * a_cur, 1.5 * a_cur)
+        self.ax.set_ylim([0.8 * torch.min(phi_a), self.phi(a_cur * 1.5) * 1.5])
 
         # plot the current point
         self.curpoint.set_xdata([a_cur])
