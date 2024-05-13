@@ -25,7 +25,7 @@ from torch.nn.functional import tanh
 mpl.use("TkAgg")
 
 from pan_integration.utils import plotting
-from pan_integration.solvers.pan_integration import pan_int
+from pan_integration.solvers.pan_integration import first_order_int
 
 
 class LSZero(MultipleShootingDiffeqSolver):
@@ -36,7 +36,7 @@ class LSZero(MultipleShootingDiffeqSolver):
         self.etol = etol
 
     def root_solve(self, odeint_func, f, x, t_span, B, fine_steps, maxiter):
-        traj = pan_int(
+        traj = first_order_int(
             f,
             t_span,
             x,

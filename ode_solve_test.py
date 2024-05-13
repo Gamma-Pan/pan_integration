@@ -1,6 +1,6 @@
 from pan_integration.utils.plotting import VfPlotter, wait
 from pan_integration.solvers.pan_integration import (
-    pan_int,
+    first_order_int,
     newton_solver,
     T_grid,
     U_grid,
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     f.nfe = 0
     print(10 * "-" + "\n" + "pan")
-    sol_pan = pan_int(
+    sol_pan = first_order_int(
         f, t_span, y_init, num_coeff_per_dim, num_points, etol_ls=1e-5, etol_newton=1e-7
     )
     print(f.nfe)

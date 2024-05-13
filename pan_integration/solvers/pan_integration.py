@@ -9,7 +9,7 @@ from typing import Tuple, Callable
 
 import ipdb
 
-torch.manual_seed(42)
+# torch.manual_seed(42)
 
 
 def T_grid(t, num_coeff_per_dim, device):
@@ -60,13 +60,20 @@ def DT_grid(t, num_coeff_per_dim, device):
 
 
 def _euler_coarse(
-    f, y_init, f_init, num_coeff_per_dim, t_lims, num_steps=5, device=None
+    f,
+    y_init,
+    f_init,
+    num_coeff_per_dim,
+    t_lims,
+    num_steps=5,
+    device=None,
+    callback=None,
 ):
     if device is None:
         device = y_init.device
 
     num_dims = len(y_init.shape)
-    t_coarse = torch.linspace(0, 1, num_steps)
+    t_coarse = -torch.cos(torch.pi * (torch.arange(num_steps) / num_steps)).to(device)
 
     Phi = T_grid(t_coarse, num_coeff_per_dim, device).mT  # (TxC).T = (CxT)
     DPhi = (
@@ -75,67 +82,162 @@ def _euler_coarse(
     inv0 = torch.linalg.inv(torch.stack([Phi[0:2, 0], DPhi[0:2, 0]]).T)
 
     # coarse solution, put time dimension last
-    y_eul = torchdyn.numerics.odeint(f, y_init, t_coarse, solver="euler")[1].permute(
-        *range(1, num_dims + 1), 0
-    )
+    y_eul = torchdyn.numerics.odeint(f, y_init, t_coarse, solver="euler")[1]
+
+    if callback is not None:
+        print("euler")
+        callback(y_eul)
 
     Phi_a = torch.stack([y_init, f_init], dim=-1) @ inv0 @ Phi[0:2, :]
     Phi_b = (
         Phi[2:, :] - torch.stack([Phi[2:, 0], DPhi[2:, 0]], dim=-1) @ inv0 @ Phi[0:2, :]
     )
 
-    Y = (y_eul - Phi_a).mT
-    A = (Phi_b.mT).view(*[1 for _ in range(num_dims - 1)], *Phi_b.shape).mT
+    Y = (y_eul.permute(*range(1, num_dims + 1), 0) - Phi_a).mT
+    A = Phi_b.view(*[1 for _ in range(num_dims - 1)], *Phi_b.shape).mT
     return torch.linalg.lstsq(A, Y).solution.mT
 
 
 @torch.no_grad()
-def pan_int(
+def zero_order_int(
     f: Callable,
     t_lims: list | Tensor,
     y_init: Tensor,
     num_coeff_per_dim: int,
     num_points: int,
-    optimizer_class: torch.optim.Optimizer,
-    optimizer_params: dict,
-    etol=1e-5,
+    delta=1e-5,
     max_iters=20,
-    coarse_iters=5,
-    init: str = "euler",
-    batched=True,
+    B_init=None,
     callback=None,
+    f_init=None,
+    Phi=None,
+    DPhi=None,
 ):
-    if optimizer_class is None:
-        optimizer_class = optim.SGD
-    if optimizer_params is None:
-        optimizer_params = {"lr": 0.1}
-
     device = y_init.device
-    if batched:
-        batch_sz, *dims = y_init.shape
-    else:
-        batch_sz, dims = 1, y_init.shape
+    dims = y_init.shape
 
-    f_init = f(t_lims[0], y_init)
+    if f_init is None:
+        f_init = f(t_lims[0], y_init)
 
     # t at chebyshev nodes
     t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
     Dt = torch.diff(torch.cat([t, tensor([1])]))
 
-    Phi = T_grid(t, num_coeff_per_dim, device).mT  # (TxC).T = (CxT)
-    DPhi = (
-        2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff_per_dim, device).mT
-    )  # (TxC).T = (CxT)
+    if Phi is None:
+        Phi = T_grid(t, num_coeff_per_dim, device).mT  # (TxC).T = (CxT)
+    if DPhi is None:
+        DPhi = (
+            2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff_per_dim, device).mT
+        )  # (TxC).T = (CxT)
 
-    if init == "euler":
-        B_init = _euler_coarse(
-            f, y_init, f_init, num_coeff_per_dim, t_lims, device=device
+    if callback is not None:
+        t_plot = torch.linspace(-1, 1, 100)
+        Phi_plot = T_grid(t_plot, num_coeff_per_dim, device).mT
+
+        DPhi_plot = (
+            2 / (t_lims[1] - t_lims[0]) * DT_grid(t_plot, num_coeff_per_dim, device).mT
+        )  # (TxC).T = (CxT)
+
+    inv0 = torch.linalg.inv(torch.stack([Phi[0:2, 0], DPhi[0:2, 0]]).T)
+
+    def head(B_tail):
+        return (
+            torch.stack([y_init, f_init], dim=-1)
+            - B_tail @ torch.stack([Phi[2:, 0], DPhi[2:, 0]], dim=-1)
+        ) @ inv0
+
+    Phi_a = (
+        torch.stack([y_init, f_init], dim=-1)
+        @ inv0
+        @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0)
+    )
+    Phi_b = DPhi[2:, :] - torch.stack(
+        [Phi[2:, 0], DPhi[2:, 0]], dim=-1
+    ) @ inv0 @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0)
+
+    # invert a (num_coeff X num_coeff) matrix once
+    Q = torch.linalg.inv(Phi_b @ (Dt[:, None] * Phi_b.mT))
+
+    B = B_init
+    for i in range(max_iters):
+        if callback is not None:
+            B_plot = torch.cat([head(B), B], dim=-1)
+            approx = B_plot @ Phi_plot
+            Dapprox = B_plot @ DPhi_plot
+            callback(
+                approx.permute(-1, *torch.arange(len(dims)).tolist()),
+                Dapprox=Dapprox.permute(-1, *torch.arange(len(dims)).tolist()),
+            )
+
+        B_prev = B
+        B = (
+            vmap(f, in_dims=(0, -1), out_dims=(-1))(
+                t, torch.cat([head(B_prev), B_prev], dim=-1) @ Phi
+            )
+            @ (Dt[:, None] * Phi_b.mT)
+            - Phi_a @ (Dt[:, None] * Phi_b.mT)
+        ) @ Q
+
+        tol = torch.norm(B - B_prev)
+        print(tol)
+        if tol < delta:
+            break
+
+    if i == max_iters - 1:
+        print("zero order: max iterations reached")
+
+    return torch.cat([head(B), B], dim=-1)
+
+
+@torch.no_grad()
+def first_order_int(
+    f: Callable,
+    t_lims: list | Tensor,
+    y_init: Tensor,
+    num_coeff_per_dim: int,
+    num_points: int,
+    optimizer_class: torch.optim.Optimizer = None,
+    optimizer_params: dict = None,
+    etol=1e-5,
+    max_iters=20,
+    B_init=None,
+    callback=None,
+    f_init=None,
+    Phi=None,
+    DPhi=None,
+):
+    print("first order")
+    if optimizer_class is None:
+        optimizer_class = torch.optim.Adam
+    if optimizer_params is None:
+        optimizer_params = dict(
+            history_size=10, max_iter=10, line_search_fn="strong_wolfe"
         )
-    elif init == "random":
-        B_init = torch.rand(
-            (batch_sz, *dims, num_coeff_per_dim - 2),
-            device=device,
-        )
+
+    device = y_init.device
+    dims = y_init.shape
+
+    if f_init is None:
+        f_init = f(t_lims[0], y_init)
+
+    # t at chebyshev nodes
+    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
+    Dt = torch.diff(torch.cat([t, tensor([1])]))
+
+    if Phi is None:
+        Phi = T_grid(t, num_coeff_per_dim, device).mT  # (TxC).T = (CxT)
+    if DPhi is None:
+        DPhi = (
+            2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff_per_dim, device).mT
+        )  # (TxC).T = (CxT)
+
+    if callback is not None:
+        t_plot = torch.linspace(-1, 1, 100)
+        Phi_plot = T_grid(t_plot, num_coeff_per_dim, device).mT
+
+        DPhi_plot = (
+            2 / (t_lims[1] - t_lims[0]) * DT_grid(t_plot, num_coeff_per_dim, device).mT
+        )  # (TxC).T = (CxT)
 
     inv0 = torch.linalg.inv(torch.stack([Phi[0:2, 0], DPhi[0:2, 0]]).T)
 
@@ -150,6 +252,7 @@ def pan_int(
         B.requires_grad = True
         B.retain_grad()
         optimizer = optimizer_class([B], **optimizer_params)
+        grad_norm = torch.inf
 
         def loss_fn(B_tail):
             B_head = head(B_tail)
@@ -158,32 +261,131 @@ def pan_int(
             approx = B @ Phi
             Dapprox = B @ DPhi
 
-            # vmap to avoid conflicts with convolution, normalization layers that require 3D/4D inputs
+            # vmap to avoid conflicts with convolutions, normalization layers, ... that require 3D/4D inputs
             loss = torch.sum(
                 (Dapprox - vmap(f, in_dims=(0, -1), out_dims=(-1))(t, approx)) ** 2 * Dt
             )
 
             return loss, approx, Dapprox
 
-        # Phi_plot =  T_grid(torch.linspace(-1,1, 200), num_coeff_per_dim, device).mT  # (TxC).T = (CxT)
-        for i in range(max_iters):
+        def closure():
             optimizer.zero_grad()
             loss, approx, Dapprox = loss_fn(B)
-            print(approx[0,:,-1])
 
             if callback is not None:
-                callback(i,
-                    approx.detach().permute(-1, *torch.arange(len(dims) + 1).tolist()),
-                    Dapprox=Dapprox.detach().permute(
-                        -1, *torch.arange(len(dims) + 1).tolist()
-                    ),
+                B_plot = torch.cat([head(B.detach()), B.detach()], dim=-1)
+                approx_plot = (B_plot @ Phi_plot).permute(
+                    -1, *torch.arange(len(dims)).tolist()
                 )
+                Dapprox_plot = (B_plot @ DPhi_plot).permute(
+                    -1, *torch.arange(len(dims)).tolist()
+                )
+                callback(approx_plot, Dapprox=Dapprox_plot)
 
             loss.backward()
-            optimizer.step()
+            nonlocal grad_norm
+            grad_norm = torch.norm(B.grad)
+            print(grad_norm)
+            return loss
 
-    # return trajectory with time as first dim
-    return approx.permute(-1, *torch.arange(len(dims) + 1).tolist())
+        for i in range(max_iters):
+            optimizer.step(closure)
+
+            if grad_norm < etol:
+                break
+
+        if i == max_iters - 1:
+            print("first order: max iterations reached")
+
+    return torch.cat([head(B), B], dim=-1)
+
+
+def pan_int(
+    f: Callable,
+    t_span: list | Tensor,
+    y_init: Tensor,
+    num_coeff_per_dim: int,
+    num_points: int,
+    tol_zero=1e-3,
+    tol_one=1e-5,
+    max_iters_zero=10,
+    max_iters_one=10,
+    optimizer_class=None,
+    optimizer_params=None,
+    init="random",
+    coarse_steps=5,
+    callback=None,
+):
+    device = y_init.device
+    dims = y_init.shape
+    t_lims = [t_span[0], t_span[-1]]
+
+    f_init = f(t_lims[0], y_init)
+
+    # t at chebyshev nodes
+    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
+
+    Phi = T_grid(t, num_coeff_per_dim, device).mT  # (TxC).T = (CxT)
+    DPhi = (
+        2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff_per_dim, device).mT
+    )  # (TxC).T = (CxT)
+
+    if init == "random":
+        B_init = torch.rand(
+            (*dims, num_coeff_per_dim - 2),
+            device=device,
+        )
+    elif init == "euler":
+        B_init = _euler_coarse(
+            f,
+            y_init,
+            f_init,
+            num_coeff_per_dim,
+            t_lims,
+            device=device,
+            num_steps=coarse_steps,
+            callback=callback,
+        )
+    else:
+        raise Exception("Invalid init type")
+
+    B_zero = zero_order_int(
+        f,
+        t_lims,
+        y_init,
+        num_coeff_per_dim,
+        num_points,
+        tol_zero,
+        max_iters_zero,
+        B_init,
+        callback,
+        f_init,
+        Phi,
+        DPhi,
+    )
+
+    B_out = first_order_int(
+        f,
+        t_lims,
+        y_init,
+        num_coeff_per_dim,
+        num_points,
+        optimizer_class,
+        optimizer_params,
+        tol_one,
+        max_iters_one,
+        B_zero[..., 2:],
+        callback,
+        f_init,
+        Phi,
+        DPhi,
+    )
+
+    t_out = -1 + 2*(t_span - t_span[0])/(t_span[-1] - t_span[0])
+    Phi_out = T_grid(t_out, num_coeff_per_dim, device).mT
+    approx = B_out @ Phi_out
+    # put time dimension in front
+    return approx.permute(-1, *torch.arange(len(dims)).tolist())
 
 
 def make_pan_adjoint(
@@ -200,7 +402,7 @@ def make_pan_adjoint(
     class _PanInt(Function):
         @staticmethod
         def forward(ctx, thetas, y_init, t_eval):
-            traj, B_fwd = pan_int(
+            traj, B_fwd = first_order_int(
                 f,
                 t_eval,
                 y_init,
@@ -247,7 +449,8 @@ def make_pan_adjoint(
             t_eval_adjoint = torch.linspace(
                 t_eval[-1], t_eval[0], num_points_adjoint
             ).to(device)
-            A_traj = pan_int(
+
+            A_traj = first_order_int(
                 adjoint_dynamics,
                 t_eval_adjoint,
                 a_y_T,
