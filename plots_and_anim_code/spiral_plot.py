@@ -1,10 +1,63 @@
 import torch
 from torch import tensor, nn
-from pan_integration.solvers.pan_integration import  pan_int
+from pan_integration.numerics.functional import  pan_int
 from pan_integration.utils.plotting import VfPlotter
 import matplotlib.pyplot as plt
+from torchdyn.numerics.solvers.ode import SolverTemplate
+from torchdyn.core.neuralde import odeint
 
 torch.random.manual_seed(42)
+
+class PanSolver(SolverTemplate):
+    def __init__(
+            self,
+            dtype=torch.float32,
+            num_coeff_per_dim=16,
+            num_points=64,
+            tol_zero = 1e-3,
+            tol_one = 1e-5,
+            max_iters_zero=30,
+            max_iters_one=10,
+            optimizer_class=None,
+            optimizer_params=None,
+            init="random",
+            coarse_steps=5,
+            callback=None
+    ):
+        super().__init__(order=0)
+        self.dtype = dtype
+        self.stepping_class = "fixed"
+
+        self.num_coeff_per_dim = num_coeff_per_dim
+        self.num_points = num_points
+        self.tol_zero = tol_zero
+        self.tol_one = tol_one
+        self.max_iters_zero = max_iters_zero
+        self.max_iters_one = max_iters_one
+        self.optimizer_class = optimizer_class
+        self.optimizer_params = optimizer_params
+        self.init = init
+        self.coarse_steps = coarse_steps
+        self.callback = callback
+
+    def step(self, f, y_init, t, dt, k1=None, args=None):
+        approx = pan_int(
+            f,
+            torch.tensor([t, t+dt]),
+            y_init,
+            self.num_coeff_per_dim,
+            self.num_points,
+            self.tol_zero,
+            self.tol_one,
+            self.max_iters_zero,
+            self.max_iters_one,
+            optimizer_class=self.optimizer_class,
+            optimizer_params=self.optimizer_params,
+            init=self.init,
+            coarse_steps=self.coarse_steps,
+            callback = self.callback
+        )
+        return None, approx[-1], None
 
 class Spiral(nn.Module):
     def __init__(self, A):
@@ -22,7 +75,7 @@ if __name__ == "__main__":
     a, b = 0.4, 1.0
     A = torch.tensor([[-a, b], [-b, -a]])
     f = Spiral(A).to(device)
-    y_init = 2 * torch.rand(1, 2) - 2
+    y_init = 2 * torch.rand(10, 2) - 2
     t_lims = [0.0, 5.0]
     t_span = torch.linspace(*t_lims, 100)
 
@@ -31,25 +84,24 @@ if __name__ == "__main__":
         t_span,
         y_init,
         set_lims=True,
-        ivp_kwargs=dict(solver="tsit5", atol=1e-9),
+        ivp_kwargs=dict(solver="tsit5", atol=1e-3),
     )
+    print(f.nfe)
 
-    def callback( approx, Dapprox=None):
+    def callback( t, approx, Dapprox=None):
         plotter.approx(
-            approx, 0.0, Dapprox=None, marker=None, markersize=1.5, alpha=0.9, color='green'
+            approx, t, Dapprox=None, marker=None, markersize=1.5, alpha=0.9, color='green'
         )
-        plotter.wait()
-        # plotter.fig.canvas.flush_events()
-        # plotter.fig.canvas.draw()
+        # plotter.wait()
+        plotter.fig.canvas.flush_events()
+        plotter.fig.canvas.draw()
 
     plotter.wait()
     print(f.nfe)
     f.nfe = 0
 
-    approx = pan_int(
-        f,
-        t_span,
-        y_init,
+    solver = PanSolver(
+        dtype = torch.float32,
         num_coeff_per_dim=32,
         num_points=32,
         max_iters_zero=30,
@@ -59,14 +111,12 @@ if __name__ == "__main__":
         optimizer_class=torch.optim.SGD,
         optimizer_params={"lr": 1e-9 ,"momentum": 0.95, "nesterov": True},
         tol_zero = 1e-3,
-        tol_one=1e-3,
+        tol_one=1,
         callback=callback,
     )
-    print(approx.shape)
-    plotter.approx( approx, t_init=0.0,  color='lime')
 
-    print(sol[-1])
-    print(approx[-1])
+    _, torchsol,  = odeint(f, y_init, torch.linspace(*t_lims, steps=5), solver= solver)
+    print(f.nfe)
 
     plt.show()
 

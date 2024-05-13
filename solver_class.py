@@ -7,9 +7,11 @@ from torch.nn.functional import sigmoid
 
 from torchdyn.datasets import ToyDataset
 from torchdyn.models import NeuralODE, MultipleShootingLayer
-from torchdyn.numerics.solvers.ode import MultipleShootingDiffeqSolver
+from torchdyn.numerics.solvers.ode import MultipleShootingDiffeqSolver, DiffEqSolver
+from torchdyn.numerics.solvers.ode import SolverTemplate
 
 from pan_integration.data import MNISTDataModule
+from pan_integration.numerics.functional import pan_int
 
 import lightning as L
 from lightning.pytorch.callbacks import RichProgressBar, TQDMProgressBar, EarlyStopping
@@ -25,26 +27,52 @@ from torch.nn.functional import tanh
 mpl.use("TkAgg")
 
 from pan_integration.utils import plotting
-from pan_integration.solvers.pan_integration import first_order_int
+from pan_integration.numerics.functional import first_order_int
 
 
-class LSZero(MultipleShootingDiffeqSolver):
-    def __init__(self, num_coeff_per_dim, num_points, etol=1e-3):
-        super().__init__(coarse_method="euler", fine_method="euler")
+class PanSolver(SolverTemplate):
+    def __init__(
+        self,
+        dtype=torch.float.float32,
+        num_coeff_per_dim=16,
+        num_points=64,
+        max_iters_zero=30,
+        max_iters_one=10,
+        optimizer_class=None,
+        optimizer_params=None,
+        init="random",
+        coarse_steps=5,
+    ):
+        super().__init__(order=0)
+        self.dtype = dtype
+        self.stepping_class = "fixed"
+
         self.num_coeff_per_dim = num_coeff_per_dim
         self.num_points = num_points
-        self.etol = etol
+        self.max_iters_zero = max_iters_zero
+        self.max_iters_one = max_iters_one
+        self.optimizer_class = optimizer_class
+        self.optimizer_param = optimizer_params
+        self.init = init
+        self.coarse_steps = coarse_steps
 
-    def root_solve(self, odeint_func, f, x, t_span, B, fine_steps, maxiter):
-        traj = first_order_int(
+    def step(self, f, x, t, dt, k1=None, args=None):
+        approx = pan_int(
             f,
-            t_span,
+            torch.tensor([t, dt]),
             x,
-            num_points=self.num_points,
-            num_coeff_per_dim=self.num_coeff_per_dim,
-            etol_ls=self.etol,
+            self.num_coeff_per_dim,
+            self.num_points,
+            self.tol_zero,
+            self.tol_one,
+            self.max_iters_zero,
+            self.max_iters_one,
+            optimizer_class=self.optimizer_class,
+            optimizer_params=self.optimizer_params,
+            init=self.init,
+            coarse_steps=self.coarse_steps,
         )
-        return traj
+        return None, approx[-1], None
 
 
 class Learner(L.LightningModule):
@@ -57,7 +85,7 @@ class Learner(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        t_eval, y_hat = self.model(x.reshape(-1, 28*28), self.t_span)
+        t_eval, y_hat = self.model(x.reshape(-1, 28 * 28), self.t_span)
         logits = self.linear(y_hat[-1])
         loss = nn.CrossEntropyLoss()(logits, y)
 
@@ -70,12 +98,12 @@ class Learner(L.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        t_eval, y_hat = self.model(x.reshape(-1, 28*28), self.t_span)
+        t_eval, y_hat = self.model(x.reshape(-1, 28 * 28), self.t_span)
         logits = self.linear(y_hat[-1])
         loss = nn.CrossEntropyLoss()(logits, y)
 
-        _, preds= torch.max(logits, dim=1 )
-        acc = torch.sum(preds== y) / y.shape[0]
+        _, preds = torch.max(logits, dim=1)
+        acc = torch.sum(preds == y) / y.shape[0]
 
         self.log("val_loss", loss, prog_bar=True)
         self.log("val_acc", acc, prog_bar=True)
@@ -97,7 +125,7 @@ if __name__ == "__main__":
             self.nfe = 0
 
         def forward(self, t, x):
-            self.nfe +=1
+            self.nfe += 1
             x = tanh(self.lin1(x))
             x = tanh(self.lin2(x))
             # x = nn.BatchNorm1d(64)(x)

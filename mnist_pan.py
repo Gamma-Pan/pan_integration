@@ -1,7 +1,7 @@
 import torch
 from torch import nn, tensor
 from torch.nn import functional as F
-from pan_integration.solvers.pan_integration import make_pan_adjoint
+from pan_integration.numerics.functional import make_pan_adjoint
 from lightning.pytorch import LightningModule, Trainer
 from pan_integration.data import MNISTDataModule
 from torchdyn.core import MultipleShootingLayer, NeuralODE

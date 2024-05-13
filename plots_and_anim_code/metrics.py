@@ -9,8 +9,8 @@ from math import floor, log10
 from typing import List
 
 # mpl.use('TkAgg')
-from pan_integration.solvers import pan_int
-from pan_integration.solvers.pan_integration import _cheb_phis, _B_init_cond
+from pan_integration.numerics import pan_int
+from pan_integration.numerics.functional import _cheb_phis, _B_init_cond
 from pan_integration.utils import plotting
 from torch import pi as PI
 

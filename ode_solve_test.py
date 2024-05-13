@@ -1,5 +1,5 @@
 from pan_integration.utils.plotting import VfPlotter, wait
-from pan_integration.solvers.pan_integration import (
+from pan_integration.numerics.functional import (
     first_order_int,
     newton_solver,
     T_grid,

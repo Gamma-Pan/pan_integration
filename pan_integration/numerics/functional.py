@@ -67,7 +67,6 @@ def _euler_coarse(
     t_lims,
     num_steps=5,
     device=None,
-    callback=None,
 ):
     if device is None:
         device = y_init.device
@@ -83,10 +82,6 @@ def _euler_coarse(
 
     # coarse solution, put time dimension last
     y_eul = torchdyn.numerics.odeint(f, y_init, t_coarse, solver="euler")[1]
-
-    if callback is not None:
-        print("euler")
-        callback(y_eul)
 
     Phi_a = torch.stack([y_init, f_init], dim=-1) @ inv0 @ Phi[0:2, :]
     Phi_b = (
@@ -165,6 +160,7 @@ def zero_order_int(
             approx = B_plot @ Phi_plot
             Dapprox = B_plot @ DPhi_plot
             callback(
+                t_lims[0],
                 approx.permute(-1, *torch.arange(len(dims)).tolist()),
                 Dapprox=Dapprox.permute(-1, *torch.arange(len(dims)).tolist()),
             )
@@ -179,7 +175,6 @@ def zero_order_int(
         ) @ Q
 
         tol = torch.norm(B - B_prev)
-        print(tol)
         if tol < delta:
             break
 
@@ -206,7 +201,6 @@ def first_order_int(
     Phi=None,
     DPhi=None,
 ):
-    print("first order")
     if optimizer_class is None:
         optimizer_class = torch.optim.Adam
     if optimizer_params is None:
@@ -280,12 +274,11 @@ def first_order_int(
                 Dapprox_plot = (B_plot @ DPhi_plot).permute(
                     -1, *torch.arange(len(dims)).tolist()
                 )
-                callback(approx_plot, Dapprox=Dapprox_plot)
+                callback(t_lims[0], approx_plot, Dapprox=Dapprox_plot)
 
             loss.backward()
             nonlocal grad_norm
             grad_norm = torch.norm(B.grad)
-            print(grad_norm)
             return loss
 
         for i in range(max_iters):
@@ -344,7 +337,6 @@ def pan_int(
             t_lims,
             device=device,
             num_steps=coarse_steps,
-            callback=callback,
         )
     else:
         raise Exception("Invalid init type")
