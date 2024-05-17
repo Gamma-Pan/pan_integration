@@ -9,11 +9,14 @@
 \abx@aux@cite{0}{ioffe2015batch}
 \abx@aux@segm{0}{0}{ioffe2015batch}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {2}Residual Networks}{1}{}\protected@file@percent }
 \abx@aux@cite{0}{srivastava2015highway}
 \abx@aux@segm{0}{0}{srivastava2015highway}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Residual Networks}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Residual Learning}{2}{}\protected@file@percent }
 \abx@aux@cite{0}{vaswani2017attention}
 \abx@aux@segm{0}{0}{vaswani2017attention}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces A visual explenation of residual learninig. Information flows through the shortcut connections as if they were identity mappings. The network learns the residual instead of a direct mapping. Residual neural networks use this property to achieve very large depth. }}{3}{}\protected@file@percent }
+\newlabel{fig:res_expl}{{1}{3}{}{}{}}
 \abx@aux@cite{0}{rico1992discrete}
 \abx@aux@segm{0}{0}{rico1992discrete}
 \abx@aux@cite{0}{weinan2018mean}
@@ -22,26 +25,30 @@
 \abx@aux@segm{0}{0}{chen2018neural}
 \abx@aux@cite{0}{lu2018beyond}
 \abx@aux@segm{0}{0}{lu2018beyond}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Residual Learning}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}Neural ODEs}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}A continuous time network}{2}{}\protected@file@percent }
-\newlabel{resnet}{{1}{2}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces A visual explenation of residual learninig. Information flows through the shortcut connections as if they were identity mappings. The network learns the residual instead of a direct mapping. Residual neural networks use this property to achieve very large depth. }}{3}{}\protected@file@percent }
-\newlabel{fig:res_expl}{{1}{3}{}{}{}}
+\abx@aux@cite{0}{weinan2018mean}
+\abx@aux@segm{0}{0}{weinan2018mean}
+\abx@aux@cite{0}{ruthotto2020deep}
+\abx@aux@segm{0}{0}{ruthotto2020deep}
 \abx@aux@cite{0}{kidger2022neural}
 \abx@aux@segm{0}{0}{kidger2022neural}
 \abx@aux@cite{0}{massaroli2020dissecting}
 \abx@aux@segm{0}{0}{massaroli2020dissecting}
-\abx@aux@cite{0}{chen2019ordinary}
-\abx@aux@segm{0}{0}{chen2019ordinary}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Neural ODEs}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}A continuous time network}{4}{}\protected@file@percent }
+\newlabel{resnet}{{1}{4}{}{}{}}
 \newlabel{diffeq}{{2}{4}{}{}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Inference}{4}{}\protected@file@percent }
-\newlabel{ivp}{{3}{4}{}{}{}}
-\newlabel{forwaredEu}{{4}{4}{}{}{}}
-\newlabel{res2eul}{{5}{4}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces ResNets can be considered as discretizations of an ODE solution. Under this assumption as Resnet defines a continuous time vector field.}}{5}{}\protected@file@percent }
-\newlabel{fig:resnet_to_node}{{2}{5}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Training}{5}{}\protected@file@percent }
+\abx@aux@cite{0}{chen2019ordinary}
+\abx@aux@segm{0}{0}{chen2019ordinary}
+\newlabel{ivp}{{3}{5}{}{}{}}
+\newlabel{forwaredEu}{{4}{5}{}{}{}}
+\newlabel{res2eul}{{5}{5}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces ResNets can be considered as discretizations of an ODE solution. Under this assumption as Resnet defines a continuous time vector field.}}{6}{}\protected@file@percent }
+\newlabel{fig:resnet_to_node}{{2}{6}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Training}{6}{}\protected@file@percent }
+\newlabel{ode_loss}{{6}{6}{}{}{}}
+\abx@aux@cite{0}{pontryagin2018mathematical}
+\abx@aux@segm{0}{0}{pontryagin2018mathematical}
 \abx@aux@cite{0}{chiu2023exploiting}
 \abx@aux@segm{0}{0}{chiu2023exploiting}
 \abx@aux@cite{0}{poli2020hypersolvers}
@@ -50,6 +57,27 @@
 \abx@aux@segm{0}{0}{kidger2021efficient}
 \abx@aux@cite{0}{zhuang2021mali}
 \abx@aux@segm{0}{0}{zhuang2021mali}
+\newlabel{adjoint}{{8}{7}{}{}{}}
+\newlabel{dldtheta}{{9}{7}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Applications, benefits and limitations}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Numerical Solvers}{8}{}\protected@file@percent }
+\newlabel{eq:sol:ivp}{{10}{8}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Introduction}{8}{}\protected@file@percent }
+\newlabel{eq:sol:lipsitz}{{11}{8}{}{}{}}
+\abx@aux@cite{0}{suli2010numerical}
+\abx@aux@segm{0}{0}{suli2010numerical}
+\abx@aux@cite{0}{butcher2016numerical}
+\abx@aux@segm{0}{0}{butcher2016numerical}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Forward Euler}{9}{}\protected@file@percent }
+\newlabel{eq:sol:euler}{{4.2}{9}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Implicit Euler}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}General explicit one-step method}{10}{}\protected@file@percent }
+\newlabel{eq:sol:trunc_err}{{14}{10}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Runge-Kutta methods}{11}{}\protected@file@percent }
+\newlabel{eq:sol:rungekutta}{{15}{11}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.1}Explicit Runge-Kutta methods}{12}{}\protected@file@percent }
+\newlabel{eq:sol:tayl1}{{4.4.1}{12}{}{}{}}
+\newlabel{eq:sol:tayl2}{{4.4.1}{12}{}{}{}}
 \abx@aux@cite{0}{vaswani2017attention}
 \abx@aux@segm{0}{0}{vaswani2017attention}
 \abx@aux@cite{0}{nievergelt1964parallel}
@@ -60,89 +88,107 @@
 \abx@aux@segm{0}{0}{emmett2012toward}
 \abx@aux@cite{0}{massaroli2021differentiable}
 \abx@aux@segm{0}{0}{massaroli2021differentiable}
-\newlabel{ode_loss}{{6}{6}{}{}{}}
-\newlabel{adjoint}{{8}{6}{}{}{}}
-\newlabel{dldtheta}{{9}{6}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Applications, benefits and limitations}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Parallelism in Time}{7}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Polynomial approximation}{7}{}\protected@file@percent }
-\newlabel{dydt}{{10}{7}{}{}{}}
-\newlabel{dPhidt}{{11}{7}{}{}{}}
-\newlabel{dphi_fphi}{{12}{7}{}{}{}}
-\newlabel{eq:cheb_rec}{{16}{7}{}{}{}}
-\newlabel{Dcheb}{{17}{8}{}{}{}}
-\newlabel{eq:cheb_mat}{{18}{8}{}{}{}}
-\newlabel{PHI}{{19}{8}{}{}{}}
-\newlabel{approx_error}{{20}{8}{}{}{}}
-\newlabel{eq:approx_error2}{{24}{8}{}{}{}}
-\newlabel{eq:Bitaration}{{25}{8}{}{}{}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Polynomial approximation numerical integration}}{9}{}\protected@file@percent }
-\newlabel{alg:intapprox}{{23}{9}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Realisation details}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Imposing initial conditions}{9}{}\protected@file@percent }
-\newlabel{eq:phi_y_init}{{26}{9}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Parallelism in Time}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Polynomial approximation}{14}{}\protected@file@percent }
+\newlabel{dydt}{{21}{14}{}{}{}}
+\abx@aux@cite{0}{trefethen1996finite}
+\abx@aux@segm{0}{0}{trefethen1996finite}
+\newlabel{dPhidt}{{22}{15}{}{}{}}
+\newlabel{dphi_fphi}{{23}{15}{}{}{}}
+\newlabel{eq:error_wrt_B}{{24}{15}{}{}{}}
+\newlabel{eq:cheb_rec}{{27}{15}{}{}{}}
+\newlabel{Dcheb}{{28}{15}{}{}{}}
+\newlabel{approx_error}{{29}{16}{}{}{}}
+\newlabel{approx_error_sum}{{30}{16}{}{}{}}
+\newlabel{eq:error_zero}{{31}{16}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.1}A zero order optimisation algorithm}{16}{}\protected@file@percent }
+\newlabel{eq:B_inside_f}{{33}{16}{}{}{}}
+\newlabel{eq:grad_err}{{35}{16}{}{}{}}
+\newlabel{eq:cheb_mat}{{5.1.1}{17}{}{}{}}
+\newlabel{DPHI}{{5.1.1}{17}{}{}{}}
+\newlabel{update}{{37}{17}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces  Regression of the approximate solutions to the true solution. As the coefficients go to the optimum and the error function approaches the minimum the trajectories are getting closer to the true solution.}}{18}{}\protected@file@percent }
+\newlabel{fig:reg_sol}{{3}{18}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.2}Higher order minimization}{18}{}\protected@file@percent }
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Polynomial approximation numerical integration}}{19}{}\protected@file@percent }
+\newlabel{alg:intapprox}{{14}{19}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Realisation details}{19}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.1}Imposing initial conditions}{19}{}\protected@file@percent }
 \abx@aux@cite{0}{gill2019practical}
 \abx@aux@segm{0}{0}{gill2019practical}
-\newlabel{eq:phi_f_init}{{28}{10}{}{}{}}
-\newlabel{eq:init_cond}{{30}{10}{}{}{}}
-\newlabel{eq:phi_f2}{{31}{10}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}The Hessian}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Comparison with classical and other parellel-in-time methods}{10}{}\protected@file@percent }
+\newlabel{eq:pan:B01}{{5.2.1}{20}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.2}The Hessian}{20}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Comparison with classical and other parellel-in-time methods}{20}{}\protected@file@percent }
 \abx@aux@cite{0}{emmett2012toward}
 \abx@aux@segm{0}{0}{emmett2012toward}
 \abx@aux@cite{0}{maday2002parareal}
 \abx@aux@segm{0}{0}{maday2002parareal}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Shortcomings and improvements}{21}{}\protected@file@percent }
 \abx@aux@cite{0}{wright2006numerical}
 \abx@aux@segm{0}{0}{wright2006numerical}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Shortcomings and improvements}{11}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Experiments}{12}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.5.1}Spiral}{12}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Metrics for the solution of an IVP with different methods. For PAN params indicates the number of approximation coefficients per dimention, in this case there are 2 dimensions. NFE for PAN is show as NFE for least squares plus (+) NFE for Newton.}}{13}{}\protected@file@percent }
-\newlabel{spiral-metrics}{{1}{13}{}{}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.5.2}Lorenz Attractor}{13}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Accuracy and NFE for Lorenz system. For PAN the interval has been split in subintervals of length $0.3$ and the algorithm has been applied sequencially on each interval.}}{14}{}\protected@file@percent }
-\newlabel{lorenz_metric}{{2}{14}{}{}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {A}The backpropagation equations}{16}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Vanilla Neural Networks}{16}{}\protected@file@percent }
-\newlabel{dCdy}{{38}{16}{}{}{}}
-\newlabel{dCdW}{{39}{17}{}{}{}}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces Backpropagation}}{17}{}\protected@file@percent }
-\newlabel{alg:backprop}{{2}{17}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}Residual Networks}{17}{}\protected@file@percent }
-\newlabel{resnet_dCdy}{{41}{17}{}{}{}}
-\newlabel{resnet_dCdW}{{43}{17}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}Neural ODEs}{18}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {B}Numerical Solvers}{18}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {B.1}Runge-Kutta 5}{18}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Experiments}{22}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.5.1}Spiral}{22}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Metrics for the solution of an IVP with different methods. For PAN params indicates the number of approximation coefficients per dimention, in this case there are 2 dimensions. NFE for PAN is show as NFE for least squares plus (+) NFE for Newton.}}{23}{}\protected@file@percent }
+\newlabel{spiral-metrics}{{1}{23}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.5.2}Lorenz Attractor}{24}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Accuracy and NFE for Lorenz system. For PAN the interval has been split in subintervals of length $0.3$ and the algorithm has been applied sequencially on each interval.}}{24}{}\protected@file@percent }
+\newlabel{lorenz_metric}{{2}{24}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}The backpropagation equations}{28}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Vanilla Neural Networks}{28}{}\protected@file@percent }
+\newlabel{dCdy}{{48}{29}{}{}{}}
+\newlabel{dCdW}{{49}{29}{}{}{}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {2}{\ignorespaces Backpropagation}}{30}{}\protected@file@percent }
+\newlabel{alg:backprop}{{2}{30}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}Residual Networks}{30}{}\protected@file@percent }
+\newlabel{resnet_dCdy}{{51}{30}{}{}{}}
+\newlabel{resnet_dCdW}{{53}{30}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}Neural ODEs}{30}{}\protected@file@percent }
+\@writefile{loa}{\contentsline {algorithm}{\numberline {3}{\ignorespaces Adjoint}}{31}{}\protected@file@percent }
+\newlabel{alg:adjoint}{{3}{31}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}An alternative derivation for $\frac  {dL}{d \pmb  {\theta }}$}{31}{}\protected@file@percent }
+\newlabel{adjoint_proof}{{B}{31}{}{}{}}
 \abx@aux@cite{0}{chen2018neural}
 \abx@aux@segm{0}{0}{chen2018neural}
 \abx@aux@cite{0}{kidger2022neural}
 \abx@aux@segm{0}{0}{kidger2022neural}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {3}{\ignorespaces Adjoint}}{19}{}\protected@file@percent }
-\newlabel{alg:adjoint}{{3}{19}{}{}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {C}An alternative derivation for $\frac  {dL}{d \pmb  {\theta }}$}{19}{}\protected@file@percent }
-\newlabel{adjoint_proof}{{C}{19}{}{}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {D}Vector-Jacobian products}{20}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {E}Optimisation}{20}{}\protected@file@percent }
-\newlabel{min_a}{{48}{20}{}{}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {E.1}The Newton-Raphson algorithm with Hessian modification}{21}{}\protected@file@percent }
-\newlabel{newtonalgo}{{E.1}{21}{}{}{}}
-\newlabel{taylor}{{50}{21}{}{}{}}
-\newlabel{grad_m}{{51}{21}{}{}{}}
-\newlabel{newton_dir}{{52}{21}{}{}{}}
-\newlabel{pos_def}{{55}{21}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Vector-Jacobian products}{32}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {D}Optimisation}{33}{}\protected@file@percent }
+\newlabel{min_a}{{58}{33}{}{}{}}
 \abx@aux@cite{0}{cheng1998modified}
 \abx@aux@segm{0}{0}{cheng1998modified}
 \abx@aux@cite{0}{wright2006numerical}
 \abx@aux@segm{0}{0}{wright2006numerical}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.1}The Newton-Raphson algorithm with Hessian modification}{34}{}\protected@file@percent }
+\newlabel{newtonalgo}{{D.1}{34}{}{}{}}
+\newlabel{taylor}{{60}{34}{}{}{}}
+\newlabel{grad_m}{{61}{34}{}{}{}}
+\newlabel{newton_dir}{{62}{34}{}{}{}}
+\newlabel{pos_def}{{65}{34}{}{}{}}
 \abx@aux@cite{0}{gill2019practical}
 \abx@aux@segm{0}{0}{gill2019practical}
-\@writefile{loa}{\contentsline {algorithm}{\numberline {4}{\ignorespaces Modified Cholesky}}{22}{}\protected@file@percent }
-\@writefile{loa}{\contentsline {algorithm}{\numberline {5}{\ignorespaces Line search}}{23}{}\protected@file@percent }
-\newlabel{alg:linesearh}{{5}{23}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces  Regression of the approximate solutions to the true solution. As the coefficients go to the optimum and the error function approaches the minimum the trajectories are getting closer to the true solution.}}{24}{}\protected@file@percent }
-\newlabel{fig:reg_sol}{{3}{24}{}{}{}}
-\abx@aux@read@bbl@mdfivesum{5AD5EE45363415024FB49289ABABBE0F}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {4}{\ignorespaces Modified Cholesky}}{35}{}\protected@file@percent }
+\@writefile{loa}{\contentsline {algorithm}{\numberline {5}{\ignorespaces Line search}}{36}{}\protected@file@percent }
+\newlabel{alg:linesearh}{{5}{36}{}{}{}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {6}{\ignorespaces zoom}}{37}{}\protected@file@percent }
+\newlabel{alg:zoom}{{6}{37}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.2}Gradient Descent Methods}{37}{}\protected@file@percent }
+\abx@aux@cite{0}{nakkiran2019deep}
+\abx@aux@segm{0}{0}{nakkiran2019deep}
+\abx@aux@cite{0}{kiwiel2001convergence}
+\abx@aux@segm{0}{0}{kiwiel2001convergence}
+\abx@aux@cite{0}{rumelhart1986learning}
+\abx@aux@segm{0}{0}{rumelhart1986learning}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {D.2.1}Stochastic Gradient Descent}{38}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {D.2.2} Momentum }{38}{}\protected@file@percent }
+\abx@aux@cite{0}{kashyap2022survey}
+\abx@aux@segm{0}{0}{kashyap2022survey}
+\abx@aux@cite{0}{duchi2011adaptive}
+\abx@aux@segm{0}{0}{duchi2011adaptive}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {D.2.3}Nesterov Momentum}{39}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {D.2.4}Adagrad}{39}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {D.2.5}RMSProp}{40}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {D.2.6}Adam}{40}{}\protected@file@percent }
+\abx@aux@read@bbl@mdfivesum{DD19196A1684AAA1771EFB5D8D1BF559}
 \abx@aux@defaultrefcontext{0}{chen2018neural}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{He_2016_CVPR}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{simonyan2014very}{none/global//global/global}
@@ -152,18 +198,28 @@
 \abx@aux@defaultrefcontext{0}{rico1992discrete}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{weinan2018mean}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{lu2018beyond}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{ruthotto2020deep}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{kidger2022neural}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{massaroli2020dissecting}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{chen2019ordinary}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{pontryagin2018mathematical}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{chiu2023exploiting}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{poli2020hypersolvers}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{kidger2021efficient}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{zhuang2021mali}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{suli2010numerical}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{butcher2016numerical}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{nievergelt1964parallel}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{maday2002parareal}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{emmett2012toward}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{massaroli2021differentiable}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{trefethen1996finite}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{gill2019practical}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{wright2006numerical}{none/global//global/global}
 \abx@aux@defaultrefcontext{0}{cheng1998modified}{none/global//global/global}
-\gdef \@abspage@last{24}
+\abx@aux@defaultrefcontext{0}{nakkiran2019deep}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{kiwiel2001convergence}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{rumelhart1986learning}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{kashyap2022survey}{none/global//global/global}
+\abx@aux@defaultrefcontext{0}{duchi2011adaptive}{none/global//global/global}
+\gdef \@abspage@last{40}

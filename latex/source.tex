@@ -840,7 +840,7 @@
         \rVert^2_2
         \Delta t_m = 0 \label{eq:B_inside_f}
     \end{align}
-    We substitute (rather boldly) the function $g(B, t) = f(B^T \pmb{\phi}(t) )$ inside the sum with its zero-th order
+    We substitute the function $g(B, t) = f(B^T \pmb{\phi}(t) )$ inside the sum with its zero-th order
     approximation around $B_k$, meaning the constant (on $B$) function $f( B_k^T \pmb{\phi}(t) )$.
     Exchanging the nabla and applying some matrix calculus we get:
     \begin{align}
@@ -882,12 +882,12 @@
     Using these matrices we can rewrite ~\ref{eq:grad_err} in terms of matrix products as follows:
     \begin{align}
         0 &=
-        B_{k+1}^T \dot\Phi (\dot\Phi^T \cdot \Delta \pmb{t} \odot \pmb{1}^T  ) -
-        f \big( (B_{k}^T \Phi \big) {\dot\Phi}^T \cdot \Delta \pmb{t} \odot \pmb{1}^T
+        B_{k+1}^T \dot\Phi (\dot\Phi^T \odot \Delta \pmb{t} \cdot \pmb{1}^T  ) -
+        f \big( B_{k}^T  \Phi \big) ({\dot\Phi}^T \odot \Delta \pmb{t} \cdot \pmb{1}^T )
         \\
         B_{k+1}^T &=
-        f \big( (B_{k}^T \Phi \big) {\dot\Phi}^T \cdot \Delta \pmb{t} \odot \pmb{1}^T
-        ( \dot\Phi (\dot\Phi^T \cdot \Delta \pmb{t} \odot \pmb{1}^T ) )^{-1} \label{update}
+        f \big( B_{k}^T \Phi \big) ( {\dot\Phi}^T \odot \Delta \pmb{t} \cdot \pmb{1}^T)
+        ( \dot\Phi (\dot\Phi^T \odot \Delta \pmb{t} \cdot \pmb{1}^T ) )^{-1} \label{update}
     \end{align}
     Equation ~\ref{update} outlines the iteration scheme for this zero order optimisation algorithm.
     Omitting the partitions' lengths terms $\Delta \pmb{t}$ temporarily for clarity:

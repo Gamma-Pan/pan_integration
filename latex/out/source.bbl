@@ -367,6 +367,40 @@
       \field{pages}{3276\bibrangedash 3285}
       \range{pages}{10}
     \endentry
+    \entry{ruthotto2020deep}{article}{}
+      \name{author}{2}{}{%
+        {{hash=b9299c5c1e7a9232bdf5090e2a9e5ce7}{%
+           family={Ruthotto},
+           familyi={R\bibinitperiod},
+           given={Lars},
+           giveni={L\bibinitperiod}}}%
+        {{hash=2eae9863d962d1c3e9e6b6860a86a9d1}{%
+           family={Haber},
+           familyi={H\bibinitperiod},
+           given={Eldad},
+           giveni={E\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{00391c2f3e246a18c0c41576b3375ddf}
+      \strng{fullhash}{00391c2f3e246a18c0c41576b3375ddf}
+      \strng{bibnamehash}{00391c2f3e246a18c0c41576b3375ddf}
+      \strng{authorbibnamehash}{00391c2f3e246a18c0c41576b3375ddf}
+      \strng{authornamehash}{00391c2f3e246a18c0c41576b3375ddf}
+      \strng{authorfullhash}{00391c2f3e246a18c0c41576b3375ddf}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Mathematical Imaging and Vision}
+      \field{number}{3}
+      \field{title}{Deep neural networks motivated by partial differential equations}
+      \field{volume}{62}
+      \field{year}{2020}
+      \field{pages}{352\bibrangedash 364}
+      \range{pages}{13}
+    \endentry
     \entry{kidger2022neural}{article}{}
       \name{author}{1}{}{%
         {{hash=051731aab4dfad9f49233270e9e83536}{%
@@ -455,6 +489,30 @@
       \field{journaltitle}{arXiv preprint arXiv:1911.00502}
       \field{title}{Ordinary differential equations for deep learning}
       \field{year}{2019}
+    \endentry
+    \entry{pontryagin2018mathematical}{book}{}
+      \name{author}{1}{}{%
+        {{hash=a48ee432c764d9dc18a91735b7a57509}{%
+           family={Pontryagin},
+           familyi={P\bibinitperiod},
+           given={Lev\bibnamedelima Semenovich},
+           giveni={L\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Routledge}%
+      }
+      \strng{namehash}{a48ee432c764d9dc18a91735b7a57509}
+      \strng{fullhash}{a48ee432c764d9dc18a91735b7a57509}
+      \strng{bibnamehash}{a48ee432c764d9dc18a91735b7a57509}
+      \strng{authorbibnamehash}{a48ee432c764d9dc18a91735b7a57509}
+      \strng{authornamehash}{a48ee432c764d9dc18a91735b7a57509}
+      \strng{authorfullhash}{a48ee432c764d9dc18a91735b7a57509}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Mathematical theory of optimal processes}
+      \field{year}{2018}
     \endentry
     \entry{chiu2023exploiting}{article}{}
       \name{author}{6}{}{%
@@ -629,6 +687,52 @@
       \verb 2102.04668
       \endverb
     \endentry
+    \entry{suli2010numerical}{article}{}
+      \name{author}{1}{}{%
+        {{hash=38d3a14c4a1c5448089a687a815acd4e}{%
+           family={Süli},
+           familyi={S\bibinitperiod},
+           given={Endre},
+           giveni={E\bibinitperiod}}}%
+      }
+      \strng{namehash}{38d3a14c4a1c5448089a687a815acd4e}
+      \strng{fullhash}{38d3a14c4a1c5448089a687a815acd4e}
+      \strng{bibnamehash}{38d3a14c4a1c5448089a687a815acd4e}
+      \strng{authorbibnamehash}{38d3a14c4a1c5448089a687a815acd4e}
+      \strng{authornamehash}{38d3a14c4a1c5448089a687a815acd4e}
+      \strng{authorfullhash}{38d3a14c4a1c5448089a687a815acd4e}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Mathematical Institute, University of Oxford}
+      \field{title}{Numerical solution of ordinary differential equations}
+      \field{year}{2010}
+    \endentry
+    \entry{butcher2016numerical}{book}{}
+      \name{author}{1}{}{%
+        {{hash=46bc4fd2d52037f2f1c13542b61acbb8}{%
+           family={Butcher},
+           familyi={B\bibinitperiod},
+           given={John\bibnamedelima Charles},
+           giveni={J\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {John Wiley \& Sons}%
+      }
+      \strng{namehash}{46bc4fd2d52037f2f1c13542b61acbb8}
+      \strng{fullhash}{46bc4fd2d52037f2f1c13542b61acbb8}
+      \strng{bibnamehash}{46bc4fd2d52037f2f1c13542b61acbb8}
+      \strng{authorbibnamehash}{46bc4fd2d52037f2f1c13542b61acbb8}
+      \strng{authornamehash}{46bc4fd2d52037f2f1c13542b61acbb8}
+      \strng{authorfullhash}{46bc4fd2d52037f2f1c13542b61acbb8}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Numerical methods for ordinary differential equations}
+      \field{year}{2016}
+    \endentry
     \entry{nievergelt1964parallel}{article}{}
       \name{author}{1}{}{%
         {{hash=15e403cf3f1d0560a30645ed50b3c2be}{%
@@ -646,8 +750,8 @@
       \strng{authorbibnamehash}{15e403cf3f1d0560a30645ed50b3c2be}
       \strng{authornamehash}{15e403cf3f1d0560a30645ed50b3c2be}
       \strng{authorfullhash}{15e403cf3f1d0560a30645ed50b3c2be}
-      \field{sortinit}{1}
-      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{journaltitle}{Communications of the ACM}
@@ -781,6 +885,31 @@
       \field{pages}{16532\bibrangedash 16544}
       \range{pages}{13}
     \endentry
+    \entry{trefethen1996finite}{article}{}
+      \name{author}{1}{}{%
+        {{hash=63032a44f2bc372043964e7390ec209e}{%
+           family={Trefethen},
+           familyi={T\bibinitperiod},
+           given={Lloyd\bibnamedelima Nicholas},
+           giveni={L\bibinitperiod\bibinitdelim N\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Cornell University-Department of Computer Science}%
+        {Center for Applied~…}%
+      }
+      \strng{namehash}{63032a44f2bc372043964e7390ec209e}
+      \strng{fullhash}{63032a44f2bc372043964e7390ec209e}
+      \strng{bibnamehash}{63032a44f2bc372043964e7390ec209e}
+      \strng{authorbibnamehash}{63032a44f2bc372043964e7390ec209e}
+      \strng{authornamehash}{63032a44f2bc372043964e7390ec209e}
+      \strng{authorfullhash}{63032a44f2bc372043964e7390ec209e}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Finite difference and spectral methods for ordinary and partial differential equations}
+      \field{year}{1996}
+    \endentry
     \entry{gill2019practical}{book}{}
       \name{author}{3}{}{%
         {{hash=4bb536967f5b49d980fe9a4cca187ac5}{%
@@ -829,8 +958,8 @@
       \strng{authorbibnamehash}{c49efb16d3fa7eef002cc3620d42ab8a}
       \strng{authornamehash}{c49efb16d3fa7eef002cc3620d42ab8a}
       \strng{authorfullhash}{c49efb16d3fa7eef002cc3620d42ab8a}
-      \field{sortinit}{2}
-      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Numerical optimization}
@@ -858,8 +987,8 @@
       \strng{authorbibnamehash}{44a9e1921f2e0d72b97a945aeae93b04}
       \strng{authornamehash}{44a9e1921f2e0d72b97a945aeae93b04}
       \strng{authorfullhash}{44a9e1921f2e0d72b97a945aeae93b04}
-      \field{sortinit}{2}
-      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{journaltitle}{SIAM Journal on Matrix Analysis and Applications}
@@ -869,6 +998,176 @@
       \field{year}{1998}
       \field{pages}{1097\bibrangedash 1110}
       \range{pages}{14}
+    \endentry
+    \entry{nakkiran2019deep}{article}{}
+      \name{author}{6}{}{%
+        {{hash=dcf4f0cf5051a34594b490c8c69117ba}{%
+           family={Nakkiran},
+           familyi={N\bibinitperiod},
+           given={P},
+           giveni={P\bibinitperiod}}}%
+        {{hash=1247609288212f2e0e272f0e102db489}{%
+           family={Kaplun},
+           familyi={K\bibinitperiod},
+           given={G},
+           giveni={G\bibinitperiod}}}%
+        {{hash=7080d7a97eeb2c8ac93d4b089afe26c7}{%
+           family={Bansal},
+           familyi={B\bibinitperiod},
+           given={Y},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=84c7288c6b3f93ef543e0189210bbdf2}{%
+           family={Yang},
+           familyi={Y\bibinitperiod},
+           given={T},
+           giveni={T\bibinitperiod}}}%
+        {{hash=909bf04d3ddf4b0531fdbcfed494d4b4}{%
+           family={Barak},
+           familyi={B\bibinitperiod},
+           given={B},
+           giveni={B\bibinitperiod}}}%
+        {{hash=a3cfbe74042f3457db587a42603e1509}{%
+           family={Sutskever},
+           familyi={S\bibinitperiod},
+           given={I},
+           giveni={I\bibinitperiod}}}%
+      }
+      \strng{namehash}{ceb51d9b8165ee540cc00bf693c25283}
+      \strng{fullhash}{5cf3c4a247629012cabd3dd76d8803da}
+      \strng{bibnamehash}{5cf3c4a247629012cabd3dd76d8803da}
+      \strng{authorbibnamehash}{5cf3c4a247629012cabd3dd76d8803da}
+      \strng{authornamehash}{ceb51d9b8165ee540cc00bf693c25283}
+      \strng{authorfullhash}{5cf3c4a247629012cabd3dd76d8803da}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{arXiv preprint arXiv:1912.02292}
+      \field{title}{Deep double descent: where bigger models and more data hurt. arXiv}
+      \field{year}{2019}
+    \endentry
+    \entry{kiwiel2001convergence}{article}{}
+      \name{author}{1}{}{%
+        {{hash=5a297975cc5750164323c6794920feb7}{%
+           family={Kiwiel},
+           familyi={K\bibinitperiod},
+           given={Krzysztof\bibnamedelima C},
+           giveni={K\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{5a297975cc5750164323c6794920feb7}
+      \strng{fullhash}{5a297975cc5750164323c6794920feb7}
+      \strng{bibnamehash}{5a297975cc5750164323c6794920feb7}
+      \strng{authorbibnamehash}{5a297975cc5750164323c6794920feb7}
+      \strng{authornamehash}{5a297975cc5750164323c6794920feb7}
+      \strng{authorfullhash}{5a297975cc5750164323c6794920feb7}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Mathematical programming}
+      \field{title}{Convergence and efficiency of subgradient methods for quasiconvex minimization}
+      \field{volume}{90}
+      \field{year}{2001}
+      \field{pages}{1\bibrangedash 25}
+      \range{pages}{25}
+    \endentry
+    \entry{rumelhart1986learning}{article}{}
+      \name{author}{3}{}{%
+        {{hash=55cd5380bb5b15032a6d5a2015f56e3f}{%
+           family={Rumelhart},
+           familyi={R\bibinitperiod},
+           given={David\bibnamedelima E},
+           giveni={D\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+        {{hash=813bd95fe553e6079cd53a567b238287}{%
+           family={Hinton},
+           familyi={H\bibinitperiod},
+           given={Geoffrey\bibnamedelima E},
+           giveni={G\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+        {{hash=6cbc29ad7fd57ffdb9ed4728418fd988}{%
+           family={Williams},
+           familyi={W\bibinitperiod},
+           given={Ronald\bibnamedelima J},
+           giveni={R\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Nature Publishing Group UK London}%
+      }
+      \strng{namehash}{fd75cea68d6982b503a0cd84f7cc7b51}
+      \strng{fullhash}{fd75cea68d6982b503a0cd84f7cc7b51}
+      \strng{bibnamehash}{fd75cea68d6982b503a0cd84f7cc7b51}
+      \strng{authorbibnamehash}{fd75cea68d6982b503a0cd84f7cc7b51}
+      \strng{authornamehash}{fd75cea68d6982b503a0cd84f7cc7b51}
+      \strng{authorfullhash}{fd75cea68d6982b503a0cd84f7cc7b51}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{nature}
+      \field{number}{6088}
+      \field{title}{Learning representations by back-propagating errors}
+      \field{volume}{323}
+      \field{year}{1986}
+      \field{pages}{533\bibrangedash 536}
+      \range{pages}{4}
+    \endentry
+    \entry{kashyap2022survey}{article}{}
+      \name{author}{1}{}{%
+        {{hash=16867464899956f69628e0ea35447809}{%
+           family={Kashyap},
+           familyi={K\bibinitperiod},
+           given={Rohan},
+           giveni={R\bibinitperiod}}}%
+      }
+      \strng{namehash}{16867464899956f69628e0ea35447809}
+      \strng{fullhash}{16867464899956f69628e0ea35447809}
+      \strng{bibnamehash}{16867464899956f69628e0ea35447809}
+      \strng{authorbibnamehash}{16867464899956f69628e0ea35447809}
+      \strng{authornamehash}{16867464899956f69628e0ea35447809}
+      \strng{authorfullhash}{16867464899956f69628e0ea35447809}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{arXiv preprint arXiv:2211.15596}
+      \field{title}{A survey of deep learning optimizers--first and second order methods}
+      \field{year}{2022}
+    \endentry
+    \entry{duchi2011adaptive}{article}{}
+      \name{author}{3}{}{%
+        {{hash=b8fbef1897da5bf46822ced31bc865c6}{%
+           family={Duchi},
+           familyi={D\bibinitperiod},
+           given={John},
+           giveni={J\bibinitperiod}}}%
+        {{hash=0b3d32703edd2b7248e8e8f33c5893db}{%
+           family={Hazan},
+           familyi={H\bibinitperiod},
+           given={Elad},
+           giveni={E\bibinitperiod}}}%
+        {{hash=300d4990e626d975e0c28630444f63c3}{%
+           family={Singer},
+           familyi={S\bibinitperiod},
+           given={Yoram},
+           giveni={Y\bibinitperiod}}}%
+      }
+      \strng{namehash}{21039f1d6e97f13dbd40c187a8131cf0}
+      \strng{fullhash}{21039f1d6e97f13dbd40c187a8131cf0}
+      \strng{bibnamehash}{21039f1d6e97f13dbd40c187a8131cf0}
+      \strng{authorbibnamehash}{21039f1d6e97f13dbd40c187a8131cf0}
+      \strng{authornamehash}{21039f1d6e97f13dbd40c187a8131cf0}
+      \strng{authorfullhash}{21039f1d6e97f13dbd40c187a8131cf0}
+      \field{sortinit}{4}
+      \field{sortinithash}{9381316451d1b9788675a07e972a12a7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of machine learning research}
+      \field{number}{7}
+      \field{title}{Adaptive subgradient methods for online learning and stochastic optimization.}
+      \field{volume}{12}
+      \field{year}{2011}
     \endentry
   \enddatalist
 \endrefsection
