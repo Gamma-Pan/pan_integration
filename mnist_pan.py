@@ -29,9 +29,11 @@ class Learner(LightningModule):
     def _common_step(self, batch, batch_idx):
         x, y = batch
         x_em = self.embedding(x)
-        t_eval, y_hat = self.ode_model(x_em, self.t_span)
+        t_eval, y_hat, metrics = self.ode_model(x_em, self.t_span)
         logits = self.classifier(y_hat[-1])
         loss = nn.CrossEntropyLoss()(logits, y)
+        self.log("solver_loss", metrics[0], prog_bar=True)
+        self.log("zero_iters", metrics[1], prog_bar=True)
 
         _, preds = torch.max(logits, dim=1)
         acc = torch.sum(preds == y) / y.shape[0]
@@ -70,17 +72,18 @@ class PanODE(nn.Module):
         vf,
         num_coeff_per_dim,
         num_points,
-        num_coeff_per_dim_adjoint=None,
-        num_points_adjoint=None,
-        etol_ls=1e-5,
-        max_iters_ls=30,
+        tol_zero=1e-3,
+        tol_one=1e-5,
+        max_iters_zero=10,
+        max_iters_one=10,
+        optimizer_class=None,
+        optimizer_params=None,
+        init="random",
+        coarse_steps=5,
+        callback=None,
+        metrics=True,
     ):
         super().__init__()
-
-        if num_coeff_per_dim_adjoint is None:
-            num_coeff_per_dim_adjoint = num_coeff_per_dim
-        if num_points_adjoint is None:
-            num_points_adjoint = num_points
 
         self.vf = vf
         self.thetas = torch.cat([p.contiguous().flatten() for p in vf.parameters()])
@@ -89,15 +92,21 @@ class PanODE(nn.Module):
             self.thetas,
             num_coeff_per_dim,
             num_points,
-            num_coeff_per_dim_adjoint,
-            num_points_adjoint,
-            etol_ls=etol_ls,
-            max_iters_ls=max_iters_ls,
+            tol_zero=tol_zero,
+            tol_one=tol_one,
+            max_iters_zero=max_iters_zero,
+            max_iters_one=max_iters_one,
+            optimizer_class=optimizer_class,
+            optimizer_params=optimizer_params,
+            init=init,
+            coarse_steps=coarse_steps,
+            callback = callback,
+            metrics = metrics
         )
 
     def forward(self, y_init, t):
-        t_eval, traj = self.pan_int(y_init, t)
-        return t_eval, traj
+        t_eval, traj, metrics = self.pan_int(y_init, t)
+        return t_eval, traj, metrics
 
 
 class VF(nn.Module):
@@ -113,7 +122,6 @@ class VF(nn.Module):
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-
         x = self.conv1(F.relu(self.norm1(x)))
         x = self.conv2(F.relu(self.norm2(x)))
         x = self.norm3(x)
@@ -139,11 +147,11 @@ classifier = nn.Sequential(
     nn.Linear(64, 10),
 )
 
+vf = VF().to(device)
 
 def train_mnist_ode(
     mode: str, solver_args: dict, learner_args: dict, trainer_args: dict, test=False
 ):
-    vf = VF().to(device)
 
     if mode == "pan":
         ode_model = PanODE(vf, **solver_args)
@@ -155,7 +163,7 @@ def train_mnist_ode(
     ode_model = ode_model.to(device)
     learner = Learner(embedding, ode_model, classifier, **learner_args)
 
-    dmodule = MNISTDataModule(batch_size=64, num_workers=0)
+    dmodule = MNISTDataModule(batch_size=16, num_workers=12)
 
     trainer = Trainer(**trainer_args)
     trainer.fit(learner, datamodule=dmodule)
@@ -167,14 +175,27 @@ if __name__ == "__main__":
     # solver_args = dict(solver="mszero", maxiter=4, fine_steps=4)
 
     mode = "pan"
+
+    num_points = 64
+
     solver_args = dict(
-        num_coeff_per_dim=40, num_points=60, etol_ls=1e-3, max_iters_ls=30
+        num_coeff_per_dim=32,
+        num_points=num_points,
+        tol_zero=1e-3,
+        max_iters_zero=20,
+        max_iters_one=0,
+        # init='euler',
+        # coarse_steps=5,
+        metrics = True
     )
 
     # mode='stepping'
+    # solver_args = dict(solver="tsit5")
 
-    t_span = torch.linspace(0, 1, 10).cuda()
+    t_span = torch.linspace(0, 1, 10).to(device)
     learner_args = dict(t_span=t_span)
 
-    trainer_args = dict(max_epochs=3, enable_checkpointing=False, fast_dev_run=False)
+    trainer_args = dict(
+        max_epochs=3, enable_checkpointing=False, fast_dev_run=False, accelerator="gpu"
+    )
     train_mnist_ode(mode, solver_args, learner_args, trainer_args, test=True)
