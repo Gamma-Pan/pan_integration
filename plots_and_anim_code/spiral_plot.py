@@ -75,7 +75,7 @@ if __name__ == "__main__":
     a, b = 0.4, 1.0
     A = torch.tensor([[-a, b], [-b, -a]])
     f = Spiral(A).to(device)
-    y_init = 2 * torch.rand(10, 2) - 2
+    y_init = 2 * torch.rand(1, 2) - 2
     t_lims = [0.0, 5.0]
     t_span = torch.linspace(*t_lims, 100)
 
@@ -92,16 +92,18 @@ if __name__ == "__main__":
         plotter.approx(
             approx, t, Dapprox=None, marker=None, markersize=1.5, alpha=0.9, color='green'
         )
-        # plotter.wait()
-        plotter.fig.canvas.flush_events()
-        plotter.fig.canvas.draw()
+        plotter.wait()
+        # plotter.fig.canvas.flush_events()
+        # plotter.fig.canvas.draw()
 
     plotter.wait()
     print(f.nfe)
     f.nfe = 0
 
-    solver = PanSolver(
-        dtype = torch.float32,
+    pansol = pan_int(
+        f,
+        t_span,
+        y_init,
         num_coeff_per_dim=32,
         num_points=32,
         max_iters_zero=30,
@@ -115,7 +117,22 @@ if __name__ == "__main__":
         callback=callback,
     )
 
-    _, torchsol,  = odeint(f, y_init, torch.linspace(*t_lims, steps=5), solver= solver)
+    # solver = PanSolver(
+    #     dtype = torch.float32,
+    #     num_coeff_per_dim=32,
+    #     num_points=32,
+    #     max_iters_zero=30,
+    #     max_iters_one=30,
+    #     init='euler',
+    #     coarse_steps=5,
+    #     optimizer_class=torch.optim.SGD,
+    #     optimizer_params={"lr": 1e-9 ,"momentum": 0.95, "nesterov": True},
+    #     tol_zero = 1e-3,
+    #     tol_one=1,
+    #     callback=callback,
+    # )
+    # _, torchsol,  = odeint(f, y_init, torch.linspace(*t_lims, steps=5), solver= solver)
+
     print(f.nfe)
 
     plt.show()

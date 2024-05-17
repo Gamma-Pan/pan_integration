@@ -116,7 +116,7 @@ def zero_order_int(
 
     # t at chebyshev nodes
     t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
-    Dt = torch.diff(torch.cat([t, tensor([1])]))
+    Dt = torch.diff(torch.cat([t, tensor([1], device=device)]))
 
     if Phi is None:
         Phi = T_grid(t, num_coeff_per_dim, device).mT  # (TxC).T = (CxT)
@@ -167,7 +167,7 @@ def zero_order_int(
 
         B_prev = B
         B = (
-            vmap(f, in_dims=(0, -1), out_dims=(-1))(
+            vmap(f, in_dims=(None, -1), out_dims=(-1))(
                 t, torch.cat([head(B_prev), B_prev], dim=-1) @ Phi
             )
             @ (Dt[:, None] * Phi_b.mT)
@@ -202,10 +202,10 @@ def first_order_int(
     DPhi=None,
 ):
     if optimizer_class is None:
-        optimizer_class = torch.optim.Adam
+        optimizer_class = torch.optim.SGD
     if optimizer_params is None:
         optimizer_params = dict(
-            history_size=10, max_iter=10, line_search_fn="strong_wolfe"
+            lr=1e-9, momentum=0.95, nesterov=True
         )
 
     device = y_init.device
@@ -216,7 +216,7 @@ def first_order_int(
 
     # t at chebyshev nodes
     t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
-    Dt = torch.diff(torch.cat([t, tensor([1])]))
+    Dt = torch.diff(torch.cat([t, tensor([1], device=device)]))
 
     if Phi is None:
         Phi = T_grid(t, num_coeff_per_dim, device).mT  # (TxC).T = (CxT)
@@ -244,7 +244,6 @@ def first_order_int(
     with torch.enable_grad():
         B = B_init
         B.requires_grad = True
-        B.retain_grad()
         optimizer = optimizer_class([B], **optimizer_params)
         grad_norm = torch.inf
 
@@ -276,18 +275,20 @@ def first_order_int(
                 )
                 callback(t_lims[0], approx_plot, Dapprox=Dapprox_plot)
 
-            loss.backward()
-            nonlocal grad_norm
-            grad_norm = torch.norm(B.grad)
+            loss.backward(retain_graph=True)
+            with torch.no_grad():
+                nonlocal grad_norm
+                grad_norm = torch.norm(B.grad)
             return loss
 
+        i = 0
         for i in range(max_iters):
             optimizer.step(closure)
 
             if grad_norm < etol:
                 break
 
-        if i == max_iters - 1:
+        if i and i == max_iters - 1:
             print("first order: max iterations reached")
 
     return torch.cat([head(B), B], dim=-1)
@@ -308,6 +309,7 @@ def pan_int(
     init="random",
     coarse_steps=5,
     callback=None,
+    returnB = False
 ):
     device = y_init.device
     dims = y_init.shape
@@ -374,10 +376,13 @@ def pan_int(
     )
 
     t_out = -1 + 2*(t_span - t_span[0])/(t_span[-1] - t_span[0])
-    Phi_out = T_grid(t_out, num_coeff_per_dim, device).mT
-    approx = B_out @ Phi_out
+    Phi_out = T_grid(t_out.to(device), num_coeff_per_dim, device).mT
+    approx = (B_out @ Phi_out).permute(-1, *torch.arange(len(dims)).tolist())
     # put time dimension in front
-    return approx.permute(-1, *torch.arange(len(dims)).tolist())
+    if returnB:
+        return approx, B_out
+    else:
+        return approx
 
 
 def make_pan_adjoint(
@@ -385,25 +390,35 @@ def make_pan_adjoint(
     thetas,
     num_coeff_per_dim,
     num_points,
-    num_coeff_per_dim_adjoint,
-    num_points_adjoint,
-    etol_ls=1e-5,
-    max_iters_ls=20,
+    etol_zero=1e-3,
+    etol_one = 1e-3,
+    max_iters_zero=30,
+    max_iters_one=20,
+    optimizer_class=None,
+    optimizer_params=None,
+    init="random",
+    coarse_steps=5,
     callback=None,
 ):
     class _PanInt(Function):
         @staticmethod
         def forward(ctx, thetas, y_init, t_eval):
-            traj, B_fwd = first_order_int(
+            traj, B_fwd = pan_int(
                 f,
                 t_eval,
                 y_init,
                 num_coeff_per_dim,
                 num_points,
-                etol_ls,
-                max_iters_ls=max_iters_ls,
+                etol_zero,
+                etol_one,
+                max_iters_zero=max_iters_zero,
+                max_iters_one=max_iters_one,
+                optimizer_class=optimizer_class,
+                optimizer_params=optimizer_params,
+                init = init,
+                coarse_steps=coarse_steps,
                 callback=callback,
-                return_B=True,
+                returnB=True
             )
             ctx.save_for_backward(t_eval, traj, B_fwd)
 
@@ -413,8 +428,7 @@ def make_pan_adjoint(
         def backward(ctx, *grad_output):
             t_eval, yS, B_fwd = ctx.saved_tensors
             device = yS.device
-
-            points, batch_sz, dims = yS.shape
+            points, batch_sz, *dims = yS.shape
 
             # dL/dz(T) -> (1xBxD)
             a_y_T = grad_output[1][-1]
@@ -426,7 +440,12 @@ def make_pan_adjoint(
                 )[0]
 
             def adjoint_dynamics(t, a_y):
-                y_back = T_grid(t, num_coeff_per_dim, device=t.device) @ B_fwd
+                y_back = B_fwd @ T_grid(t, num_coeff_per_dim, device=t.device).mT
+                y_back = y_back.squeeze(-1)
+
+
+
+
 
                 with torch.set_grad_enabled(True):
                     y_back.requires_grad_(True)
@@ -439,18 +458,24 @@ def make_pan_adjoint(
                 return Da_y
 
             t_eval_adjoint = torch.linspace(
-                t_eval[-1], t_eval[0], num_points_adjoint
+                t_eval[-1], t_eval[0], num_points
             ).to(device)
 
-            A_traj = first_order_int(
+            A_traj = pan_int(
                 adjoint_dynamics,
                 t_eval_adjoint,
                 a_y_T,
-                num_coeff_per_dim_adjoint,
-                num_points_adjoint,
-                etol_ls,
-                f_init=Da_y_T,
-                callback=callback,
+                num_coeff_per_dim,
+                num_points,
+                etol_zero,
+                etol_one,
+                max_iters_zero,
+                max_iters_one,
+                optimizer_class,
+                optimizer_params,
+                init,
+                coarse_steps,
+                callback,
             )
 
             a_y_back = A_traj.reshape(-1, dims)
@@ -475,7 +500,7 @@ def make_pan_adjoint(
             grads_vec = torch.cat([p.contiguous().flatten() for p in grads])
 
             DL_theta = (
-                torch.abs(t_eval[0] - t_eval[-1]) / (num_points_adjoint - 1)
+                torch.abs(t_eval[0] - t_eval[-1]) / (num_points - 1)
             ) * grads_vec
 
             # ipdb.set_trace()

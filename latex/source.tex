@@ -1,4 +1,4 @@
-\documentclass{article}
+\documentclass[11pt]{article}
 \usepackage{graphicx} % Required for inserting images
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -8,18 +8,22 @@
 \usepackage[noEnd=false,indLines=false]{algpseudocodex}
 \usepackage[left=3.5cm, right=3.5cm]{geometry}
 \usepackage{tikz}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{definition}{Definition}[section]
+
 \usetikzlibrary{shapes,positioning,backgrounds, calc}
 \usepackage{pgfplots}
-\pgfplotsset{compat=newest }
+\pgfplotsset{compat=newest}
 \usepgfplotslibrary{external}
 \tikzexternalize
 \usepackage[style=ieee]{biblatex} %Imports biblatex package
 \addbibresource{references.bib} %Import the bibliography file
 
-\title{Polynomial approximation integration  \\ \large{Speeding up Neural Ordinary Differential Equations thought Parallelism} \\ v0.8}
+\title{Polynomial approximation numerical integration\\ \large{A parallel approach to Initial Value Problems through optimization} \\ v0.9}
 
 \author{Yiorgos Panagiotopoulos}
-\date{April 2024}
+\date{May 2024}
 
 \begin{document}
 
@@ -34,6 +38,7 @@
     We develop a new numerical ODE solver based on refining a polynomial approximation of the solution and explore its
     impact on this framework.
     At the end we showcase how our method compares to some commonly used numerical solvers.
+
 
     \section{Introduction}
     The machine learning scene in 2024 is dominated by gargantuan models with billions of parameters.
@@ -79,7 +84,7 @@
     The existence of this artificially deep network suggests that deep networks shouldn't produce higher error that the shallower ones.
     But the empirical evidence show that optimisers can't find this solution, at least in sensible time limits.
 
-    \begin{figure}
+    \begin{figure}[H]
         \begin{center}
             \begin{tikzpicture}[
                 every path/.style={ultra thick},
@@ -250,7 +255,7 @@
     Notice that we refer to ResNet blocks, not layers, since residual connections are generally not between the input and output of a single linear layer but a stack of them; from now on we will use the terms interchangeably.
 
     The update in the \textit{hidden state} $\pmb{y}$ in~\eqref{resnet} resembles the formula of the forward Euler iteration for solving ordinary differential equations.
-    This observation led the authors of~\cite{lu2018beyond} [CITE MORE] to make a connection between some neural network architectures and differential equations.
+    This observation led some, like ~\cite{lu2018beyond,weinan2018mean,ruthotto2020deep} to make a connection between some neural network architectures and differential equations.
     Suppose that we could keep increasing the depth of the ResNet in~\eqref{resnet} while the time of the forward pass remained bounded, meaning each layer would take less and less time.
     In the limit we get a differential equation governed by the dynamics defined by a neural network $f$.
     \begin{equation}
@@ -299,12 +304,12 @@
     As disguised above, in contrast to ResNet $f$ contains all the learnable parameters of the model, which in out case are independent of depth.
     In conclusion the Neural ODE consists of: a neural network $f$ -that defines a \textit{learnable} vector field- parameterised by $\pmb{\theta}$,  some input $y_0$ and a numerical solver that applies $f$ until it reaches $\pmb{y}(T)$.
 
-    \begin{figure}[h]
+    \begin{figure}[H]
         \begin{center}
             \input{resnet_to_node_plot.pgf}
         \end{center}
         \caption{ResNets can be considered as discretizations of an ODE solution. Under this assumption as Resnet
-            defines a continuous time vector field.}
+        defines a continuous time vector field.}
         \label{fig:resnet_to_node}
     \end{figure}
 
@@ -324,7 +329,7 @@
         \pmb a(t) = \frac{\partial L}{\partial \pmb{y}(t) }
     \end{equation}
     The above quantity is called the \textit{adjoint state}.
-    It can be proven that for its derivative [PONTRYAGIN], the following equation holds:
+    It can be proven that for its derivative \cite{pontryagin2018mathematical}, the following equation holds:
     \begin{equation}
         \left.
         \frac
@@ -376,6 +381,325 @@
     Another way to speed up continuous time networks is to speed up the numerical solver through parallelism.
 
 
+    \section{Numerical Solvers}
+    Ordinary differential equations are heavily featured in many scientific and engineering disciplines.
+    We usually wish to solve problems where the dynamics of some system $f$ along with some initial state $y_0$ are
+    known, at some initial time $t_0$ and we are tasked to find the value of the state vector at some time $t_1$.
+    This problem can be formulated as an initial value problem or IVP .
+    \begin{equation}
+        \label{eq:sol:ivp}
+        \frac{dy}{dt} = f(t, y), y(0) = y_0
+    \end{equation}
+    The exact solutions to these ODEs is usually hard to calculate or intractable.
+    To this end, many numerical methods have been developed over the years.
+
+    \subsection{Introduction}
+    In general even if $f$ is continuous it is not guaranteed that the there exists a unique solution to
+    ~\eqref{eq:sol:ivp}.
+    Fortunately, under some mild conditions on $f$ the existence and uniqueness of a solution is ensured through the
+    following theorem.
+
+    \begin{theorem}[Picard-Lindel\"of theorem]
+        Suppose that $f(\cdot , \cdot )$ is a continuous function of its arguments in a region $U$ of the $(t, y)$ plane
+        which contains the rectangle
+        \begin{equation*}
+            \pmb{R}  = \left\{ (t,y) : t_0 \leq t \leq T , \lvert y - y_0 \rvert \leq Y \right\} ,
+        \end{equation*}
+        where $T > t_0$ and $Y > 0$ are constants.
+        Suppose also, that there exists a positive constant $L$ such that
+        \begin{equation}
+            \label{eq:sol:lipsitz}
+            \lvert f(t, y_{\alpha}) - f(t, y_\beta) \rvert \leq L \lvert y_m - y_\beta \rvert
+        \end{equation}
+        holds whenever $(t, y_\alpha)$ and $(t, y_\beta)$ lie in the rectangle $\pmb{R}$.
+        Finally, letting
+        \begin{equation*}
+            M = \max\left\{\lvert f(t, y) \rvert : (t, y) \in \pmb{R} \right\} ,
+        \end{equation*}
+        suppose that $M(T - t_0) \leq Y$.
+        Then there exists a unique continusously differentiable function $t \mapsto y(t)$, defined on the closed
+        interval $[t_0, T_M]$, which satisfies ~\eqref{eq:sol:ivp}.
+    \end{theorem}
+
+    The condition ~\eqref{eq:sol:lipsitz} is called \textbf{Lipschitz condition} and $L$ is called the
+    \textbf{Lipschitz constant} for f.
+    For most applications we are interested in we can assume that $f$ is Lipschitz.
+    There also exists a an extension of Picard's theorem to multivariate functions $f: \mathbb{R}^m \to \mathbb{R}^m$.
+    The theorem for multiple dimensions is analogous to the scalar case except that the absolute function above is
+    replaced with the Euclidean norm on vectors.
+
+    An important property in the study of differential equations and numerical solvers is that of stability.
+    \begin{definition}
+        A solution $y = v(t)$ to ~\eqref{ivp} is said to be \textbf{stable} on the interval $[t_0, T ]$ if for every
+        $\epsilon >0$ there exists $\delta > 0$ such that for all $z$ satisfying $\lvert  v(t_0) - z \rvert < \delta$
+        the solution $y = w(t)$ to the differential equation $\frac{dy}{dt} y = f(t, y) $ satisfying the initial condition
+        $w(t_0) = z$ is defined for all $t \in [t_0, T]$ and satisfies $ \lvert v(t) - w(t) \rvert \leq \epsilon$ for
+        all $t$ in $[t_0, T]$.
+        A solution which is stable on $[t_0, \infty)$ (i.e. stable on $[t_0, Y]$) for all $Y$ and with $\delta$
+        independent of $T$) is said to be \textbf{stable in the Lyapunov sense}.
+        Moreover, if
+        \begin{equation*}
+            \lim_{x\to\infty} \lvert v(x) - w(x) \rvert = 0,
+        \end{equation*}
+        then the solution $y = v(t)$ is called \textbf{asymptotically stable}.
+    \end{definition}
+
+    One can prove~\cite{suli2010numerical} that if $f$ at~\eqref{eq:sol:ivp} is Lipschitz continuous the solution to the
+    IVP is stable on $[t_0, T]$.
+
+    \subsection{Forward Euler}
+    The Euler method, also known as forward Euler, is one of first developed and hence one of the most basic numerical
+    ODE solvers.
+    It works by partitioning the interval on which we wish to solve the initial value problem to a mesh of $M$
+    discrete points ${t_n: k=0,1,\dots M-1}$ with distances $h_k$ between them, without loss of generality less assume
+    the points are equidistant and $h = t_{k+1} - t_k$.
+    Supposing we know the value of the function $y$ at some time $t_0$, Euler's method allows us to iteratively
+    calculate an approximation $y_n$ for the value of $y(t_n)$ at the mesh points.
+    It can be derived directly by the forward difference approximation of the derivative.
+    \begin{align}
+        \left. \frac{dy}{dt} \right|_{t=t_n}  &= \lim_{h \to 0} \frac{y(t_n+h) - y(t_n)}{h} \\
+        &\approx \frac{y(t_n+h) - y(t_n)}{ h} \quad \text{for small $h$}
+    \end{align}
+    Rearranging terms in the above equation and substituting the known function for the derivative we arrive at the
+    Euler iteration.
+    \begin{equation*}
+        \label{eq:sol:euler}
+        y_{k+1} = y_n + h f(t_n, y_n))
+    \end{equation*}
+
+    The local truncation error is the error of the approximation compared to the true solution for one step of the
+    algorithm supposing $y(t_n) = y_n$
+    We can intuitively understand that as the \textit{step size} at ~\eqref{eq:sol:euler} gets smaller the lower the
+    truncation error becomes.
+    This can be shown formally considering the Taylor expansion of $y$ around $t_n$
+    \begin{align*}
+        y(t_n+h) &= y(t_n) + h y'(t_n) + \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
+        y(t_n+h) &= y_{k+1}  + \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
+        y(t_n+h) - y_{k+1} &= \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
+        \text{local error} &= \mathcal{O}(h^2)
+    \end{align*}
+    So the error scales inversely with the square of the step size, as we will see later higher order solver sacrifice
+    some of the speed of Euler's method, which require only one evaluation of $f$ per iteration, to achieve error that
+    scales inversely with higher powers of the step size.
+    The above analysis refers to the error of one step, as the algorithm continues the error from previous iterations
+    accumulates.
+    Under some loose conditions, namely $f$ is Lipschitz continuous on $y$ and $y$ has a bounded second derivative it
+    can be proven that the global truncation error is roughly proportional to $h$ ~\cite{butcher2016numerical}.
+    The exact upper limit of the global truncation error has a more complex but not of significant importance for our
+    case.
+    This property, the global truncation error being $O(h)$, makes forward Euler a \textit{first order} method.
+
+    \subsubsection{Implicit Euler}
+    An alternative derivation of the Euler method is found by integrating the ODE between two consecutive mesh points
+    $t_n$ and $t_{n+1}$
+    \begin{equation*}
+        y(t_{n+1}) = y(t_n) + \int_{t_n}^{t_{n+1}} f(\tau, f(y( \tau)) ) t\tau
+    \end{equation*}
+    and applying a numerical integration technique known as the rectangle rule
+    \begin{align*}
+        y(t_{n+1}) &= y(t_n) + h f(t_n, f(y( t_n)) ) \\
+        y_{n+1} & = y_n + hf(t_n, y_n)
+    \end{align*}
+    Different numerical integration methods, called quadratures, give rise to different numerical solvers, for example
+    the trapezium rule results in the following formula
+    \begin{equation*}
+        y_{n+1} =  y_n + \frac{1}{2} h \left[ f(t_n, y_n) + f(t_{n+1}, y_{n+1})\right]
+    \end{equation*}
+    Notice that in the above equation $y_{n+1}$ appears on both left and right hand sides.
+    This is called an explicit Euler method and requires the solution of this implicit equation for each $n$.
+
+    \subsection{General explicit one-step method}
+    A general explicit one-step method expands the class of Euler solver and it can be written in the form:
+    \begin{equation*}
+        y_{n+1} = y_n + h \Phi(t_n, y_n ; h),\quad n=0,1,\dots, M-1
+    \end{equation*}
+    Where $\Phi$ is a continuous function on its variables, in the case of forward Euler $\Phi(t_n, y_n;h)= f(t_n,y_n).$
+
+    The global error for methods of the form is given by:
+    \begin{equation*}
+        e_n = y(t_n) - y_n
+    \end{equation*}
+    The truncation error $T_n$ is given by:
+    \begin{equation}
+        \label{eq:sol:trunc_err}
+        T_n = \frac{ y(t_{n+1}) - y_{n+1} }{ h } = \frac{ y(t_{n+1}) - y(t_n) }{ h } - \Phi(t_n, y(t_n);h)
+    \end{equation}
+    The next theorem provides a bound on the global error in terms of the truncation
+    error.
+    It can be shown that if $\Phi$ is Lipschitz continuous in its second argument the explicit one-step method's global
+    error is bounded in terms of the local truncation error.
+    This suggests that if as truncation error goes to zero as $h \to 0$ then the global error also converges to zero
+    (as long as $|e_0| \to 0$ when $h \to 0$).
+    This observation motivates the following definition.
+
+    \begin{definition}
+        A general explicit one-step numerical method is said to be \textbf{consistent} with the differential equation
+        ~\eqref{eq:sol:ivp} if the truncation error defined by ~\ref{eq:sol:trunc_err} is such that for any $\epsilon$
+        there exists a positive $h(\epsilon)$ for which $T_n < \epsilon$ for $0 < h< h{\epsilon}$ and any pair of points
+        $(t_n, y(t_n)), (t_{n+1}, y(t_{n+1}) ) $ on any solution curve in \pmb{R}.
+    \end{definition}
+
+    Besides, consistent we wish our solver to be accurate, to quantify the accuracy of a solver we define its order of
+    accuracy
+
+    \begin{definition}
+        A general explicit one-step method is said to have \textbf{order of accuracy} p, if p is the largest positive
+        integer such that, for any sufficiently smooth solution curve $(t, y(t))$ in $\pmb{R}$ of the initial value
+        problem ~\eqref{eq:sol:ivp}, there exists constants $K$ and $h_0$ such that
+        \begin{equation*}
+            |T_n| \leq Kh^p \quad for 0<h\leq h_0
+        \end{equation*}
+        for any pair of points $(t_n, y(t_n)), (t_{n+1}, y(t_{n+1}) ) $ on the solution curve.
+    \end{definition}
+
+    Having introduced the concepts of consistency and the order of accuracy we can move to more involved and more
+    accurate methods called Runge-Kutta methods.
+
+    \subsection{Runge-Kutta methods}
+    Runge-Kutta methods, introduced by Runge with significant contributions by Heun and Kutta, aim to improve Euler's
+    method accuracy by introducing intermediate evaluations of $f$ between $t_n$ and $t_{k+1}$.
+
+    In their most general formulation of a Runge-Kutta method is given by:
+    \begin{equation}
+        \label{eq:sol:rungekutta}
+        y_{n+1} =
+        y_{n} + \sum_{i=1}^s b_i k_i,
+    \end{equation}
+    where
+    \begin{equation*}
+        k_i = f\left(t_n + c_ih, y_n + h\sum_{j=1}^s a_{ij} k_j \right), \quad i=1,\dots,s
+    \end{equation*}
+    The above formula is quite terse, and actually includes both explicit and implicit Runge-Kutta methods, we will
+    start from explicit methods and move to implicit ones.
+
+    \subsubsection{Explicit Runge-Kutta methods}
+    It is helpful to start from a specific example, namely the second order Runge Kutta method and generalize to higher
+    orders.
+    We aim to solve the same initial value as above again on some grid of points ${t_n, k=1, \dots,M-1}$.
+    For a single time step we aim to find $y_{k+1} = y(t_n+h)$ knowing $y_n$ and $f$.
+    Ideally we would solve the ODE by integrating
+    \begin{equation*}
+        y(t_n+h) = y_n + \int_{t_n}^{t_n + h} f( \tau, y(\tau) ) d\tau
+    \end{equation*}
+    But calculating this integral is often hard or even impossible, so we approximate it using some quadrature rule
+    which in general can be written as:
+    \begin{equation*}
+        y(t_n + h) \approx y_n + h\sum_{i=1}^N \omega_i f(t_n + c_i h, y(t_n + c_i h))
+    \end{equation*}
+    The specific quadrature used generates and a different order Runge Kutta method.
+    If we were for example to use $N=4$ and the 3 point Simpson's quadrature rule we would derive the fourth order
+    Runge-Kutta method commonly referred to as ``RK4''.
+    But our goal here is to derive a general second order method so we use $N=2$, and we also choose $c_1 = 0$.
+    \begin{equation*}
+        y(t_n+h) \approx y(t_n) + hb_1 f(t_n, y_n)) + hb_2 f(t_n + c_2 h, y(t_n+ c_2 h) )
+    \end{equation*}
+    The first term we can easily calculate since we know all the relative quantities and we denote
+    $K_1 = h\:f(t_n, y_n)$.
+    The second term contains $y(t_n + c_2 h)$ which is unknown, but we can calculate its Euler approximation and
+    introduce $ K_2 = h\:f(t_n + \alpha h, y_n + \beta K_1) $ where $a=c_2, b = c_2 - t_n$.
+    Finally, we have the following (note that a third order method would also have $k_3$ term that would include $k_1$ and $k_2$, a
+    fourth $k_4$ etc)
+    \begin{equation*}
+        y(t_n + h) = b_1 k_1 + b_2 k_2
+    \end{equation*}
+    To find out the unknown variables $b_1, b_2, \alpha, \beta$ we replace the left hand side with its Taylor expansion
+    around $t_n$:
+    \begin{equation*}
+        y(t_n) + h y'(t_n) + \frac{h^{2}}{2!}y''(t_n) + \mathcal{O}\left(h^{3}\right)
+        =
+        y(t_n) + b_{1}k_{1} + b_{2}k_{2}.
+        \label{eq:sol:tayl1}
+    \end{equation*}
+    In the above equation $y'(t_n)$ is obviously $f(t_n, y(t_n))$ and
+    $y''(t_n) = \left. \frac{dy}{dt} f(t, y(t)) \right|_{t=t_n}$ since $f$ has both direct and indirect dependence of t
+    it is expanded as $\frac{d}{dt} f(t, y(t)) = f_{t} + ff_{y}$  from the multivariate chain rule, where $f_x$ is
+    $\frac{\partial f}{\partial x}(t, y(t))$, we omit $f$'s arguments omitted for convenience.
+    Substituting $K_1$, $K_2$ in ~\eqref{eq:sol:tayl1} we get:
+    \begin{equation*}
+        hf + \frac{h^{2}}{2}(f_{t} + ff_{y}) + \mathcal{O}\left(h^{3}\right)
+        =
+        b_{1}hf + b_{2}hf(t + \alpha h, y + \beta k_{1}).
+        \label{eq:sol:tayl2}
+    \end{equation*}
+    We know apply the 2-dimensional Taylor expansion on the right-hand side of ~\eqref{eq:sol:tayl2}:
+    \begin{align*}
+        hf + \frac{h^{2}}{2}(f_{t} + ff_{x}) + \mathcal{O}\left(h^{3}\right)  &=
+        b_{1}hf + b_{2}(hf +\alpha h^{2}f_{t} + \beta h^{2} ff_{x}) + \mathcal{O}\left(h^{3}\right)
+        \\
+        hf + \frac{h^{2}}{2}(f_{t} + ff_{x}) + \mathcal{O}\left(h^{3}\right)  &=
+        (b_{1} + b_{2})hf + h^2 (\alpha b_1 f_{t} + \beta b_2 ff_{x}) + \mathcal{O}\left(h^{3}\right)
+    \end{align*}
+    In order for the Runge-Kutta method to agree with the Taylor expansion of the true value of $y$ at $t_n + h$ up to
+    $\mathcal{O}(h^3)$ accuracy we need to choose:
+    \begin{align*}
+        b_1 + b_2 = 1, \\
+        \alpha b_1 = 1/2, \\
+        \beta b_2 = 1/2
+    \end{align*}
+    Choosing different parameters that satisfy these constraints results to different second order Runge-Kutta methods.
+
+    Generally explicit methods of order N are of the form:
+    \begin{equation*}
+        y_{n+1} = y_n + h \sum_{i=1}^{N} b_i k_i
+    \end{equation*}
+    where
+    \begin{align}
+        k_1 &= f(t_n, y_n), \\
+        k_2 &= f(t_n + c_2 h, y_n + (a_{21} k_1) h), \\
+        k_3 &= f(t_n + c_3 h, y_n + (a_{31} k_1 + a_{32 k_2})h), \\
+        &\vdots \\
+        k_N &= f(t_n + c_s h, y_n + (a_{s1}k_1 + a_{s2}k2 + \dots + a_{s, s-1}k_{s-1})h)
+    \end{align}
+
+    Similarly to the second order case to specify a $N$-th order method we need the coefficient $a_{ij}$ called the
+    Runge-Kutta matrix, the weights $b_i$ and the nodes $c_i$.
+    It is also true in the general case that for a Runge-Kutta method to be consistent it is a necessary and sufficient
+    condition for $b_i$ to hold that.
+    \begin{equation*}
+        \sum_{i=1}^{s} b_i = 1
+    \end{equation*}
+
+    A convenient representation for the equations at ~\eqref{eq:sol:rungekutta} is the Butcher tableau, it contains
+    the coefficients matrix, the weights and the nodes in a grid like structure.
+    For an explicit method the Butcher tableau is written as:
+    \begin{equation*}
+        \begin{array}
+        {c|cccccc}
+            0 \\
+            c_2 & a_{21} \\
+            c_3 & a_{31} & a_{32} \\
+            \vdots & \vdots & & \ddots \\
+            c_s & a_{s_1} & a_{s2} & \dots & a_{s,s-1} \\
+            \hline \\
+            & b_1 & b_2 & \dots & b_{s-1} & b_{s}
+        \end{array}
+    \end{equation*}
+
+    As we mentioned above the ``RK4'' method is the most well known explicit Rugne-Kutta method, its Butcher tableau
+    looks like this:
+    \begin{equation*}
+        \begin{array}
+        {c|cccc}
+            0 \\
+            1/2 & 1/2 \\
+            1/2 & 0 & 1/2 \\
+            1 & 0 & 0 & 1 \\
+            \hline \\
+            & 1/6 & 1/3 & 1/3 & 1/6
+        \end{array}
+    \end{equation*}
+    We started this section with the simplest numerical ODE method forward Euler, it can also be expressed as a first
+    order explicit Runge Kutta method whose Butcher tableau is:
+    \begin{equation*}
+        \begin{array}
+        {c|c}
+            0 \\
+            \hline \\
+            & 1
+        \end{array}
+    \end{equation*}
+
+
     \section{Parallelism in Time}
     It is apparent that Moore's law is crumbling.
     In the last decades focus has shifted to parallel computation to increase performance rather than increasing single
@@ -390,31 +714,31 @@
     Massaroli et al. \cite{massaroli2021differentiable} used principles of multiple shooting layers,
     a subcategory of parallel in time methods, and root finding algorithms, to accelerate neural ODES.
     In the next subsection a new parallel in time algorithm based on refining a polynomial approximation of the solution
-    using a Newton-Raphson iteration is proposed.
+    using zero order and higher optimizers.
 
     \subsection{Polynomial approximation}
     Let us consider the following initial value problem that we wish to solve in some time interval
-    $t \in [0,T]$ with $\pmb{y} (t_0)= \pmb{y}_0$.
+    $t \in [0 , T]$ with $\pmb{y} (t_0)= \pmb{y}_0$.
     We will examine the scalar case first where $y : \mathbb{R} \to \mathbb{R}$:
     \begin{equation}
         \frac{d y(t)}{dt} = f(y(t)) \label{dydt}
     \end{equation}
-    We define a polynomial approximation  $\hat{y}(t)=\sum_{n=0}^{N-1} \phi_n(t) b_n$   where $ \phi_n(t) $ are basis functions
-    for a vector space of polynomials and $b_n$ are coefficients we wish to find.
-    We can also express $\hat{y}$ as the dot product $\hat{y}(t)= \left[ \pmb{\phi}(t)\right]^T \textbf b$ where
+    We define the $N$-th order polynomial approximation  $\hat{y}(t)=\sum_{n=0}^{N-1} b_n \phi_n(t) $  where $ \phi_n(t) $ are basis functions
+    for a vector space of polynomials and $b_n$ are some coefficients we wish to find.
+    We can also express $\hat{y}$ as the dot product $\hat{y}(t)=  \pmb{b}^t \pmb{\phi}(t)$ where
     $\pmb{\phi} : [0,T] \to \mathbb{R}^N$ and $\pmb{b} \in \mathbb{R}^N$.
-
     By substituting $\hat{y}$ in~\eqref{dydt} we get:
     \begin{align}
-        \frac{d}{dt}  \pmb{\phi}^T(t)  \pmb{b} &\approx f( \pmb{\phi}^T(t)  \pmb{b} ) \label{dPhidt}
+        \frac{d}{dt}  \pmb{b}^T \pmb{\phi}(t)   &\approx f( \pmb{b}^T \pmb{\phi}(t) ) \label{dPhidt}
         \\
-        \pmb{\dot{\phi}}^T(t)  \, \pmb{b} &\approx f(  \pmb{\phi}(t)  \pmb{b} ) \label{dphi_fphi}
+        \pmb{b}^T \pmb{\dot{\phi}}(t)  &\approx f( \pmb{b}^T \pmb{\phi}(t)) \label{dphi_fphi}
     \end{align}
     We define an approximation error (in the mean square error sense) that we wish to minimise in the interval of interest.
     \begin{equation}
+        \label{eq:error_wrt_B}
         e(\pmb{b}) = \int_0^T
         \left(
-        \pmb{\dot{\phi}}(\tau)  \, \pmb{b} - f(  \pmb{\phi}^T(\tau)  \pmb{b} )
+        \pmb{b}^T  \, \pmb{\dot{\phi}}(\tau) - f( \pmb{b}^T \pmb{\phi}(\tau)   )
         \right)^2
         d\tau
     \end{equation}
@@ -422,9 +746,22 @@
     Depending on the choice of basis functions, the derivative of $\pmb{\phi}(t)$ with respect to time can be trivial
     to obtain analytically.
     We opt to use Chebyshev polynomials as the basis functions of our approximation which are known for their
-    properties in approximation theory [CITATION].
+    properties in approximation theory ~\cite{trefethen1996finite}.
     They form an orthonormal basis for functions in $[-1,1]$ but we can use them in our desired interval through a
     simple change of variables while being mindful of the differential in $\frac{d}{dt} \pmb{\phi}(t) $.
+    More specifically, through the linear transformation $\hat{t} = 2*\frac{ t -  \alpha} { \beta - \alpha} -1$ we can
+    move the integration interval from $[a,b]$ to $[-1,1]$.
+    By substituting $t = \hat{t}$  in ~\eqref{dPhidt} we get:
+    \begin{align*}
+%        \label{dydt_hat}
+        \frac{d}{dt}  \pmb{b}^T \pmb{\phi}(t) &= f( \pmb{b}^T \pmb{\phi}(t) ) \\
+        \frac{d}{d\hat{t}} \frac{d \hat{t}}{dt} \; ( \pmb{b}^T \pmb{\phi}(\hat{t}) ) &= f( \pmb{b}^T \pmb{\phi}(\hat{t}) ) \\
+        \frac{2}{b-a} \pmb{b}^T \pmb{\dot\phi}(\hat{t}) &= f( \pmb{b}^T \pmb{\phi}(\hat{t}) )
+    \end{align*}
+    For the sake of convenience for the rest of the section we omit the hat from $t$ and the constant in front of
+    $\pmb{\dot\phi}(t)$ but keep in mind that the limits of integration are $[-1,1]$
+    \\
+
     Chebyshev polynomials of the first kind $T_n(t)$ can be defined by:
     \begin{equation}
         T_n(\cos \theta) = \cos(n \theta)
@@ -453,77 +790,118 @@
         \frac{dT_n}{dt} = n U_{n-1}
         \label{Dcheb}
     \end{equation}
-    Since we operate in discrete time we define a grid of $M$ points $\pmb{t} = [t_0 \; t_1 \; \dots \; t_{M-1}]^T$
-    where we calculate the error.
-    The points can be equidistant or another set of points between $0$ and $T$ could be used.
-    For our calculations we use the Chebyshev node of the second kind $t_m = \cos\left( \frac{m\pi}{M-1} \right), \ m=0,\dots,M-1$.
-    For simplicity's sake let's assume that the time variable has been rescaled to be in $[-1,1]$.
-    In this case $\pmb{\phi}^T(\pmb{t}) $ would be written as a $M \times N$ matrix.
-    \begin{equation}
-        \pmb{\phi}^T(\pmb{t}) =  \Phi^T  =
-        \begin{bmatrix}
-            T_0(t_0)     & T_1(t_0)     & \dots & T_{N-1}(t_{0})   \\
-            T_0(t_1)     & T_1(t_1)     & \dots & T_{N-1}(t_1)     \\
-            & & \vdots \\
-            T_0(t_{M-1}) & T_1(t_{M-1}) & \dots & T_{N-1}(t_{M-1}) \\
-        \end{bmatrix}\label{eq:cheb_mat}
-    \end{equation}
-    Similarly, the derivative of $\Phi$ at the defined grid of points is found be differentiating each element of~\eqref{eq:cheb_mat} wrt.
-    the grid points and by utilising~\eqref{Dcheb}.
-    \begin{equation}
-        \label{PHI}
-        \dot{\Phi}^T  =
-        \begin{bmatrix}
-            0 & 1 \cdot U_0(t_0)     & \dots & (N-1) \cdot U_{N-2}(t_{0})   \\
-            0 & 1 \cdot U_0(t_1)     & \dots & (N-1) \cdot U_{N-2}(t_1)     \\
-            & & \vdots \\
-            0 & 1 \cdot U_0(t_{M-1}) & \dots & (N-1) \cdot U_{N-2}(t_{M-1}) \\
-        \end{bmatrix}
-    \end{equation}
-    Generalising to a vector valued $\pmb{y} : [0,T] \to \mathbb{R}^L$ the collection of coefficients becomes a matrix $B\in \mathbb{R}^{N \times L}$.
+
+    Generalising to a vector valued $\pmb{y} : [t_0=-1,t_1=1] \to \mathbb{R}^L$ the collection of coefficients becomes a matrix $B\in \mathbb{R}^{N \times L}$.
     Another way of thinking about this is stacking $L$ coefficient vectors, one for each dimension next to each other, forming the coefficient matrix $B$.
     The error function is then reformulated as
     \begin{align}
-        e(B) &= \sum_t \left(
-        \pmb{\dot\phi}^T(t)  B -
-        f (  \pmb\phi^T(t) B  )
-        \right)^2
+        e(B) &= \int_{t_0}^{t_1} \lVert
+        B^T \pmb{\dot\phi}(\tau)   -
+        f (B^T  \pmb\phi(\tau)  )
+        \rVert^2
+        \; d\tau
         \label{approx_error}
     \end{align}
+    Since we operate in discrete time we define a grid of $M$ points $\pmb{t} = [t_0 \; t_1 \; \dots \; t_{M-1}]^T$ and
+    replace the integral with a Riemann sum.
+    The points are usually equidistant but other sets of points between $t_0$ and $t_1$ could be used.
+    For our calculations we use the Chebyshev node of the second kind $t_m = \cos\left( \frac{m\pi}{M-1} \right), \ m=0,\dots,M-1$.
+    \begin{align}
+        e(B) &= \sum_m \lVert
+        B^T \pmb{\dot\phi}(t_m)  -
+        B^T f (  \pmb\phi(t_m)  )
+        \rVert^2
+        \Delta t_m
+        \label{approx_error_sum}
+    \end{align}
     We therefore seek to find coefficients $B^*$ that minimise the above error.
-    To find the minimum we set the derivative wrt. $B$ equal to zero and solve for it.
-    \begin{align}
-        \nabla_B e(B) = 0
-    \end{align}
-    Depending on the form of $f$ it can be hard -or even impossible- to find a closed form solution to this problem.
-    We replace $f(  \pmb\phi^T(t) B  )$ with its zero-th order approximation around an initial point $B^{[k]}$.
-    \begin{align}
-        \nabla_B
-        \sum_t \left(
-        \pmb{\dot\phi}^T(t))  B -
-        f( \pmb\phi^T(t) (B^{[k]} ) +
-        r(B^{[k]})
-        \right)^2 &=0
-        \\
-        \sum_t
-        \pmb{\dot\phi}(t) +
-        \left(
-        \pmb{\dot\phi}^T(t)  B -
-        f( \pmb\phi^T(t) B^{[k]} )
-        \right) &\approx 0
-        \\
-        \Phi \; \Phi^T B - \Phi f (  \Phi^T B^{[k]} )
-        &\approx 0
-        \label{eq:approx_error2}
-    \end{align}
-    Solving for $B$ in the above equation and using the solution for the new zero-th order approximation of $f$ we arrive
-    to the iterative solution:
+    To find the minimum we set the derivative wrt. $B$ equal to zero and solve for $B$
     \begin{equation}
-        \label{eq:Bitaration}
-        B^{[k]} = \left[  \dot\Phi \; \dot\Phi^T \right]^{-1}  \dot\Phi f (  \pmb\phi^T(t)B^{[k-1]} ), \quad k=0,1,\dots
+        \label{eq:error_zero}
+        \nabla_B e(B) = 0
     \end{equation}
+    Depending on the form of $f$ it can be hard -or even impossible- to find a closed form solution to this problem.
+    We therefore resort to an iterative process for finding $B$, starting from some $B_0$ we form the solution as
+    $B_{k+1} = B_{k} + \eta \Delta B_{k}$, $\eta$ being a positive scalar learning rate.
+    Depending on the order of the optimisation method used $\Delta B_{k}$ takes different forms, most
+    commonly (under the gradient descent schema) $\Delta B_{k}$ is defined as $\nabla_{B_{k}} e$.
 
-    \begin{figure}[h]
+    \subsubsection{A zero order optimisation algorithm}
+    Let's substitute $B$ at $(k+1)$-th iteration in ~\ref{eq:error_zero}:
+    \begin{align}
+        \nabla_{B_{k+1}} \sum_m \lVert
+        B_{k+1}^T \pmb{\dot\phi}(t_m)  -
+        f ( (B_{k+1}^T \pmb\phi(t_m)  )
+        \rVert^2_2
+        \Delta t_m = 0 \\
+        \nabla_{B_{k+1}}\sum_m \lVert
+        B_{k+1}^T \pmb{\dot\phi}(t_m)  -
+        f \big( (B_{k} + \eta \Delta B_k)^T \pmb\phi(t_m)  \big)
+        \rVert^2_2
+        \Delta t_m = 0 \label{eq:B_inside_f}
+    \end{align}
+    We substitute (rather boldly) the function $g(B, t) = f(B^T \pmb{\phi}(t) )$ inside the sum with its zero-th order
+    approximation around $B_k$, meaning the constant (on $B$) function $f( B_k^T \pmb{\phi}(t) )$.
+    Exchanging the nabla and applying some matrix calculus we get:
+    \begin{align}
+        \sum_m \;
+        \left(
+        B_{k+1}^T \pmb{\dot\phi}(t_m)  -
+        f \big( (B_{k}^T \pmb\phi(t_m)  \big)
+        \right)
+        \pmb{\dot\phi}^T(t_m)
+        \Delta t_m = 0 \\
+        \sum_m
+        B_{k+1}^T \pmb{\dot\phi}(t_m) \pmb{\dot\phi}^T(t_m) \Delta t_m-
+        f \big( (B_{k}^T \pmb\phi(t_m)  \big) \pmb{\dot\phi}^T(t_m) \Delta t_m
+        = 0
+        \label{eq:grad_err}
+    \end{align}
+    We notice in the above relationship that the sums of outer products can be rewritten as matrix multiplications, to
+    that goal lets define the following quantities.
+    \begin{equation*}
+        \Phi =  \pmb{\phi}(\pmb{t}^t)  =
+        \begin{bmatrix}
+            T_0(t_0)     & T_0(t_1)     & \dots & T_{0}(t_{M-1})   \\
+            T_1(t_0)     & T_1(t_1)     & \dots & T_1(t_{M-1})     \\
+            & & \vdots \\
+            T_{N-1}(t_0) & T_{N-1}(t_1) & \dots & T_{N-1}(t_{M-1}) \\
+        \end{bmatrix}\label{eq:cheb_mat}
+    \end{equation*}
+    From ~\eqref{Dcheb} we can define the time derivatives of $\pmb\phi$ as:
+    \begin{equation*}
+        \label{DPHI}
+        \dot{\Phi} = \pmb{\dot\phi}(\pmb{t}^t) =
+        \begin{bmatrix}
+            0                        & 0                        & \dots & 0                            \\
+            1\cdot U_0(t_0)          & 1\cdot U_0(t_1)          & \dots & 1\cdot U_0(t_{M-1})          \\
+            & & \vdots \\
+            (N-1) \cdot U_{N-2}(t_0) & (N-1) \cdot U_{N-2}(t_1) & \dots & (N-1) \cdot U_{N-2}(t_{M-1})
+        \end{bmatrix}
+    \end{equation*}
+    Using these matrices we can rewrite ~\ref{eq:grad_err} in terms of matrix products as follows:
+    \begin{align}
+        0 &=
+        B_{k+1}^T \dot\Phi (\dot\Phi^T \cdot \Delta \pmb{t} \odot \pmb{1}^T  ) -
+        f \big( (B_{k}^T \Phi \big) {\dot\Phi}^T \cdot \Delta \pmb{t} \odot \pmb{1}^T
+        \\
+        B_{k+1}^T &=
+        f \big( (B_{k}^T \Phi \big) {\dot\Phi}^T \cdot \Delta \pmb{t} \odot \pmb{1}^T
+        ( \dot\Phi (\dot\Phi^T \cdot \Delta \pmb{t} \odot \pmb{1}^T ) )^{-1} \label{update}
+    \end{align}
+    Equation ~\ref{update} outlines the iteration scheme for this zero order optimisation algorithm.
+    Omitting the partitions' lengths terms $\Delta \pmb{t}$ temporarily for clarity:
+    \begin{equation*}
+        B_{k+1}^T =
+        f \big( B_{k}^T \Phi \big) {\dot\Phi}^T
+        ( \dot\Phi \dot\Phi^T )^{-1}
+    \end{equation*}
+    It becomes apparent that the inverted matrix is the same for all iterations meaning it only needs to be inverted
+    once at the beginning.
+    Furthermore, $f$ is applied to each row of its input matrix in parallel, which provides a parallel speed-up to
+    the algorithm.
+
+    \begin{figure}[H]
         \begin{center}
             \input{sol_regression.pgf}
         \end{center}
@@ -532,42 +910,39 @@
         \label{fig:reg_sol}
     \end{figure}
 
-    It's apparent that the accuracy of this iterative solution depends on the residual $r(B^{[k]})$ of the zero order
-    approximation on ~\eqref{eq:approx_error2}.
-    Depending on the condition number of $f$ the accuracy of the solution when the method converges may not be
-    sufficient.
-    To combat that this, we can use the solution matrix $\bar B$ as the starting solution of a higher order method to
+    \subsubsection{Higher order minimization}
+    It's apparent that the accuracy of this iterative solution depends on the residual of the zero order
+    approximation on ~\eqref{eq:grad_err}.
+    The zero order algorithm converges rather fast but can't achieve high accuracy.
+    Experimental results show that it oscillates around the optimum.
+
+    To combat that this, we can use the solution matrix $\bar B$ as the starting value of a higher order method to
     increase accuracy.
-    A simple choice is the Newton-Raphson algorithm with Hessian modification, a second order method.
+    A simple choice is a fist degree optimisation method such as gradient descent or one of each variants.
+
+    Another choice is the Newton-Raphson algorithm with Hessian modification, a second order method.
     A version of the algorithm is showcased in Appendix~\ref{newtonalgo}, where line-search is used for the learning
     rate or step size of the update ~\ref{alg:linesearh}.
+
     Combining polynomial approximation with the Newton algorithm we arrive at algorithm \ref{alg:intapprox}.
+
     \begin{algorithm}
         \caption{Polynomial approximation numerical integration}
         \begin{algorithmic}
-            \State choose $\epsilon_{ls}$, $\epsilon_{n}$, $B^{[0]}$, $K_{ls}, K_{n}$
+            \State choose $\epsilon_{ls}$, $\epsilon_{n}$, $B_0$, $K_max$
             \State $\pmb{t} \gets [t_0 \; t_1 \; t_2 \; \dots \; t_{M-1} ]^T$
             \State $k \gets 1$
-            \State calculate $\Phi, \Phi'$ at $\pmb{t}$
+            \State calculate $\Phi, \dot\Phi$
             \Repeat
-                \State $B^{[k]} \gets \left[  \dot\Phi \; \dot\Phi^T \right]^{-1}  \dot\Phi f (  \pmb\phi^T(t)B^{[k-1]} )$
-                \If { $\lVert B^{[k]} - B^{[k-1]}\rVert < \epsilon_{ls}$ }
-                    \State \textbf{break}
-                \EndIf
-                \State $k \gets k +1$
-            \Until{$k=K_{ls}$}
-            \State $B^{[1]} \gets B^{[k]}$
-            \State $k \gets 1$
-            \Repeat
-                \State calculate $e(B^{[k]})$
-                \If { $e(B^{[k]})< \epsilon_{n}$ }
-                    \State \textbf{return} $B^{[k]}$
+                \State calculate $e(B_k]$
+                \If { $e(B^k)< \epsilon_{n}$ }
+                    \State \textbf{return} $B_k$
                 \EndIf
                 \State $ \pmb{d}^{[k]} \gets -\left[ \nabla^2 e(B^{[k]}) \right]^{-1} \nabla e(B^{[k]})$
                 \State $ \alpha^{[k]} \gets \text{lineseach}(e, B^{[k]}, \pmb{d}^{[k]}) $
-                \State $ B^{[k+1]} \gets B^{[k]} + \alpha \pmb{d}^{[k]}$
+                \State $ B^{[k+1]} \gets B_k + \alpha \pmb{d}^{[k]}$
                 \State $k \gets k+1$
-            \Until{$k>k_{max2}$}
+            \Until{$k>k_max$}
             \label{alg:intapprox}
         \end{algorithmic}
     \end{algorithm}
@@ -579,87 +954,69 @@
     allows to both: impose our initial conditions and to reduce the computational cost.
     Starting with initial state:
     \begin{align}
-        \label{eq:phi_y_init}
-        \pmb{\phi}(t_0) B &= \pmb{y}(t_0) \\
-        \begin{bmatrix}
-            \phi_0(t_0) &
-            \phi_1(t_0)
-        \end{bmatrix}
-        \begin{bmatrix}
-            B_0 \\
-            B_1
-        \end{bmatrix}
-        +
-        \pmb{\tilde\phi}^T(t_0) \tilde{B}
-        &= \pmb{y}_0
+        \pmb{y}(t_0) = B^T \pmb\phi(t_0) = B_0 \phi_0(t_0) + B_1 \phi_1(t_0) + B^T_{2:} \pmb\phi_{2:}(t_0)
     \end{align}
-    Where $\tilde{B}$ is the remaining $(N-1)-2$ rows of $B$, which the actual learnable part.
-    $t$.
-    We can write a similar equation for $f(y_0)$.
+    We can write a similar equation for $f(\pmb{y}_0)$.
     \begin{align}
-        \label{eq:phi_f_init}
-        \pmb{\dot\phi}(t_0) B &= f(\pmb{y}_0) \\
-        \begin{bmatrix}
-            \dot{\phi}_0(t_0) &
-            \dot{\phi}_1(t_0)
-        \end{bmatrix}
-        \begin{bmatrix}
-            B_0 \\
-            B_1
-        \end{bmatrix}
-        +
-        \pmb{\tilde{\dot\phi}}^T(t_0)  \tilde{B}
-        &= f(\pmb{y}_0)
+        f(\pmb{y}(t_0)) = B^T \pmb{\dot\phi}(t_0) = B_0 \dot\phi_0(t_0) + B_1 \dot\phi_1(t_0) + B^T_{2:} \pmb{\dot\phi}_{2:}(0)
     \end{align}
-    Combining~\eqref{eq:phi_y_init} and~\eqref{eq:phi_f_init} we get:
-    \begin{equation}
-        \label{eq:init_cond}
+    We can group this two equation in system:
+    \begin{align}
         \begin{bmatrix}
-            \phi_0(t_0)     & \phi_1(t_0)     \\
-            \dot\phi_0(t_0) & \dot\phi_1(t_0)
+            \pmb{y}_0 & \pmb{f}_0
+        \end{bmatrix} = B_0 \begin{bmatrix}
+                                \phi_0(t_0) & \dot\phi_0(t_0)
+        \end{bmatrix} +
+        B_1 \begin{bmatrix}
+                \phi_1(t_0) & \dot\phi_1(t_0)
+        \end{bmatrix} +
+        B^T_{2:} \begin{bmatrix}
+                     \pmb\phi_{2:}(t_0) & \pmb{\dot\phi}_{2:}(t_0)
+        \end{bmatrix}
+    \end{align}
+    Which can be written as:
+    \begin{align}
+        \begin{bmatrix}
+            \pmb{y}_0 & \pmb{f}_0
+        \end{bmatrix} =
+        \begin{bmatrix}
+            B_0 & B_1
         \end{bmatrix}
         \begin{bmatrix}
-            B_0 \\ B_1
-        \end{bmatrix}^T
-        +
-        \begin{bmatrix}
-            \pmb{\tilde\phi}(t_0) &
-            \pmb{\tilde{\dot\phi}}(t_0)
-        \end{bmatrix}^T
-        \tilde{B}
-        =
-        \begin{bmatrix}
-            \pmb{y}_0 \\
-            \pmb{f}_0
+            \phi_0(t_0) & \dot\phi_0(t_0) \\
+            \phi_1(t_0) & \dot\phi_1(t_0)
+        \end{bmatrix} +
+        B^T_{2:} \begin{bmatrix}
+                     \pmb\phi_{2:}(t_0) & \pmb{\dot\phi}_{2:}(t_0)
         \end{bmatrix}
-    \end{equation}
-    The above equation allows us to express the first two rows of the coefficients matrix $B$ as a linear combination
+    \end{align}
+    Solving for $[B_0 \; B_1]$ we have:
+    \begin{equation*}
+        \label{eq:pan:B01}
+        \begin{bmatrix}
+            B_0 & B_1
+        \end{bmatrix} = \left(
+        \begin{bmatrix}
+            \pmb{y}_0 & \pmb{f}_0
+        \end{bmatrix}  -
+        B^T_{2:} \begin{bmatrix}
+                     \pmb\phi_{2:}(0) & \pmb{\dot\phi}_{2:}(0)
+        \end{bmatrix}
+        \right)
+        \begin{bmatrix}
+            \phi_0(t_0) & \dot\phi_0(t_0) \\
+            \phi_1(t_0) & \dot\phi_1(t_0)
+        \end{bmatrix}^{-1}
+    \end{equation*}
+    The structure of $\phi(t)$ ensures this $2\times 2 $ matrix is always invertible and more specifically
+    a lower triangular matrix.
+    This can be show easily since $\phi_0(t_0) = T_0(-1)$ is always $1$,  $\phi_1(t_0) = T_1(-1) = -1$, the derivative of
+    $T_0$ is obviously $0$ and $\dot\phi_1(t_0)$ is something non-zero.
+
+    Equation ~\eqref{eq:pan:B01} allows us to express the first two rows of the coefficients matrix $B$ as a linear combination
     of the rest $(N-1)-2$ rows.
     This means we don't need to ``learn'' them though optimisation, we instead minimize the error subject to the
     remaining rows.
-    \begin{equation}
-        \label{eq:phi_f2}
-        \begin{bmatrix}
-            B_0 \\ B_1
-        \end{bmatrix}^T
-        =
-        \begin{bmatrix}
-            \phi_0(t_0)     & \phi_1(t_0)     \\
-            \dot\phi_0(t_0) & \dot\phi_1(t_0)
-        \end{bmatrix}^{-1}
-        \left(
-        \begin{bmatrix}
-            \pmb{y}_0 \\
-            \pmb{f}_0
-        \end{bmatrix}
-        -
-        \begin{bmatrix}
-            \pmb{\tilde\phi}(t_0) &
-            \pmb{\tilde{\dot\phi}}(t_0)
-        \end{bmatrix}^T
-        \tilde{B}
-        \right)
-    \end{equation}
 
     The initialisation of $B$ is in the users choice, it could be random matrix.
     Alternatively, one could use a coarse ODE solver, likely a forward Euler iteration with relatively large step size,
@@ -690,7 +1047,7 @@
     First of all, the parallelisation potential of such a method comes from the fact that $f$ can be evaluated for all
     input points $\hat y(t)$ simultaneously at a single iteration.
     More specifically, during the fist, zero-th order part of the algorithm, a vector of points is passed into $f$ to
-    update the coeffecients as can be seen in  ~\eqref{eq:Bitaration}.
+    update the coeffecients as can be seen in ~\eqref{eq:Bitaration}.
     In reality, $f$ is applied on each element of this vector but since the calculations are independent all elements are
     evaluated in parallel.
     Similarly, during the Newton iteration the Hessian can, up to some degree, be computed in parallel by exploiting
@@ -907,6 +1264,7 @@
     \printbibliography
 
     \appendix
+
 
     \section{The backpropagation equations}
     In order to contrast and highlight the differences between classical neural networks, residual neural networks and neural ODEs we showcase how the gradients of the loss wrt.
@@ -1151,27 +1509,6 @@
     \end{algorithm}
 
 
-    \section{Numerical Solvers}
-
-    \subsection{Runge-Kutta 5}
-
-    solve $\frac{dy}{dt} = f(t,y)$, $y(t_0) = y_0 $
-
-    \begin{align*}
-        y_{n+1} &= y_n + \frac{h}{6}(k_1 + 2k_2 +2k_3 + k_4)  \\
-        t_{n+1} &= t_n + h
-    \end{align*}
-
-    \begin{align*}
-        k_{1} &= f(t_{n}, y_{n}), \\
-        k_{2} &= f(t_{n} + \frac{h}{2}, y_{n} + h \frac{ k_{1} }{ 2 } ),    \\
-        k_{3} &= f(t_{n} + \frac{h}{2}, y_{n} + h \frac{ k_{2} }{ 2 } ),  \\
-        k_{4} &= f(t_{n} + h, y_{n} + hk_3), \\
-    \end{align*}
-
-    can be proved using taylor series expansion...
-
-
     \section{An alternative derivation for $\frac{dL}{d \pmb{\theta}}$}
     \label{adjoint_proof}
     There are already many ways in the literature for finding this quantity without delving into control theory and reverse sensitivities.
@@ -1282,7 +1619,7 @@
     They instead define either a fixed or dynamically updated \textit{learning rate}.
     Usually they employ some notions of momentum and stochasticity to move along a direction dictated by an approximation of the local gradient.
     Even so they remain first order methods since they only utilise information about the first derivative.
-%    Some notable gradient descent methods as well as how the minimisation problem is formulated in the context of machine learning are discussed later.
+    Some notable gradient descent methods as well as how the minimisation problem is formulated in the context of machine learning are discussed later.
 
     \subsection{The Newton-Raphson algorithm with Hessian modification}
     \label{newtonalgo}
@@ -1402,4 +1739,185 @@
         \end{algorithmic}
     \end{algorithm}
 
+    The procedure uses the knowledge that the interval $(a_{i-1} , a_{i})$ contains step lengths satisfying the strong Wolfe
+    conditions if one of the following three conditions is satisfied:
+    \begin{enumerate}
+        \item $a_i$ violates the sufficient decreasee condition
+        \item $\phi(a_i) \geq \phi(a_{i-1}) $
+        \item $\phi'(a_i) \geq 0$
+    \end{enumerate}
+    The last step of the algorithm performs extrapolation to find the next trial value $a_{i+1}$.
+    We can use some more involved extrapolation technique like the ones mentioned previously in the section, or
+    we can simply set $a_{i+1}$ to some constant multiple of $a_i$.
+    Whichever strategy we use, it is
+    important that the successive steps increase quickly enough to reach the upper limit $a_{\max}$ in
+    a finite number of iterations.
+
+    We know specify the function zoom, which requires a little explanation.
+    The order of its input is such that each call has the form: \textbf{zoom}($a_{lo}$, $a_{hi}$), where
+    \begin{enumerate}
+        \item the interval bounded by $a_{lo}$ and $a_{hi}$ contains step lengths that satisfy the strong Wolfe conditions
+        \item $a_{lo}$ is, among all step lengths generated so far and satisfying the sufficient decrease conditions, the one giving the smallest value;
+        \item $a_hi$ is chosen so that $\phi{a_{lo}}(a_{hi} - a_{lo}) < 0$
+    \end{enumerate}
+    Each iteration of zoom generates and iterate $a_j$ between $a_{lo}$ and $a_{hi}$, and then replaces one of these
+    endpoints by $a_j$ in such a way that the above properties continue to hold.
+
+    \begin{algorithm}
+        \caption{zoom}
+        \label{alg:zoom}
+        \begin{algorithmic}
+            \Repeat
+                \State Interpolate to find a trial step length $a_j$ between $a_{lo}$ and $a_{hi}$
+                \State Evaluate $\phi(a_j)$
+                \If {$\phi(a_j) > \phi(0) + c_1 a_j \phi'(0)$ or $\phi(a_j) \geq \phi(a_{lo}$]}
+                    \State $a_{hi} \gets a_j$
+                \Else
+                    \State Evaluate $\phi'(a_j)$
+                    \If {$ |\phi'(a_j)| \leq -c_2 \phi'(0)$}
+                        \State Set $a^* \gets a_j$ and \textbf{stop}
+                    \EndIf
+                    \If { $\phi'(a_j)(a_{hi} - a_{lo}) \geq 0 $ }
+                        \State $a_{hi} \gets a_{lo}$
+                    \EndIf
+                    \State $a_{lo} \gets a_{hi}$
+                \EndIf
+            \Until
+        \end{algorithmic}
+    \end{algorithm}
+
+    If the new estimate $a_j$ happens to satisfy the strong Wolfe conditions, then zoom has served
+    its purpose of identifying such a point, so it terminates with $a^* = a_j$.
+    Otherwise, if $a_j$ satisfies the sufficient decrease condition and has a lower function value than $a_{lo}$ ,
+    then we set $a_{lo} \gets a_j$ to maintain condition (2).
+    If by doing so we end up violating condition (3), we set $a_{hi}$ to the old value of $a_{lo}$ ensuring condition
+    (3) holds.
+
+    Several implementations of the Newton algorithm with line search exist in scientific software packages.
+    We have written an exact Newton routine in \textbf{PyTorch} utilising automatic differentiation and GPU parallelism.
+
+    \subsection{Gradient Descent Methods}
+    For the sake of completeness we will present some fist order optimisation methods.
+    Gradient descent and its derivative are by far the most used optimizers in machine learning.
+    For really high dimensional problems, such as those we are concerned with in modern deep learning settings, second
+    order methods introduce quadratically scaled (on the number of parameters) computation and memory cost.
+    This cost is related to the computation and storage of the Hessian (or an approximation of it) which is of size
+    ${num_parameters}^2$.
+    The tradeoff between number of iterations and cost per iteration leans in favor of gradient descent optimizers as
+    the number of parameters increases, especially considering the fact that they lend themselves well to automatic
+    differentiation and distributing training.
+    The loss function for example
+    All these in combination with the higher implementation complexity have lead to the dominance of first order
+    optimisation techniques in machine learning.
+
+    \subsubsection{Stochastic Gradient Descent}
+    Optimising a deep learning model in the strict sense means minimising the expected generalization error
+    $\mathbb{E}_{(\pmb{x},\pmb{y}) \sim p_{\text{data}}} L(f(\pmb{x},\pmb\theta),\pmb{y})$ where $p_{data}$ is the joint
+    distribution of inputs $\pmb{x}$ and outputs $\pmb{y}$, $\pmb\theta$ are the models parameters and $L$ some per
+    sample cost function.
+    Since the distribution of data is largely unknown we create an empirical estimate from a set of training examples
+    ${\pmb{x}_i,\pmb{y}_i}_{i=1}^{N}$
+    \begin{equation*}
+        \tilde L(\theta ) = \frac{1}{N} \sum_{i=1}^N L( f(\pmb{x}_i; \theta), \pmb{y}_i )
+    \end{equation*}
+    Even though this approach is theoretically prone to overfitting, since models with high number of parameters and
+    resultantly high capacity can simply memorise all training examples, without the ability to generalize outside
+    the training set; empirical evidence show that models with large number of parameters achieve state-of-the-art
+    performance in many tasks ~\cite{nakkiran2019deep}.
+    Minimising such a loss function though traditional gradient descent would require to evaluate the cost for all
+    samples in the training set on each iteration to obtain the loss.
+    \begin{equation*}
+        \pmb\theta^{k+1} = \pmb\theta^{k} + \eta \nabla_{\theta_k} L(\pmb\theta_k)
+    \end{equation*}
+    To alleviate some computational cost on each iteration Stochastic Gradient Descent (SGD) is used which instead of calculating
+    the loss for all samples in the training set it samples a subset of them and performs the weights updated based
+    on that.
+    This approach introduces some stochasticity to the gradient approximation which leads to noise increasing the
+    convergence rate but can lower the overall computational cost.
+    To keep the the algorithm to diverging due to noise a lower learning rate is required to maintain stability
+    ~\cite{kiwiel2001convergence}.
+    Furthermore, the stochastic nature of SGD can allow it to escape from local minima in the non convex
+    high-dimensional loss space that a classic gradient descent scheme would be trapped in.
+
+    To accelerate Stochastic Gradient Descent a number of methods have been proposed some of them in the recent years due
+    to the popularity of deep neural networks.
+
+    \subsubsection{ Momentum }
+    Based on the idea of physical momentum in real world objects the momentum method was proposed in the context of machine
+    learning by ~\cite{rumelhart1986learning} borrowing the idea from previous work by Polyak.
+    This algorithm considers previous values of the gradient in the update step in a exponentially decaying manner.
+    The update along dimensions that keep moving in the same direction keeps getting bigger and for dimensions that
+    change direction the update gets smaller.
+    Even though it can be applied to both stochastic and classical gradient descent, SGD with a momentum term has been
+    the gold standard for many years for non-convex optimisation problems, and presents very good results.
+    It converges faster that classical GD due to accumulated velocity while also dampening oscillations in regions of high
+    curvatures by combining gradients of opposite signs.
+    SGD Momentum can be expressed with the following equation
+    \begin{align*}
+        \Delta \pmb\theta_{k+1} \gets \alpha \Delta \pmb\theta_k - \eta \nabla_{\theta_k} L (\pmb\theta_k) \\
+        \pmb\theta_{k+1} \gets \pmb\theta_{k} + \Delta \pmb\theta_{k+1}
+    \end{align*}
+    where $\alpha$ is an exponential decay factor between $0$ and $1$ that determines the amount of contribution
+    previous gradients have to the weights update.
+
+    \subsubsection{Nesterov Momentum}
+    A major disadvantage of classical momentum (CM) method is its tendency to overshoot as is approaches the minimum.
+    Nesterov momentum seeks to solve this problem drawing from Nesterov's accelerated gradient method for convex functions.
+    The equations for Nesterov's momemtum are:
+    \begin{align*}
+        \Delta \pmb\theta_{k+1} \gets \alpha \Delta \pmb\theta_k - \eta \nabla_{\theta_k} L(\pmb\theta_{k} + \alpha \Delta \pmb\theta{k}) \\
+        \pmb\theta_{k+1} \gets \pmb\theta_{k} + \Delta \pmb\theta_{k+1}
+    \end{align*}
+    This formula resembles CM but instead of calculating the gradient of loss at the current $\pmb\theta$ it is
+    calculated after the previous velocity is added.
+    This method is based on a corrector-predictor scheme where you first make a big step on the direction of the
+    accumulated gradient and then make a correction based on the gradient on the point you land.
+    This behaviour helps the method avoid oscillations, such as those that appear in CM around high-curvature regions,
+    by pointing the gradients back to $\pmb\theta_k$ more effectively than classical momentum~\cite{kashyap2022survey}.
+
+    \subsubsection{Adagrad}
+    The Adagrad algorithm individually adapts the learning rates of all model parameters by scaling them inversely
+    proportional to the square root of the the sum of the historical squared values of the gradient.
+    \begin{align*}
+        \pmb\theta_{k+1} \gets \pmb\theta_{k} - \frac{\eta}{  \sqrt{G_{k}} + \epsilon } \nabla_{\theta_k} L( \pmb\theta_k)
+    \end{align*}
+    $G$ is a matrix containing the squared sum of the past gradients with regards to all $\pmb\theta$ along its diagonal.
+    $\epsilon$ is a small quantity to avoid dividing by zero.
+    For weight parameter with the largest gradient has the largest decrease in its learning rate, while the parameter
+    with the smallest gradient has the smallest decrease in its learning rate.
+    This results in faster progress in the more gentlysloped regions of parameter space and works well when the
+    gradient is sparse~\cite{duchi2011adaptive}.
+
+
+    \subsubsection{RMSProp}
+    The RMSProp algorithm is famous for being an unpublished but well known optimisation algorithm.
+    RMSprop modifies Adagrad so that instead of accumulating the square of the gradients for each parameter, which can
+    cause the learning rate to diminish; uses a exponentially decaying moving average of the squared gradients to
+    discard the past history.
+    \begin{align*}
+        G_{k+1} \gets \beta G_{k} + (1 - \beta) ( \nabla_{\theta_k} L (\pmb\theta_k) )^2\\
+        \pmb\theta_{k+1} \gets \pmb\theta_{k} - \frac{\eta}{  \sqrt{G_{k}} + \epsilon } \nabla_{\theta_k} L( \pmb\theta_k)
+    \end{align*}
+
+    \subsubsection{Adam}
+    One of the most widely used optimisation algorithms used in deep learning today is Adam (adaptive moments).
+    It combines elements of momentum and RMSprop with some modifications.
+    Firstly, we incorporate momentum by computing the first order moment of the gradient as exponentially decaying
+    moving average.
+    Secondly, we calculate the second order moment as the gradient, again as an exponentially decaying average.
+    The parameter update rule is given as:
+    \begin{align*}
+        \pmb{v}_k \gets \alpha \pmb{v}_{k-1} + (1 - \alpha) \nabla_{\theta_k} L( \pmb\theta_{k} ) \\
+        \pmb{s}_k \gets \beta \pmb{s}_{k-1} + (1 - \beta) \nabla_{\theta_k} L( \pmb\theta_{k} ) \\
+        \pmb\theta_{k+1} \gets \pmb\theta_{k} - \eta \frac{\hat{\pmb{v}}_k}{  \sqrt{ \hat{\pmb{s}}_k  + \epsilon }} \nabla_{\theta_k} L( \pmb\theta_k)
+    \end{align*}
+    In the above equations $\hat{\pmb{v}}_k$, $\hat{\pmb{v}}_k$ are the bias corrected estimates of the moments to account
+    for their initialization.
+    Since RMSProp lacks the correction factor, it has a high-bias in the early stages of training, while Adam is
+    robust to the choice of hyperparameters.
+
+
+
 \end{document}
+
+

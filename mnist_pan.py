@@ -70,17 +70,17 @@ class PanODE(nn.Module):
         vf,
         num_coeff_per_dim,
         num_points,
-        num_coeff_per_dim_adjoint=None,
-        num_points_adjoint=None,
-        etol_ls=1e-5,
-        max_iters_ls=30,
+        etol_zero=1e-3,
+        etol_one = 1e-3,
+        max_iters_zero=30,
+        max_iters_one=20,
+        optimizer_class=None,
+        optimizer_params=None,
+        init="random",
+        coarse_steps=5,
+        callback=None,
     ):
         super().__init__()
-
-        if num_coeff_per_dim_adjoint is None:
-            num_coeff_per_dim_adjoint = num_coeff_per_dim
-        if num_points_adjoint is None:
-            num_points_adjoint = num_points
 
         self.vf = vf
         self.thetas = torch.cat([p.contiguous().flatten() for p in vf.parameters()])
@@ -89,10 +89,15 @@ class PanODE(nn.Module):
             self.thetas,
             num_coeff_per_dim,
             num_points,
-            num_coeff_per_dim_adjoint,
-            num_points_adjoint,
-            etol_ls=etol_ls,
-            max_iters_ls=max_iters_ls,
+            etol_zero,
+            etol_one ,
+            max_iters_zero,
+            max_iters_one,
+            optimizer_class,
+            optimizer_params,
+            init,
+            coarse_steps,
+            callback,
         )
 
     def forward(self, y_init, t):
@@ -155,7 +160,7 @@ def train_mnist_ode(
     ode_model = ode_model.to(device)
     learner = Learner(embedding, ode_model, classifier, **learner_args)
 
-    dmodule = MNISTDataModule(batch_size=64, num_workers=0)
+    dmodule = MNISTDataModule(batch_size=32, num_workers=0)
 
     trainer = Trainer(**trainer_args)
     trainer.fit(learner, datamodule=dmodule)
@@ -168,7 +173,7 @@ if __name__ == "__main__":
 
     mode = "pan"
     solver_args = dict(
-        num_coeff_per_dim=40, num_points=60, etol_ls=1e-3, max_iters_ls=30
+        num_coeff_per_dim=32, num_points=32, etol_one = 1e-2,
     )
 
     # mode='stepping'

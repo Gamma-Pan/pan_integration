@@ -11,7 +11,7 @@ from torchdyn.numerics.solvers.ode import MultipleShootingDiffeqSolver, DiffEqSo
 from torchdyn.numerics.solvers.ode import SolverTemplate
 
 from pan_integration.data import MNISTDataModule
-from pan_integration.numerics.functional import pan_int
+from pan_integration.numerics.torchdyn import PanSolver
 
 import lightning as L
 from lightning.pytorch.callbacks import RichProgressBar, TQDMProgressBar, EarlyStopping
@@ -30,54 +30,9 @@ from pan_integration.utils import plotting
 from pan_integration.numerics.functional import first_order_int
 
 
-class PanSolver(SolverTemplate):
-    def __init__(
-        self,
-        dtype=torch.float.float32,
-        num_coeff_per_dim=16,
-        num_points=64,
-        max_iters_zero=30,
-        max_iters_one=10,
-        optimizer_class=None,
-        optimizer_params=None,
-        init="random",
-        coarse_steps=5,
-    ):
-        super().__init__(order=0)
-        self.dtype = dtype
-        self.stepping_class = "fixed"
-
-        self.num_coeff_per_dim = num_coeff_per_dim
-        self.num_points = num_points
-        self.max_iters_zero = max_iters_zero
-        self.max_iters_one = max_iters_one
-        self.optimizer_class = optimizer_class
-        self.optimizer_param = optimizer_params
-        self.init = init
-        self.coarse_steps = coarse_steps
-
-    def step(self, f, x, t, dt, k1=None, args=None):
-        approx = pan_int(
-            f,
-            torch.tensor([t, dt]),
-            x,
-            self.num_coeff_per_dim,
-            self.num_points,
-            self.tol_zero,
-            self.tol_one,
-            self.max_iters_zero,
-            self.max_iters_one,
-            optimizer_class=self.optimizer_class,
-            optimizer_params=self.optimizer_params,
-            init=self.init,
-            coarse_steps=self.coarse_steps,
-        )
-        return None, approx[-1], None
-
-
 class Learner(L.LightningModule):
     def __init__(
-        self, model: nn.Module, t_span: torch.Tensor = torch.linspace(0, 1, 10)
+        self, model: nn.Module, t_span: torch.Tensor = torch.linspace(0, 1, 2)
     ):
         super().__init__()
         self.t_span, self.model = t_span, model
@@ -85,7 +40,7 @@ class Learner(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        t_eval, y_hat = self.model(x.reshape(-1, 28 * 28), self.t_span)
+        y_hat = self.model(x.reshape(-1, 28 * 28), self.t_span)
         logits = self.linear(y_hat[-1])
         loss = nn.CrossEntropyLoss()(logits, y)
 
@@ -98,7 +53,7 @@ class Learner(L.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        t_eval, y_hat = self.model(x.reshape(-1, 28 * 28), self.t_span)
+        y_hat = self.model(x.reshape(-1, 28 * 28), self.t_span)
         logits = self.linear(y_hat[-1])
         loss = nn.CrossEntropyLoss()(logits, y)
 
@@ -124,7 +79,7 @@ if __name__ == "__main__":
             self.lin3 = nn.Linear(256, 28 * 28)
             self.nfe = 0
 
-        def forward(self, t, x):
+        def forward(self, t, x, args):
             self.nfe += 1
             x = tanh(self.lin1(x))
             x = tanh(self.lin2(x))
@@ -133,14 +88,25 @@ if __name__ == "__main__":
             return x
 
     f = F()
+    solver = PanSolver(
+        dtype = torch.float32,
+        num_coeff_per_dim=32,
+        num_points=32,
+        max_iters_zero=30,
+        max_iters_one=0,
+        init='euler',
+        coarse_steps=5,
+        optimizer_class=torch.optim.SGD,
+        optimizer_params={"lr": 1e-9 ,"momentum": 0.95, "nesterov": True},
+        tol_zero = 1e-3,
+        tol_one=1,
+    )
 
-    solver = LSZero(50, 100, etol=1e-6)
-
-    model = MultipleShootingLayer(
+    model = NeuralODE(
         f,
-        # solver="zero",
         solver=solver,
-        # return_t_eval=False
+        return_t_eval=False,
+        sensitivity='adjoint'
     ).to(device)
 
     learner = Learner(model)
@@ -151,6 +117,7 @@ if __name__ == "__main__":
                 monitor="val_acc", stopping_threshold=0.9, mode="max", patience=5
             )
         ],
+        accelerator='cpu'
     )
-    # dmodule = MNISTDataModule(batch_size=64, num_workers=12)
-    # trainer.fit(learner, datamodule=dmodule)
+    dmodule = MNISTDataModule(batch_size=64, num_workers=1)
+    trainer.fit(learner, datamodule=dmodule)
