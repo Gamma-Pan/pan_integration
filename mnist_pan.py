@@ -30,10 +30,9 @@ class Learner(LightningModule):
     def _common_step(self, batch, batch_idx):
         x, y = batch
         x_em = self.embedding(x)
-        # t_eval, y_hat, metrics = self.ode_model(x_em, self.t_span)
-        t_eval, y_hat= self.ode_model(x_em, self.t_span)
-        # self.log("solver_loss", metrics[0], prog_bar=True)
-        # self.log("zero_iters", metrics[1], prog_bar=True)
+        t_eval, y_hat, metrics = self.ode_model(x_em, self.t_span)
+        self.log("solver_loss", float(metrics[0]), prog_bar=True)
+        self.log("zero_iters", float(metrics[1]), prog_bar=True)
 
         logits = self.classifier(y_hat[-1])
         loss = nn.CrossEntropyLoss()(logits, y)
@@ -48,7 +47,7 @@ class Learner(LightningModule):
 
         self.log("loss", loss, prog_bar=True)
         self.log("nfe", nfe, prog_bar=True)
-
+        self.log("train_acc", acc, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -108,8 +107,8 @@ class PanODE(nn.Module):
         )
 
     def forward(self, y_init, t):
-        t_eval, traj = self.pan_int(y_init, t)
-        return t_eval, traj
+        t_eval, traj, metrics = self.pan_int(y_init, t)
+        return t_eval, traj, metrics
 
 
 class VF(nn.Module):
@@ -192,18 +191,15 @@ if __name__ == "__main__":
     # solver_args = dict(solver="mszero", maxiter=4, fine_steps=4)
 
     mode = "pan"
-
-    num_points = 64
-
     solver_args = dict(
         num_coeff_per_dim=32,
-        num_points=num_points,
-        tol_zero=1e-3,
+        num_points=64,
+        tol_zero=1e-1,
         max_iters_zero=20,
         max_iters_one=0,
         # init='euler',
         # coarse_steps=5,
-        metrics =False
+        metrics = True
     )
 
     # mode='stepping'
