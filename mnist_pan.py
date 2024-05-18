@@ -108,8 +108,8 @@ class PanODE(nn.Module):
         )
 
     def forward(self, y_init, t):
-        t_eval, traj, metrics = self.pan_int(y_init, t)
-        return t_eval, traj, metrics
+        t_eval, traj = self.pan_int(y_init, t)
+        return t_eval, traj
 
 
 class VF(nn.Module):
@@ -126,9 +126,9 @@ class VF(nn.Module):
         # self.norm1 = nn.BatchNorm1d(BATCH_SIZE)
         # self.norm2 = nn.BatchNorm1d(BATCH_SIZE)
         # self.norm3 = nn.BatchNorm1d(BATCH_SIZE)
-        self.lin1 = nn.Linear(256, 256)
-        self.lin2 = nn.Linear(256, 256)
-        self.lin3 = nn.Linear(256, 256)
+        self.lin1 = nn.Linear(512, 512)
+        self.lin2 = nn.Linear(512, 512)
+        self.lin3 = nn.Linear(512, 512)
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
@@ -152,8 +152,8 @@ embedding = nn.Sequential(
     # nn.ReLU(),
     # nn.Conv2d(64, 64, 4, 2, 1),
     nn.Flatten(start_dim=1),
-    nn.Linear(28*28, 256),
-    nn.Sigmoid(),
+    nn.Linear(28*28, 512),
+    nn.Tanh(),
 ).to(device)
 
 classifier = nn.Sequential(
@@ -161,7 +161,7 @@ classifier = nn.Sequential(
     # nn.ReLU(),
     # nn.AdaptiveAvgPool2d((1, 1)),
     # nn.Flatten(),
-    nn.Linear(256, 10),
+    nn.Linear(512, 10),
 )
 
 vf = VF().to(device)
@@ -195,19 +195,19 @@ if __name__ == "__main__":
 
     num_points = 64
 
-    # solver_args = dict(
-    #     num_coeff_per_dim=32,
-    #     num_points=num_points,
-    #     tol_zero=1e-3,
-    #     max_iters_zero=20,
-    #     max_iters_one=0,
-    #     # init='euler',
-    #     # coarse_steps=5,
-    #     metrics = True
-    # )
+    solver_args = dict(
+        num_coeff_per_dim=32,
+        num_points=num_points,
+        tol_zero=1e-3,
+        max_iters_zero=20,
+        max_iters_one=0,
+        # init='euler',
+        # coarse_steps=5,
+        metrics =False
+    )
 
-    mode='stepping'
-    solver_args = dict(solver="tsit5")
+    # mode='stepping'
+    # solver_args = dict(solver="tsit5")
 
     t_span = torch.linspace(0, 1, 10).to(device)
     learner_args = dict(t_span=t_span)

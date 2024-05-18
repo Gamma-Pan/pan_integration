@@ -403,7 +403,7 @@ def make_pan_adjoint(
     class _PanInt(Function):
         @staticmethod
         def forward(ctx, thetas, y_init, t_eval):
-            traj, B_fwd, zero_metrics = pan_int(
+            traj, B_fwd, = pan_int(
                 f,
                 t_eval,
                 y_init,
@@ -423,7 +423,7 @@ def make_pan_adjoint(
             )
             ctx.save_for_backward(t_eval, traj, B_fwd)
 
-            return t_eval, traj, zero_metrics
+            return t_eval, traj
 
         @staticmethod
         def backward(ctx, *grad_output):
