@@ -174,11 +174,12 @@ def zero_order_int(
         B = (fapprox @ (Dt[:, None] * Phi_b.mT) - Phi_a @ (Dt[:, None] * Phi_b.mT)) @ Q
 
         tol = torch.norm(B - B_prev)
-        if tol < delta:
-            break
 
         B_out = torch.cat([head(B), B], dim=-1)
         solver_loss = torch.sum((B_out @ Phi - fapprox) ** 2 * Dt)
+
+        if tol < delta:
+            break
 
     return torch.cat([head(B), B], dim=-1), (solver_loss, i)
 
@@ -238,53 +239,53 @@ def first_order_int(
             - B_tail @ torch.stack([Phi[2:, 0], DPhi[2:, 0]], dim=-1)
         ) @ inv0
 
-    with torch.enable_grad():
-        B = B_init
-        B.requires_grad = True
-        B.retain_grad()
-        optimizer = optimizer_class([B], **optimizer_params)
-        grad_norm = torch.inf
+    B = B_init
+    B.requires_grad = True
+    optimizer = optimizer_class([B], **optimizer_params)
+    grad_norm = torch.inf
 
-        def loss_fn(B_tail):
-            B_head = head(B_tail)
-            B = torch.cat([B_head, B_tail], dim=-1)
-            # consider that each element of this tensor is a scalar trajectory
-            approx = B @ Phi
-            Dapprox = B @ DPhi
+    def loss_fn(B_tail):
+        B_head = head(B_tail)
+        B = torch.cat([B_head, B_tail], dim=-1)
+        # consider that each element of this tensor is a scalar trajectory
+        approx = B @ Phi
+        Dapprox = B @ DPhi
 
-            # vmap to avoid conflicts with convolutions, normalization layers, ... that require 3D/4D inputs
-            loss = torch.sum(
-                (Dapprox - vmap(f, in_dims=(0, -1), out_dims=(-1))(t, approx)) ** 2 * Dt
-            )
+        # vmap to avoid conflicts with convolutions, normalization layers, ... that require 3D/4D inputs
+        loss = torch.sum(
+            (Dapprox - vmap(f, in_dims=(0, -1), out_dims=(-1))(t, approx)) ** 2 * Dt
+        )
 
-            return loss, approx, Dapprox
+        return loss, approx, Dapprox
 
-        def closure():
-            optimizer.zero_grad()
+    def closure():
+        optimizer.zero_grad()
+        with torch.enable_grad():
             loss, approx, Dapprox = loss_fn(B)
+            loss.backward( )
 
-            if callback is not None:
-                B_plot = torch.cat([head(B.detach()), B.detach()], dim=-1)
-                approx_plot = (B_plot @ Phi_plot).permute(
-                    -1, *torch.arange(len(dims)).tolist()
-                )
-                Dapprox_plot = (B_plot @ DPhi_plot).permute(
-                    -1, *torch.arange(len(dims)).tolist()
-                )
-                callback(t_lims[0], approx_plot, Dapprox=Dapprox_plot)
+        nonlocal grad_norm
+        grad_norm = torch.norm(B.grad)
 
-            loss.backward()
-            nonlocal grad_norm
-            grad_norm = torch.norm(B.grad)
-            return loss
+        if callback is not None:
+            B_plot = torch.cat([head(B.detach()), B.detach()], dim=-1)
+            approx_plot = (B_plot @ Phi_plot).permute(
+                -1, *torch.arange(len(dims)).tolist()
+            )
+            Dapprox_plot = (B_plot @ DPhi_plot).permute(
+                -1, *torch.arange(len(dims)).tolist()
+            )
+            callback(t_lims[0], approx_plot, Dapprox=Dapprox_plot)
 
-        for i in range(max_iters):
-            optimizer.step(closure)
+        return loss
 
-            if grad_norm < etol:
-                break
+    for i in range(max_iters):
+        optimizer.step(closure)
 
-    return torch.cat([head(B), B], dim=-1)
+        if grad_norm < etol:
+            break
+
+    return torch.cat([head(B), B], dim=-1).detach()
 
 
 def pan_int(
@@ -312,8 +313,8 @@ def pan_int(
     if f_init is None:
         f_init = f(t_lims[0], y_init)
 
-    # t at chebyshev nodes
-    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
+    # t at chebyshev nodes (-1 if time is reversed)
+    t = - torch.sign( t_lims[-1]- t_lims[0])* torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
 
     Phi = T_grid(t, num_coeff_per_dim, device).mT  # (TxC).T = (CxT)
     DPhi = (
@@ -338,7 +339,7 @@ def pan_int(
     else:
         raise Exception("Invalid init type")
 
-    B_out, (solver_loss, iters_zero) = zero_order_int(
+    B_out_zero, (solver_loss, iters_zero) = zero_order_int(
         f,
         t_lims,
         y_init,
@@ -352,36 +353,36 @@ def pan_int(
         Phi,
         DPhi,
     )
-
-    # B_out = first_order_int(
-    #     f,
-    #     t_lims,
-    #     y_init,
-    #     num_coeff_per_dim,
-    #     num_points,
-    #     optimizer_class,
-    #     optimizer_params,
-    #     tol_one,
-    #     max_iters_one,
-    #     B_zero[..., 2:],
-    #     callback,
-    #     f_init,
-    #     Phi,
-    #     DPhi,
-    # )
+    # B_out_one = B_out_zero
+    B_out_one = first_order_int(
+        f,
+        t_lims,
+        y_init,
+        num_coeff_per_dim,
+        num_points,
+        optimizer_class,
+        optimizer_params,
+        tol_one,
+        max_iters_one,
+        B_out_zero[..., 2:],
+        callback,
+        f_init,
+        Phi,
+        DPhi,
+    )
 
     t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
     Phi_out = T_grid(t_out, num_coeff_per_dim, device).mT
-    approx = B_out @ Phi_out
+    approx = B_out_one @ Phi_out
     # put time dimension in front
     if metrics:
         return (
             approx.permute(-1, *torch.arange(len(dims)).tolist()),
-            B_out,
+            B_out_one,
             (solver_loss, iters_zero),
         )
     else:
-        return approx.permute(-1, *torch.arange(len(dims)).tolist()), B_out
+        return approx.permute(-1, *torch.arange(len(dims)).tolist()), B_out_one
 
 
 def make_pan_adjoint(
@@ -478,6 +479,10 @@ def make_pan_adjoint(
                 init=init,
                 coarse_steps=coarse_steps,
             )
+
+            # test = torchdyn.numerics.odeint(adjoint_dynamics,a_y_T, t_eval_adjoint,  solver='tsit5'  )
+            # print(test[1][-1])
+            # print(A_traj[-1])
 
             a_y_back = A_traj.reshape(-1, *dims)
 

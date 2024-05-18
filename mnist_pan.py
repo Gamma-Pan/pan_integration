@@ -192,10 +192,10 @@ if __name__ == "__main__":
 
     mode = "pan"
     solver_args = dict(
-        num_coeff_per_dim=32,
-        num_points=64,
+        num_coeff_per_dim=16,
+        num_points=16,
         tol_zero=1e-1,
-        max_iters_zero=20,
+        max_iters_zero=30,
         max_iters_one=0,
         # init='euler',
         # coarse_steps=5,

@@ -70,10 +70,13 @@ if __name__ == "__main__":
         num_coeff_per_dim=64,
         num_points=64,
         tol_zero=1e-3,
-        max_iters_zero=20,
+        tol_one=1e-4,
+        max_iters_zero=30,
         max_iters_one=0,
-        # init='euler',
-        # coarse_steps=5,
+        optimizer_class=torch.optim.SGD,
+        optimizer_params=dict(lr=1e-9),
+        init='random',
+        coarse_steps=5,
         metrics=True,
     )
     y_init = torch.rand(1, 5, 5)
@@ -95,6 +98,10 @@ if __name__ == "__main__":
     L.backward()
     grads = [w.grad for w in vf.parameters()]
 
+    print('SOLUTION \n')
+    print(traj[-1], '\n', traj_pan[-1], '\n')
+
+    print('GRADS\n')
     print(grads[0], '\n', grads_pan[0], '\n')
     print(grads[1],'\n',grads_pan[1])
 
