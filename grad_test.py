@@ -18,7 +18,7 @@ class NN(nn.Module):
 
     def forward(self, t, y, *args, **kwargs):
         self.nfe += 1
-        return torch.tanh( self.w3 @ torch.tanh(self.w2 @ torch.tanh(self.w1 *y)))
+        return torch.tanh( self.w3 @ torch.tanh(self.w2 @ torch.tanh(self.w1 @y)))
 
 
 class PanODE(nn.Module):
@@ -67,8 +67,8 @@ class PanODE(nn.Module):
 if __name__ == "__main__":
     vf = NN()
     solver_args = dict(
-        num_coeff_per_dim=32,
-        num_points=32,
+        num_coeff_per_dim=64,
+        num_points=64,
         tol_zero=1e-3,
         max_iters_zero=20,
         max_iters_one=0,
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     L.backward()
     grads = [w.grad for w in vf.parameters()]
 
-    print(grads_pan[0],'\n',  grads[0], '\n')
-    print(grads_pan[1],'\n' ,grads[1])
+    print(grads[0], '\n', grads_pan[0], '\n')
+    print(grads[1],'\n',grads_pan[1])
 
     # print(grads_pan[2]/ grads[2])
