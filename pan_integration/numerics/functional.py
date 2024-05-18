@@ -403,7 +403,7 @@ def make_pan_adjoint(
     class _PanInt(Function):
         @staticmethod
         def forward(ctx, thetas, y_init, t_eval):
-            traj, B_fwd, = pan_int(
+            traj, B_fwd, zero_metrics = pan_int(
                 f,
                 t_eval,
                 y_init,
@@ -423,25 +423,29 @@ def make_pan_adjoint(
             )
             ctx.save_for_backward(t_eval, traj, B_fwd)
 
-            return t_eval, traj
+            return t_eval, traj, zero_metrics
 
         @staticmethod
         def backward(ctx, *grad_output):
-            t_eval, yS, B_fwd = ctx.saved_tensors
-            device = yS.device
+            t_eval, y_fwd, B_fwd = ctx.saved_tensors
+            device = y_fwd.device
 
-            points, batch_sz, *dims = yS.shape
+            points, batch_sz, *dims = y_fwd.shape
 
             # dL/dz(T) -> (1xBxD)
             a_y_T = grad_output[1][-1]
             with torch.set_grad_enabled(True):
-                yT = yS[-1].requires_grad_(True)
+                yT = y_fwd[-1].requires_grad_(True)
                 fT = f(t_eval[-1], yT)
                 Da_y_T = -torch.autograd.grad(
                     fT, yT, a_y_T, allow_unused=True, retain_graph=False
                 )[0]
 
-            def adjoint_dynamics(t, a_y):
+            a_theta_sz = torch.numel(thetas)
+            a_theta_T = torch.zeros(a_theta_sz, device=device)
+            a_t_T = vmap( lambda x,y : torch.sum(x*y)) ( a_y_T, fT.detach()).unsqueeze(-1)
+
+            def adjoint_dynamics(t, a_y) :
                 T_n = torch.cos(
                     torch.arange(num_coeff_per_dim, device=t.device) * torch.arccos(t)
                 )
@@ -459,6 +463,8 @@ def make_pan_adjoint(
                 device
             )
 
+            # test = torchdyn.numerics.odeint(adjoint_dynamics, a_y_T,t_eval_adjoint,  solver='tsit5', atol=1e-8)
+
             A_traj, _ = pan_int(
                 adjoint_dynamics,
                 t_eval_adjoint,
@@ -475,6 +481,7 @@ def make_pan_adjoint(
 
             a_y_back = A_traj.reshape(-1, *dims)
 
+            Dt = torch.abs( t_eval[0] -t_eval[-1] )/ (num_points-1)
             with torch.set_grad_enabled(True):
 
                 y_back = (
@@ -487,7 +494,7 @@ def make_pan_adjoint(
                 )
 
                 y_back.requires_grad_(True)
-                f_back = f(t_eval, y_back)
+                f_back = f(t_eval_adjoint, y_back)
 
 
                 grads = torch.autograd.grad(
@@ -500,9 +507,11 @@ def make_pan_adjoint(
 
             grads_vec = torch.cat([p.contiguous().flatten() for p in grads])
 
-            DL_theta = (
-                torch.abs(t_eval[0] - t_eval[-1]) / (num_points - 1)
-            ) * grads_vec
+            # DL_theta = (
+            #     torch.abs(t_eval[0] - t_eval[-1]) / (num_points - 1)
+            # ) * grads_vec
+
+            DL_theta =  grads_vec
 
             # ipdb.set_trace()
 

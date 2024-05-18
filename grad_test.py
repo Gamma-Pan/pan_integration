@@ -13,11 +13,12 @@ class NN(nn.Module):
         super().__init__()
         self.w1 = torch.nn.Parameter(torch.rand(5, 5))
         self.w2 = torch.nn.Parameter(torch.rand(5, 5))
+        self.w3 = torch.nn.Parameter(torch.rand(5, 5))
         self.nfe = 0
 
     def forward(self, t, y, *args, **kwargs):
         self.nfe += 1
-        return torch.tanh(self.w2 @ torch.sigmoid(self.w1 @ y))
+        return torch.tanh( self.w3 @ torch.tanh(self.w2 @ torch.tanh(self.w1 *y)))
 
 
 class PanODE(nn.Module):
@@ -75,14 +76,14 @@ if __name__ == "__main__":
         # coarse_steps=5,
         metrics=True,
     )
-    y_init = torch.rand(2, 5, 5)
+    y_init = torch.rand(1, 5, 5)
     t_span = torch.linspace(0, 1, 2)
 
     pan_ode_model = PanODE(vf, **solver_args)
     _, traj_pan, _ = pan_ode_model(y_init, t_span)
-    L_pan = torch.sum((traj_pan[-1] -3*torch.ones(5, 5)) ** 3)
+    L_pan = torch.sum((traj_pan[-1] -1*torch.ones(5, 5)) ** 2)
     L_pan.backward()
-    print(list(vf.parameters())[0].grad, "\n")
+    grads_pan = [w.grad for w in vf.parameters()]
 
     vf.zero_grad()
 
@@ -90,9 +91,11 @@ if __name__ == "__main__":
         vf, sensitivity="adjoint", return_t_eval=False, atol=1e-9, atol_adjoint=1e-9
     )
     traj = ode_model(y_init, t_span)
-    L_pan = torch.sum((traj[-1] - 3*torch.ones(5, 5)) ** 3)
-    L_pan.backward()
-    print(list(vf.parameters())[0].grad, '\n\n')
+    L = torch.sum((traj[-1] - 1*torch.ones(5, 5)) ** 2)
+    L.backward()
+    grads = [w.grad for w in vf.parameters()]
 
-    print(traj_pan[-1], "\n")
-    print(traj[-1], '\n')
+    print(grads_pan[0],'\n',  grads[0], '\n')
+    print(grads_pan[1],'\n' ,grads[1])
+
+    # print(grads_pan[2]/ grads[2])
