@@ -66,17 +66,17 @@ class PanODE(nn.Module):
 if __name__ == "__main__":
     vf = NN()
     solver_args = dict(
-        num_coeff_per_dim=64,
-        num_points=64,
-        tol_zero=1e-5,
-        max_iters_zero=50,
+        num_coeff_per_dim=32,
+        num_points=32,
+        tol_zero=1e-3,
+        max_iters_zero=20,
         max_iters_one=0,
         # init='euler',
         # coarse_steps=5,
         metrics=True,
     )
-    y_init = torch.rand(1, 5, 5)
-    t_span = torch.linspace(0, 1, 10)
+    y_init = torch.rand(2, 5, 5)
+    t_span = torch.linspace(0, 1, 2)
 
     pan_ode_model = PanODE(vf, **solver_args)
     _, traj_pan, _ = pan_ode_model(y_init, t_span)

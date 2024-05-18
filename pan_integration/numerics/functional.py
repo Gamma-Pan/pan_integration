@@ -158,30 +158,27 @@ def zero_order_int(
     for i in range(max_iters):
         if callback is not None:
             B_plot = torch.cat([head(B), B], dim=-1)
-            approx = B_plot @ Phi_plot
+            fapprox = B_plot @ Phi_plot
             Dapprox = B_plot @ DPhi_plot
-            loss = torch.sum(
-                (Dapprox - vmap(f, in_dims=(0, -1), out_dims=(-1))(t, approx)) ** 2 * Dt
-            )
 
             callback(
                 t_lims[0],
-                approx.permute(-1, *torch.arange(len(dims)).tolist()),
+                fapprox.permute(-1, *torch.arange(len(dims)).tolist()),
                 Dapprox=Dapprox.permute(-1, *torch.arange(len(dims)).tolist()),
             )
 
         B_prev = B
-        approx = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
+        fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
             t, torch.cat([head(B_prev), B_prev], dim=-1) @ Phi
         )
-        B = (approx @ (Dt[:, None] * Phi_b.mT) - Phi_a @ (Dt[:, None] * Phi_b.mT)) @ Q
+        B = (fapprox @ (Dt[:, None] * Phi_b.mT) - Phi_a @ (Dt[:, None] * Phi_b.mT)) @ Q
 
         tol = torch.norm(B - B_prev)
         if tol < delta:
             break
 
         B_out = torch.cat([head(B), B], dim=-1)
-        solver_loss = torch.sum((B_out @ Phi - approx) ** 2 * Dt)
+        solver_loss = torch.sum((B_out @ Phi - fapprox) ** 2 * Dt)
 
     return torch.cat([head(B), B], dim=-1), (solver_loss, i)
 
@@ -479,6 +476,7 @@ def make_pan_adjoint(
             a_y_back = A_traj.reshape(-1, *dims)
 
             with torch.set_grad_enabled(True):
+
                 y_back = (
                     (
                         B_fwd
@@ -490,6 +488,7 @@ def make_pan_adjoint(
 
                 y_back.requires_grad_(True)
                 f_back = f(t_eval, y_back)
+
 
                 grads = torch.autograd.grad(
                     f_back,
