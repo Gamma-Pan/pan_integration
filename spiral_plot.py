@@ -41,7 +41,7 @@ class PanSolver(SolverTemplate):
         self.callback = callback
 
     def step(self, f, y_init, t, dt, k1=None, args=None):
-        approx = pan_int(
+        approx, _ = pan_int(
             f,
             torch.tensor([t, t+dt]),
             y_init,
@@ -84,9 +84,8 @@ if __name__ == "__main__":
         t_span,
         y_init,
         set_lims=True,
-        ivp_kwargs=dict(solver="tsit5", atol=1e-3),
+        ivp_kwargs=dict(solver="tsit5", atol=1e-9),
     )
-    print(f.nfe)
 
     def callback( t, approx, Dapprox=None):
         plotter.approx(
@@ -97,44 +96,23 @@ if __name__ == "__main__":
         # plotter.fig.canvas.draw()
 
     plotter.wait()
-    print(f.nfe)
     f.nfe = 0
 
-    pansol = pan_int(
-        f,
-        t_span,
-        y_init,
+    solver = PanSolver(
+        dtype = torch.float32,
         num_coeff_per_dim=32,
         num_points=32,
         max_iters_zero=30,
-        max_iters_one=30,
+        max_iters_one=10,
         init='euler',
         coarse_steps=5,
-        optimizer_class=torch.optim.SGD,
-        optimizer_params={"lr": 1e-9 ,"momentum": 0.95, "nesterov": True},
+        optimizer_class=torch.optim.Adadelta,
+        optimizer_params={"lr": 1e-6 },
         tol_zero = 1e-3,
-        tol_one=1,
+        tol_one=1e-5,
         callback=callback,
     )
 
-    # solver = PanSolver(
-    #     dtype = torch.float32,
-    #     num_coeff_per_dim=32,
-    #     num_points=32,
-    #     max_iters_zero=30,
-    #     max_iters_one=30,
-    #     init='euler',
-    #     coarse_steps=5,
-    #     optimizer_class=torch.optim.SGD,
-    #     optimizer_params={"lr": 1e-9 ,"momentum": 0.95, "nesterov": True},
-    #     tol_zero = 1e-3,
-    #     tol_one=1,
-    #     callback=callback,
-    # )
-    # _, torchsol,  = odeint(f, y_init, torch.linspace(*t_lims, steps=5), solver= solver)
-
-    print(f.nfe)
-
+    _, torchsol,  = odeint(f, y_init, torch.linspace(*t_lims, steps=2), solver= solver)
     plt.show()
 
-    print(f.nfe)
