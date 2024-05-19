@@ -115,7 +115,9 @@ def zero_order_int(
         f_init = f(t_lims[0], y_init)
 
     # t at chebyshev nodes
-    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
+    t = -torch.sign(t_lims[-1] - t_lims[0]) * torch.cos(
+        torch.pi * (torch.arange(num_points) / num_points)
+    ).to(device)
     Dt = torch.diff(torch.cat([t, tensor([1], device=device)]))
 
     if Phi is None:
@@ -213,7 +215,9 @@ def first_order_int(
         f_init = f(t_lims[0], y_init)
 
     # t at chebyshev nodes
-    t = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
+    t = -torch.sign(t_lims[-1] - t_lims[0]) * torch.cos(
+        torch.pi * (torch.arange(num_points) / num_points)
+    ).to(device)
     Dt = torch.diff(torch.cat([t, tensor([1], device=device)]))
 
     if Phi is None:
@@ -262,7 +266,7 @@ def first_order_int(
         optimizer.zero_grad()
         with torch.enable_grad():
             loss, approx, Dapprox = loss_fn(B)
-            loss.backward( )
+            loss.backward()
 
         nonlocal grad_norm
         grad_norm = torch.norm(B.grad)
@@ -314,7 +318,9 @@ def pan_int(
         f_init = f(t_lims[0], y_init)
 
     # t at chebyshev nodes (-1 if time is reversed)
-    t = - torch.sign( t_lims[-1]- t_lims[0])* torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(device)
+    t = -torch.sign(t_lims[-1] - t_lims[0]) * torch.cos(
+        torch.pi * (torch.arange(num_points) / num_points)
+    ).to(device)
 
     Phi = T_grid(t, num_coeff_per_dim, device).mT  # (TxC).T = (CxT)
     DPhi = (
@@ -322,7 +328,7 @@ def pan_int(
     )  # (TxC).T = (CxT)
 
     if init == "random":
-        B_init = torch.rand(
+        B_init = torch.randn(
             (*dims, num_coeff_per_dim - 2),
             device=device,
         )
@@ -473,14 +479,18 @@ def make_pan_adjoint(
                 num_coeff_per_dim,
                 num_points,
                 tol_zero=tol_zero,
+                tol_one=tol_one,
                 max_iters_zero=max_iters_zero,
+                max_iters_one=max_iters_one,
+                optimizer_class=optimizer_class,
+                optimizer_params=optimizer_params,
                 f_init=Da_y_T,
                 callback=callback,
                 init=init,
                 coarse_steps=coarse_steps,
             )
 
-            # test = torchdyn.numerics.odeint(adjoint_dynamics,a_y_T, t_eval_adjoint,  solver='tsit5'  )
+            # _, test = torchdyn.numerics.odeint(adjoint_dynamics,a_y_T, t_eval_adjoint,  solver='tsit5'  )
             # print(test[1][-1])
             # print(A_traj[-1])
 
