@@ -30,9 +30,14 @@ class Learner(LightningModule):
     def _common_step(self, batch, batch_idx):
         x, y = batch
         x_em = self.embedding(x)
-        t_eval, y_hat, metrics = self.ode_model(x_em, self.t_span)
-        self.log("solver_loss", float(metrics[0]), prog_bar=True)
-        self.log("zero_iters", float(metrics[1]), prog_bar=True)
+        if isinstance(self.ode_model, PanODE):
+            t_eval, y_hat, metrics = self.ode_model(x_em, self.t_span)
+            self.log("zero_B_delta", float(metrics['zero'][0]), prog_bar=True)
+            self.log("zero_iters", float(metrics['zero'][1]), prog_bar=True)
+            self.log("one_grad_norm", float(metrics['one'][0]), prog_bar=True)
+            self.log("one_iters", float(metrics['one'][1]), prog_bar=True)
+        else:
+            t_eval, y_hat = self.ode_model(x_em, self.t_span)
 
         logits = self.classifier(y_hat[-1])
         loss = nn.CrossEntropyLoss()(logits, y)
@@ -125,9 +130,9 @@ class VF(nn.Module):
         # self.norm1 = nn.BatchNorm1d(BATCH_SIZE)
         # self.norm2 = nn.BatchNorm1d(BATCH_SIZE)
         # self.norm3 = nn.BatchNorm1d(BATCH_SIZE)
-        self.lin1 = nn.Linear(512, 512)
-        self.lin2 = nn.Linear(512, 512)
-        self.lin3 = nn.Linear(512, 512)
+        self.lin1 = nn.Linear(784, 784)
+        self.lin2 = nn.Linear(784, 784)
+        self.lin3 = nn.Linear(784, 784)
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
@@ -150,9 +155,9 @@ embedding = nn.Sequential(
     # nn.GroupNorm(8, 64),
     # nn.ReLU(),
     # nn.Conv2d(64, 64, 4, 2, 1),
+    # nn.Linear(28*28, 512),
+    # nn.Tanh(),
     nn.Flatten(start_dim=1),
-    nn.Linear(28*28, 512),
-    nn.Tanh(),
 ).to(device)
 
 classifier = nn.Sequential(
@@ -160,7 +165,7 @@ classifier = nn.Sequential(
     # nn.ReLU(),
     # nn.AdaptiveAvgPool2d((1, 1)),
     # nn.Flatten(),
-    nn.Linear(512, 10),
+    nn.Linear(784, 10),
 )
 
 vf = VF().to(device)
@@ -190,20 +195,20 @@ if __name__ == "__main__":
     # mode = "ms"
     # solver_args = dict(solver="mszero", maxiter=4, fine_steps=4)
 
-    mode = "pan"
-    solver_args = dict(
-        num_coeff_per_dim=16,
-        num_points=16,
-        tol_zero=1e-1,
-        max_iters_zero=30,
-        max_iters_one=0,
-        # init='euler',
-        # coarse_steps=5,
-        metrics = True
-    )
+    # mode = "pan"
+    # solver_args = dict(
+    #     num_coeff_per_dim=64,
+    #     num_points=64,
+    #     tol_zero=1e-3,
+    #     max_iters_zero=50,
+    #     max_iters_one=0,
+    #     # init='euler',
+    #     # coarse_steps=5,
+    #     metrics = True
+    # )
 
-    # mode='stepping'
-    # solver_args = dict(solver="tsit5")
+    mode='stepping'
+    solver_args = dict(solver="tsit5")
 
     t_span = torch.linspace(0, 1, 10).to(device)
     learner_args = dict(t_span=t_span)

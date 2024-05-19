@@ -177,13 +177,10 @@ def zero_order_int(
 
         tol = torch.norm(B - B_prev)
 
-        B_out = torch.cat([head(B), B], dim=-1)
-        solver_loss = torch.sum((B_out @ Phi - fapprox) ** 2 * Dt)
-
         if tol < delta:
             break
 
-    return torch.cat([head(B), B], dim=-1), (solver_loss, i)
+    return torch.cat([head(B), B], dim=-1), (tol , i+1)
 
 
 @torch.no_grad()
@@ -266,7 +263,7 @@ def first_order_int(
         optimizer.zero_grad()
         with torch.enable_grad():
             loss, approx, Dapprox = loss_fn(B)
-            loss.backward()
+            loss.backward(retain_graph=True)
 
         nonlocal grad_norm
         grad_norm = torch.norm(B.grad)
@@ -283,13 +280,14 @@ def first_order_int(
 
         return loss
 
+    i = 0
     for i in range(max_iters):
         optimizer.step(closure)
 
         if grad_norm < etol:
             break
 
-    return torch.cat([head(B), B], dim=-1).detach()
+    return torch.cat([head(B), B], dim=-1).detach(), (grad_norm, i+1)
 
 
 def pan_int(
@@ -345,7 +343,7 @@ def pan_int(
     else:
         raise Exception("Invalid init type")
 
-    B_out_zero, (solver_loss, iters_zero) = zero_order_int(
+    B_out_zero, (solver_loss_zero, iters_zero) = zero_order_int(
         f,
         t_lims,
         y_init,
@@ -360,7 +358,7 @@ def pan_int(
         DPhi,
     )
     # B_out_one = B_out_zero
-    B_out_one = first_order_int(
+    B_out_one, (solver_loss_one, iters_one) = first_order_int(
         f,
         t_lims,
         y_init,
@@ -385,7 +383,7 @@ def pan_int(
         return (
             approx.permute(-1, *torch.arange(len(dims)).tolist()),
             B_out_one,
-            (solver_loss, iters_zero),
+            {"zero": (solver_loss_zero, iters_zero), "one": (solver_loss_one, iters_one)},
         )
     else:
         return approx.permute(-1, *torch.arange(len(dims)).tolist()), B_out_one
