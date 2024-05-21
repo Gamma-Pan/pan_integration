@@ -157,7 +157,7 @@ def zero_order_int(
 
     B = B_init
     i = 0
-    for i in range(max_iters):
+    for i in range(1, max_iters+1):
         if callback is not None:
             B_plot = torch.cat([head(B), B], dim=-1)
             fapprox = B_plot @ Phi_plot
@@ -180,7 +180,7 @@ def zero_order_int(
         if tol < delta:
             break
 
-    return torch.cat([head(B), B], dim=-1), (tol , i+1)
+    return torch.cat([head(B), B], dim=-1), (tol , i)
 
 
 @torch.no_grad()
@@ -281,13 +281,13 @@ def first_order_int(
         return loss
 
     i = 0
-    for i in range(max_iters):
+    for i in range(1, max_iters+1):
         optimizer.step(closure)
 
         if grad_norm < etol:
             break
 
-    return torch.cat([head(B), B], dim=-1).detach(), (grad_norm, i+1)
+    return torch.cat([head(B), B], dim=-1).detach(), (grad_norm, i)
 
 
 def pan_int(
@@ -297,13 +297,8 @@ def pan_int(
     num_coeff_per_dim: int,
     num_points: int,
     tol_zero=1e-3,
-    tol_one=1e-5,
     max_iters_zero=10,
-    max_iters_one=10,
-    optimizer_class=None,
-    optimizer_params=None,
-    init="random",
-    coarse_steps=5,
+    B_init=None,
     f_init=None,
     callback=None,
     metrics=False,
@@ -325,23 +320,11 @@ def pan_int(
         2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff_per_dim, device).mT
     )  # (TxC).T = (CxT)
 
-    if init == "random":
+    if B_init is None:
         B_init = torch.randn(
             (*dims, num_coeff_per_dim - 2),
             device=device,
         )
-    elif init == "euler":
-        B_init = _euler_coarse(
-            f,
-            y_init,
-            f_init,
-            num_coeff_per_dim,
-            t_lims,
-            device=device,
-            num_steps=coarse_steps,
-        )
-    else:
-        raise Exception("Invalid init type")
 
     B_out_zero, (solver_loss_zero, iters_zero) = zero_order_int(
         f,
@@ -357,36 +340,19 @@ def pan_int(
         Phi,
         DPhi,
     )
-    # B_out_one = B_out_zero
-    B_out_one, (solver_loss_one, iters_one) = first_order_int(
-        f,
-        t_lims,
-        y_init,
-        num_coeff_per_dim,
-        num_points,
-        optimizer_class,
-        optimizer_params,
-        tol_one,
-        max_iters_one,
-        B_out_zero[..., 2:],
-        callback,
-        f_init,
-        Phi,
-        DPhi,
-    )
 
     t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
     Phi_out = T_grid(t_out, num_coeff_per_dim, device).mT
-    approx = B_out_one @ Phi_out
+    approx = B_out_zero @ Phi_out
     # put time dimension in front
     if metrics:
         return (
             approx.permute(-1, *torch.arange(len(dims)).tolist()),
-            B_out_one,
-            {"zero": (solver_loss_zero, iters_zero), "one": (solver_loss_one, iters_one)},
+            B_out_zero,
+            (solver_loss_zero, iters_zero)
         )
     else:
-        return approx.permute(-1, *torch.arange(len(dims)).tolist()), B_out_one
+        return approx.permute(-1, *torch.arange(len(dims)).tolist()), B_out_zero
 
 
 def make_pan_adjoint(
@@ -395,19 +361,13 @@ def make_pan_adjoint(
     num_coeff_per_dim: int,
     num_points: int,
     tol_zero=1e-3,
-    tol_one=1e-5,
     max_iters_zero=10,
-    max_iters_one=10,
-    optimizer_class=None,
-    optimizer_params=None,
-    init="random",
-    coarse_steps=5,
     callback=None,
     metrics=False,
 ):
     class _PanInt(Function):
         @staticmethod
-        def forward(ctx, thetas, y_init, t_eval):
+        def forward(ctx, thetas, y_init, t_eval, B_init=None):
             traj, B_fwd, zero_metrics = pan_int(
                 f,
                 t_eval,
@@ -415,16 +375,11 @@ def make_pan_adjoint(
                 num_coeff_per_dim,
                 num_points,
                 tol_zero,
-                tol_one,
                 max_iters_zero,
-                max_iters_one,
-                optimizer_class,
-                optimizer_params,
-                init,
-                coarse_steps,
-                None,
-                callback,
-                metrics,
+                B_init,
+                f_init=None,
+                callback=callback,
+                metrics=metrics,
             )
             ctx.save_for_backward(t_eval, traj, B_fwd)
 
@@ -477,15 +432,10 @@ def make_pan_adjoint(
                 num_coeff_per_dim,
                 num_points,
                 tol_zero=tol_zero,
-                tol_one=tol_one,
                 max_iters_zero=max_iters_zero,
-                max_iters_one=max_iters_one,
-                optimizer_class=optimizer_class,
-                optimizer_params=optimizer_params,
                 f_init=Da_y_T,
                 callback=callback,
-                init=init,
-                coarse_steps=coarse_steps,
+                metrics=False
             )
 
             # _, test = torchdyn.numerics.odeint(adjoint_dynamics,a_y_T, t_eval_adjoint,  solver='tsit5'  )
@@ -523,12 +473,10 @@ def make_pan_adjoint(
                 )
 
             grads_vec = torch.cat([p.contiguous().flatten() for p in grads])
-
             DL_theta = ((t_eval[-1] - t_eval[0]) / (num_points - 1)) * grads_vec
-
             # ipdb.set_trace()
 
-            return DL_theta, None, None
+            return DL_theta, None, None, None
 
     def _pan_int_adjoint(y_init, t_eval):
         return _PanInt.apply(thetas, y_init, t_eval)
