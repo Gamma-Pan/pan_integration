@@ -6,7 +6,7 @@ from itertools import cycle
 from matplotlib.animation import PillowWriter
 import torch
 from torch import max, min, tensor, abs
-from torch.linalg import inv
+from ..core.ode import T_grid, DT_grid
 
 from torchdyn.numerics import odeint
 
@@ -43,8 +43,6 @@ class VfPlotter:
         existing_axes: plt.Axes = None,
         ax_kwargs: dict = None,
         animation=False,
-        text=False,
-        queue_size=5,
     ):
         if existing_axes is None:
             self.fig, self.ax = plt.subplots()
@@ -66,12 +64,15 @@ class VfPlotter:
             self.writer.frame_format = "png"
         self.animation = animation
 
-    def _plot_vector_field(self, trajectories):
-        padding = 0.2
-        xmax = torch.max(trajectories) + padding
-        xmin = torch.min(trajectories) - padding
-        ymax = torch.max(trajectories) + padding
-        ymin = torch.min(trajectories) - padding
+    def _plot_vector_field(
+        self, trajectories, xmin=None, xmax=None, ymin=None, ymax=None
+    ):
+        if trajectories is not None:
+            padding = 0.2
+            xmax = torch.max(trajectories) + padding
+            xmin = torch.min(trajectories) - padding
+            ymax = torch.max(trajectories) + padding
+            ymin = torch.min(trajectories) - padding
 
         self.ax.set_xlim(xmin, xmax)
         self.ax.set_ylim(ymin, ymax)
@@ -123,29 +124,47 @@ class VfPlotter:
 
         return trajectories
 
+    def _approx_from_B(self, B, t_lims, num_points=100):
+        dims = len(B.shape) - 1
+        num_coeff = B.shape[-1]
+        t = torch.linspace(-1, 1, num_points)
+        Phi = T_grid(t, num_coeff)
+        DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff)
+        approx = B @ Phi
+        Dapprox = B @ DPhi
+        return (
+            approx.permute(-1, *list(range(dims))),
+            Dapprox.permute(-1, *list(range(dims))),
+        )
+
     def approx(
         self,
-        approx,
-        t_init,
-        Dapprox=None,
+        B,
+        t_lims,
+        show_arrows=False,
         num_arrows: int = 10,
         **kwargs,
     ):
+        t_init = t_lims[0]
+        approx, Dapprox = self._approx_from_B(B, t_lims)
         if self.t_init != t_init:
             self.t_init = t_init
             self.lines = self.ax.plot(*approx.unbind(-1), **kwargs)
-            if Dapprox is not None:
+            if show_arrows:
                 self.arrows = self.ax.quiver(
                     *approx.unbind(-1), *Dapprox.unbind(-1), **quiver_args
                 )
                 self.farrows = self.ax.quiver(
-                    *approx.unbind(-1), *self.f(0, approx).unbind(-1), **quiver_args, color='red'
+                    *approx.unbind(-1),
+                    *self.f(0, approx).unbind(-1),
+                    **quiver_args,
+                    color="red",
                 )
         else:
-            for line, data in zip(self.lines, approx.unbind(1)):
+            for line, data in zip(self.lines, approx.unbind(-2)):
                 line.set_data(*data.unbind(-1))
 
-            if Dapprox is not None:
+            if show_arrows:
                 self.arrows.set_offsets(approx[:, 0, ...])
                 self.arrows.set_UVC(*Dapprox.unbind(-1))
 

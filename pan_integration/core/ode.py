@@ -1,6 +1,5 @@
 import torch
-from torch import Tensor, vstack, tensor, cat, stack, optim
-from torch import cos, arccos, sin, sqrt
+from torch import Tensor, tensor, nn
 from torch.func import vmap
 from torch.autograd import Function
 from typing import Tuple, Callable
@@ -83,7 +82,6 @@ class PanZero:
                 self.Q,
             ) = self._calc_independent(t_lims, num_coeff_per_dim, num_points, device)
 
-
     @staticmethod
     def _calc_independent(t_lims, num_coeff_per_dim, num_points, device):
         t_cheb = -torch.sign(t_lims[-1] - t_lims[0]) * torch.cos(
@@ -131,7 +129,9 @@ class PanZero:
 
         dims = y_init.shape
 
-        if B_init is None or B_init.shape != torch.Size([*dims, self.num_coeff_per_dim-2]):
+        if B_init is None or B_init.shape != torch.Size(
+            [*dims, self.num_coeff_per_dim - 2]
+        ):
             B_init = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
 
         if f_init is None:
@@ -148,7 +148,7 @@ class PanZero:
         delta = torch.inf
         for i in range(1, self.max_iters + 1):
             if self.callback is not None:
-                self.callback(B, t_lims)
+                self.callback(torch.cat([head(B),B], dim=-1), t_lims)
 
             B_prev = B
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
@@ -156,7 +156,8 @@ class PanZero:
                 torch.cat([head(B_prev), B_prev], dim=-1) @ Phi,
             )
 
-            B = (fapprox @ (Phi_b_T @ Q) - torch.stack([y_init, f_init], dim=-1) @ (((inv0 @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0)) @ Phi_b_T ) @ Q)
+            B = fapprox @ (Phi_b_T @ Q) - torch.stack([y_init, f_init], dim=-1) @ (
+                ((inv0 @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0)) @ Phi_b_T) @ Q
             )
 
             delta = torch.norm(B - B_prev)
@@ -273,3 +274,28 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint):
         return _PanInt.apply(thetas, y_init, t_eval)
 
     return _pan_int_adjoint
+
+
+class PanODE(nn.Module):
+    def __init__(
+        self,
+        vf,
+        solver,
+        solver_adjoint,
+    ):
+        super().__init__()
+        self.vf = vf
+        self.thetas = torch.cat([p.contiguous().flatten() for p in vf.parameters()])
+        self.solver = solver
+        self.solver_adjoint = solver_adjoint
+
+        self.pan_int = make_pan_adjoint(
+            self.vf,
+            self.thetas,
+            self.solver,
+            self.solver_adjoint,
+        )
+
+    def forward(self, y_init, t_eval, B_init=None, *args, **kwargs):
+        traj, B, metrics = self.solver.solve(self.vf, t_eval, y_init, B_init=B_init)
+        return t_eval, traj, metrics, B

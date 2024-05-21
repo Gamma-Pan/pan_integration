@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from pan_integration.numerics.pan_solvers import PanZero, make_pan_adjoint
+from pan_integration.core.ode import PanZero, make_pan_adjoint
 from torchdyn.models import NeuralODE
 
 
