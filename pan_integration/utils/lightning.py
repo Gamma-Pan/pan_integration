@@ -17,6 +17,7 @@ class LitOdeClassifier(LightningModule):
         self.embedding = embedding
         self.classifier = classifier
         self.B_prev = None
+        self.ode_model.vf.nfe = 0
         # self.save_hyperparameters()
 
     def _common_step(self, batch, batch_idx, log=True, update_B=False):
@@ -44,9 +45,10 @@ class LitOdeClassifier(LightningModule):
     def training_step(self, batch, batch_idx):
         loss, preds, acc = self._common_step(batch, batch_idx, update_B=True)
         nfe = self.ode_model.vf.nfe
+        self.log("train_nfe", nfe, prog_bar=True)
+        self.ode_model.vf.nfe=0
 
         self.log("loss", loss, prog_bar=True)
-        self.log("nfe", nfe, prog_bar=True)
         self.log("train_acc", acc, prog_bar=True)
         return loss
 
@@ -59,6 +61,10 @@ class LitOdeClassifier(LightningModule):
 
     def test_step(self, batch, batch_idx):
         loss, preds, acc = self._common_step(batch, batch_idx, log=False)
+
+        nfe = self.ode_model.vf.nfe
+        self.log("test_nfe", nfe, prog_bar=True)
+        self.ode_model.vf.nfe=0
 
         self.log("test_loss", loss, prog_bar=True)
         self.log("test_acc", acc, prog_bar=True)
