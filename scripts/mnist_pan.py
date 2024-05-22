@@ -17,7 +17,9 @@ torch.manual_seed(42)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 32
-NUM_WORKERS = 12
+
+import multiprocessing as mp
+NUM_WORKERS = mp.cpu_count()
 
 
 class VF(nn.Module):
@@ -75,7 +77,7 @@ classifier = nn.Sequential(
 )
 
 vf = VF().to(device)
-
+t_span = torch.linspace(0, 1, 2).to(device)
 
 def train_mnist_ode(ode_model, epochs=10, test=False, loggers=()):
     learner = LitOdeClassifier(embedding, ode_model, classifier, t_span=t_span)
@@ -94,7 +96,6 @@ def train_mnist_ode(ode_model, epochs=10, test=False, loggers=()):
 
 
 def all_train(epochs):
-    t_span = torch.linspace(0, 1, 2).to(device)
 
     pan_configs = [
         [8, 8],
@@ -158,29 +159,31 @@ def all_train(epochs):
 
 
 if __name__ == "__main__":
-    t_span = torch.linspace(0, 1, 2).to(device)
-
-    num_coeff = 16
-    num_points = 16
-
-    solver = PanZero(
-        num_coeff,
-        num_points,
-        delta=1e-3,
-        max_iters=30,
-        t_lims=(t_span[0], t_span[-1]),
-        device=device,
-    )
-    solver_adjoint = PanZero(
-        num_coeff,
-        num_points,
-        delta=1e-3,
-        max_iters=30,
-        t_lims=(t_span[-1], t_span[0]),
-        device=device,
-    )
-    ode_model = PanODE(vf, solver, solver_adjoint).to(device)
-    train_mnist_ode(ode_model, test=True, epochs=2)
-
+    # t_span = torch.linspace(0, 1, 2).to(device)
+    #
+    # num_coeff = 16
+    # num_points = 16
+    #
+    # solver = PanZero(
+    #     num_coeff,
+    #     num_points,
+    #     delta=1e-3,
+    #     max_iters=30,
+    #     t_lims=(t_span[0], t_span[-1]),
+    #     device=device,
+    # )
+    # solver_adjoint = PanZero(
+    #     num_coeff,
+    #     num_points,
+    #     delta=1e-3,
+    #     max_iters=30,
+    #     t_lims=(t_span[-1], t_span[0]),
+    #     device=device,
+    # )
+    # ode_model = PanODE(vf, solver, solver_adjoint).to(device)
+    # train_mnist_ode(ode_model, test=True, epochs=2)
+    #
     # ode_model = NeuralODE(vf, solver='tsit5')
     # train_mnist_ode(ode_model, test=True, epochs=2)
+
+    all_train(1)
