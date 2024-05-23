@@ -19,6 +19,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 32
 
 import multiprocessing as mp
+
 NUM_WORKERS = mp.cpu_count()
 
 
@@ -76,11 +77,9 @@ classifier = nn.Sequential(
     nn.Linear(64, 10),
 )
 
-vf = VF().to(device)
-t_span = torch.linspace(0, 1, 2).to(device)
 
-def train_mnist_ode(ode_model, epochs=10, test=False, loggers=()):
-    learner = LitOdeClassifier(embedding, ode_model, classifier, t_span=t_span)
+def train_mnist_ode(t_span, ode_model, epochs=10, test=False, loggers=()):
+    learner = LitOdeClassifier(embedding, ode_model, classifier)
     dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
     trainer = Trainer(
         max_epochs=epochs,
@@ -95,95 +94,34 @@ def train_mnist_ode(ode_model, epochs=10, test=False, loggers=()):
         trainer.test(learner, datamodule=dmodule)
 
 
-def all_train(epochs):
+class PanChainODE(PanODE):
+    def __init__(self, vf, t_span, solver, solver_adjoint):
+        super().__init__(vf, t_span, solver, solver_adjoint)
+        self.t_eval = t_span
 
-    pan_configs = [
-        [8, 8],
-        [8, 16],
-        [16, 16],
-        [16, 32],
-        [32, 32],
-        [32, 64],
-        [64, 64],
-        [8, 64],
-        [8, 32],
-        [16, 64],
-    ]
+    def forward(self, y_init, *args, **kwargs):
+        _, traj, _, = super().forward(y_init, *args, **kwargs)
+        return traj[-1]
 
-    ode_solvers = ["rk4", "dopri5", "tsit5", "ieuler", "alf"]
 
-    for num_coeff, num_points in pan_configs:
-        solver = PanZero(
-            num_coeff,
-            num_points,
-            delta=1e-3,
-            max_iters=30,
-            t_lims=(t_span[0], t_span[-1]),
-            device=device,
-        )
-        solver_adjoint = PanZero(
-            num_coeff,
-            num_points,
-            delta=1e-3,
-            max_iters=30,
-            t_lims=(t_span[-1], t_span[0]),
-            device=device,
-        )
-        ode_model = PanODE(vf, solver, solver_adjoint).to(device)
+class ChainODE(NeuralODE):
+    def __init__(self, vf):
+        super().__init__(vf, solver='rk-4', return_t_eval=False)
 
-        logger = WandbLogger(
-            project="pan_integration",
-            name=f"pan_{num_coeff}_{num_points}",
-            log_model=False,
-        )
-        logger.experiment.config["batch_size"] = BATCH_SIZE
-        logger.experiment.config["num_coeff"] = num_coeff
-        logger.experiment.config["num_points"] = num_points
-        logger.experiment.config["type"] = "pan"
-
-        train_mnist_ode(ode_model, test=True, epochs=epochs, loggers=(logger))
-        wandb.finish()
-
-    for solver in ode_solvers:
-        ode_model = NeuralODE(vf, solver=solver)
-
-        logger = WandbLogger(
-            project="pan_integration", name=f"shoot_{solver}", log_model=False
-        )
-        logger.experiment.config["batch_size"] = BATCH_SIZE
-        logger.experiment.config["solver"] = solver
-        logger.experiment.config["type"] = "shooting"
-
-        train_mnist_ode(ode_model, test=True, loggers=(logger))
-        wandb.finish()
+    def forward(self,x):
+        return super().forward(x)[-1]
 
 
 if __name__ == "__main__":
-    # t_span = torch.linspace(0, 1, 2).to(device)
-    #
-    # num_coeff = 16
-    # num_points = 16
-    #
-    # solver = PanZero(
-    #     num_coeff,
-    #     num_points,
-    #     delta=1e-3,
-    #     max_iters=30,
-    #     t_lims=(t_span[0], t_span[-1]),
-    #     device=device,
-    # )
-    # solver_adjoint = PanZero(
-    #     num_coeff,
-    #     num_points,
-    #     delta=1e-3,
-    #     max_iters=30,
-    #     t_lims=(t_span[-1], t_span[0]),
-    #     device=device,
-    # )
-    # ode_model = PanODE(vf, solver, solver_adjoint).to(device)
-    # train_mnist_ode(ode_model, test=True, epochs=2)
-    #
-    # ode_model = NeuralODE(vf, solver='tsit5')
-    # train_mnist_ode(ode_model, test=True, epochs=2)
+    t_span = torch.linspace(0, 1, 2).to(device)
+    num_coeff, num_points = 16, 16
+    odes = []
+    for _ in range(6):
+        solver = PanZero(num_coeff, num_points, delta=1e-3, max_iters=20, device=device,)
+        solver_adjoint = PanZero(num_coeff, num_points, delta=1e-3, max_iters=20, device=device,)
+        ode_model = PanChainODE(VF().to(device), t_span, solver, solver_adjoint)
+        # ode_model = ChainODE(VF().to(device))
+        odes.append(ode_model)
 
-    all_train(1)
+    ode_seq = torch.nn.Sequential(*odes)
+    train_mnist_ode(t_span, ode_seq, epochs=3, test=True)

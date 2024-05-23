@@ -59,7 +59,6 @@ class PanZero:
         device=None,
         callback=None,
     ):
-        self.t_lims = t_lims
         self.delta = delta
         self.max_iters = max_iters
         self.callback = callback
@@ -71,16 +70,32 @@ class PanZero:
         else:
             self.device = device
 
+        # if t_lims don't change, like in a NODE training setting no need
+        # to recalculate some quantities every pass
         if t_lims is not None:
-            (
-                self.t_cheb,
-                self.Dt,
-                self.Phi,
-                self.DPhi,
-                self.inv0,
-                self.Phi_b,
-                self.Q,
-            ) = self._calc_independent(t_lims, num_coeff_per_dim, num_points, device)
+            self.t_lims = t_lims
+
+        # likewise keep previous B to pass as initial conditions
+        # instead of random every time
+        self.B_prev = None
+
+    @property
+    def t_lims(self):
+        return self._t_lims
+
+    @t_lims.setter
+    def t_lims(self, value):
+        self._t_lims = value
+        (
+            self.t_cheb,
+            self.Dt,
+            self.Phi,
+            self.DPhi,
+            self.inv0,
+            self.Phi_b,
+            self.Q,
+        ) = self._calc_independent(value, self.num_coeff_per_dim, self.num_points, self.device)
+
 
     @staticmethod
     def _calc_independent(t_lims, num_coeff_per_dim, num_points, device):
@@ -166,25 +181,30 @@ class PanZero:
 
         return torch.cat([head(B), B], dim=-1), (delta, i)
 
-    def solve(self, f, t_span, y_init, f_init=None, B_init=None):
+    def solve(self, f, t_span, y_init, f_init=None, B_init: Tensor | str=None):
+        if B_init == 'prev':
+            B_init = self.B_prev
+
         dims = y_init.shape
         B, metrics = self.zero_order_itr(
             f, (t_span[0], t_span[-1]), y_init, f_init, B_init
         )
+
+        self.B_prev = B[...,2:]
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
         approx = B @ Phi_out
         return approx.permute(-1, *list(range(0, len(dims)))), B, metrics
 
 
-def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint):
+def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
     class _PanInt(Function):
         @staticmethod
-        def forward(ctx, thetas, y_init, t_eval, B_init=None):
-            traj, B, metrics = solver.solve(t_eval, y_init, B_init=B_init)
-            ctx.save_for_backward(t_eval, traj, B)
+        def forward(ctx, thetas, y_init, t_span):
+            traj, B, metrics = solver.solve(f, t_span, y_init, B_init='prev')
+            ctx.save_for_backward(t_span, traj, B)
 
-            return t_eval, traj, metrics
+            return t_span, traj, metrics
 
         @staticmethod
         def backward(ctx, *grad_output):
@@ -228,7 +248,7 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint):
             ).to(device)
 
             A_traj, _, _ = solver_adjoint.solve(
-                adjoint_dynamics, t_eval_adjoint, a_y_T, f_init=Da_y_T, B_init=None
+                adjoint_dynamics, t_eval_adjoint, a_y_T, f_init=Da_y_T, B_init='prev'
             )
 
             # _, test = torchdyn.numerics.odeint(adjoint_dynamics,a_y_T, t_eval_adjoint,  solver='tsit5'  )
@@ -270,8 +290,8 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint):
 
             return DL_theta, None, None, None
 
-    def _pan_int_adjoint(y_init, t_eval):
-        return _PanInt.apply(thetas, y_init, t_eval)
+    def _pan_int_adjoint(t_span, y_init):
+        return _PanInt.apply(thetas, y_init, t_span)
 
     return _pan_int_adjoint
 
@@ -280,22 +300,25 @@ class PanODE(nn.Module):
     def __init__(
         self,
         vf,
+        t_span,
         solver,
         solver_adjoint,
     ):
         super().__init__()
         self.vf = vf
         self.thetas = torch.cat([p.contiguous().flatten() for p in vf.parameters()])
-        self.solver = solver
-        self.solver_adjoint = solver_adjoint
+        self.t_span = t_span
+
+        solver.t_lims = [t_span[0], t_span[-1]]
+        solver_adjoint.t_lims = [t_span[-1], t_span[0]]
 
         self.pan_int = make_pan_adjoint(
             self.vf,
             self.thetas,
-            self.solver,
-            self.solver_adjoint,
+            solver,
+            solver_adjoint,
         )
 
-    def forward(self, y_init, t_eval, B_init=None, *args, **kwargs):
-        traj, B, metrics = self.solver.solve(self.vf, t_eval, y_init, B_init=B_init)
-        return t_eval, traj, metrics, B
+    def forward(self, y_init, *args, **kwargs):
+        _, traj, metrics = self.pan_int(self.t_span, y_init)
+        return self.t_span, traj, metrics
