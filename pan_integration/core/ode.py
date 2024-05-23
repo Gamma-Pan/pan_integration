@@ -94,8 +94,9 @@ class PanZero:
             self.inv0,
             self.Phi_b,
             self.Q,
-        ) = self._calc_independent(value, self.num_coeff_per_dim, self.num_points, self.device)
-
+        ) = self._calc_independent(
+            value, self.num_coeff_per_dim, self.num_points, self.device
+        )
 
     @staticmethod
     def _calc_independent(t_lims, num_coeff_per_dim, num_points, device):
@@ -163,7 +164,7 @@ class PanZero:
         delta = torch.inf
         for i in range(1, self.max_iters + 1):
             if self.callback is not None:
-                self.callback(torch.cat([head(B),B], dim=-1), t_lims)
+                self.callback(torch.cat([head(B), B], dim=-1), t_lims)
 
             B_prev = B
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
@@ -171,9 +172,14 @@ class PanZero:
                 torch.cat([head(B_prev), B_prev], dim=-1) @ Phi,
             )
 
-            B = fapprox @ (Phi_b_T @ Q) - torch.stack([y_init, f_init], dim=-1) @ (
-                ((inv0 @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0)) @ Phi_b_T) @ Q
-            )
+            B = (
+                 fapprox @ Phi_b_T @ Q
+                 - torch.stack([y_init, f_init], dim=-1)
+                 @ inv0
+                 @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0)
+                 @ Phi_b_T
+                 @ Q
+             )
 
             delta = torch.norm(B - B_prev)
             if delta < self.delta:
@@ -181,8 +187,8 @@ class PanZero:
 
         return torch.cat([head(B), B], dim=-1), (delta, i)
 
-    def solve(self, f, t_span, y_init, f_init=None, B_init: Tensor | str=None):
-        if B_init == 'prev':
+    def solve(self, f, t_span, y_init, f_init=None, B_init: Tensor | str = None):
+        if B_init == "prev":
             B_init = self.B_prev
 
         dims = y_init.shape
@@ -190,7 +196,7 @@ class PanZero:
             f, (t_span[0], t_span[-1]), y_init, f_init, B_init
         )
 
-        self.B_prev = B[...,2:]
+        self.B_prev = B[..., 2:]
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
         approx = B @ Phi_out
@@ -201,7 +207,7 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
     class _PanInt(Function):
         @staticmethod
         def forward(ctx, thetas, y_init, t_span):
-            traj, B, metrics = solver.solve(f, t_span, y_init, B_init='prev')
+            traj, B, metrics = solver.solve(f, t_span, y_init, B_init="prev")
             ctx.save_for_backward(t_span, traj, B)
 
             return t_span, traj, metrics
@@ -248,7 +254,7 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
             ).to(device)
 
             A_traj, _, _ = solver_adjoint.solve(
-                adjoint_dynamics, t_eval_adjoint, a_y_T, f_init=Da_y_T, B_init='prev'
+                adjoint_dynamics, t_eval_adjoint, a_y_T, f_init=Da_y_T, B_init="prev"
             )
 
             # _, test = torchdyn.numerics.odeint(adjoint_dynamics,a_y_T, t_eval_adjoint,  solver='tsit5'  )

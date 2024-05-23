@@ -117,16 +117,16 @@ if __name__ == "__main__":
     num_coeff_per_dim, num_points = 16, 16
     odes = []
     for _ in range(6):
-        solver = PanZero(num_coeff_per_dim, num_points, delta=1e-3, max_iters=20, device=device, )
-        solver_adjoint = PanZero(num_coeff_per_dim, num_points, delta=1e-3, max_iters=20, device=device, )
+        solver = PanZero(num_coeff_per_dim, num_points, delta=1e-4, max_iters=20, device=device, )
+        solver_adjoint = PanZero(num_coeff_per_dim, num_points, delta=1e-4, max_iters=20, device=device, )
         ode_model = PanChainODE(VF().to(device), t_span, solver, solver_adjoint)
         # ode_model = ChainODE(VF().to(device))
         odes.append(ode_model)
 
     ode_seq = torch.nn.Sequential(*odes)
 
-    logger = WandbLogger(project='pan_integration')
-    logger.experiment.config["num_coeff_per_dim"] = num_coeff_per_dim
-    logger.experiment.config["num_points"] = num_points
-    train_mnist_ode(t_span, ode_seq, epochs=3, test=True, loggers=(logger,))
-    wandb.finish()
+    # logger = WandbLogger(project='pan_integration')
+    # logger.experiment.config["num_coeff_per_dim"] = num_coeff_per_dim
+    # logger.experiment.config["num_points"] = num_points
+    train_mnist_ode(t_span, ode_seq, epochs=3, test=True, loggers=())
+    # wandb.finish()
