@@ -49,8 +49,11 @@ class VF(nn.Module):
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-        x = self.nl_fn(self.norm1(self.conv1(x)))
-        x = self.nl_fn(self.norm2(self.conv2(x)))
+        # x = self.nl_fn(self.norm1(self.conv1(x)))
+        # x = self.nl_fn(self.norm2(self.conv2(x)))
+        x = self.nl_fn(self.lin1(x))
+        x = self.nl_fn(self.lin2(x))
+        x = self.nl_fn(self.lin3(x))
         return x
 
 
