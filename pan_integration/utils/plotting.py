@@ -124,7 +124,8 @@ class VfPlotter:
 
         return trajectories
 
-    def _approx_from_B(self, B, t_lims, num_points=100):
+    @staticmethod
+    def _approx_from_B(B, t_lims, num_points=100):
         dims = len(B.shape) - 1
         num_coeff = B.shape[-1]
         t = torch.linspace(-1, 1, num_points)
@@ -268,3 +269,37 @@ class LsPlotter:
 
     def close_all(self):
         plt.close(self.fig)
+
+
+
+
+
+# class DimPlotter():
+#
+#     def callback(B, t_lims, y_init):
+#         dims = len(B.shape) - 1
+#         num_coeff = B.shape[-1]
+#         t = torch.linspace(-1, 1, 100).to(device)
+#         Phi = T_grid(t, num_coeff)
+#         DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff)
+#
+#         approx = B @ Phi
+#         Dapprox = B @ DPhi
+#
+#         t_sol = torch.linspace(*t_lims, 100)
+#         _, sol = torchdyn.numerics.odeint(
+#             vf, solver="tsit5", t_span=t_sol, save_at=t_sol, x=y_init
+#         )
+#         batch = torch.randint(0,BATCH_SIZE-1,(1,))
+#         channel = torch.randint(0, 8-1, (1,))
+#         dim1= torch.randint(0,5, (1,))
+#         dim2 = torch.randint(0,5, (1,))
+#         yy_init = y_init[batch, channel, dim1, dim2].cpu()
+#         ax.set_ylim( yy_init -1, yy_init+1)
+#         line_sol.set_ydata(sol[:, batch, channel, dim1, dim2].cpu())
+#         line_approx.set_ydata(approx[batch, channel, dim1, dim2, :].mT.cpu())
+#
+#         fig.canvas.flush_events()
+#         fig.canvas.draw()
+
+

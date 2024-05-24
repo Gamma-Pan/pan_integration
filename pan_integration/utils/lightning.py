@@ -1,8 +1,9 @@
+from typing import Any
+
 from lightning import LightningModule
 import torch
-from torch import nn
-from ..core.ode import PanODE
-
+from torch import nn, Tensor
+from torch.profiler import profile, record_function, ProfilerActivity
 
 class LitOdeClassifier(LightningModule):
     def __init__(
@@ -15,25 +16,25 @@ class LitOdeClassifier(LightningModule):
         self.ode_model = ode_model
         self.embedding = embedding
         self.classifier = classifier
-        self.B_prev = None
+        self.automatic_optimization = False
 
-        self.nfe=[0 for _ in self.ode_model]
+        self.nfe = 0
         # self.save_hyperparameters()
 
     def _common_step(self, batch, batch_idx):
         x, y = batch
         x_em = self.embedding(x)
-        y_hat = self.ode_model(x_em)
-        logits = self.classifier(y_hat)
+        _, y_hat = self.ode_model(x_em)
+
+        logits = self.classifier(y_hat[-1])
         loss = nn.CrossEntropyLoss()(logits, y)
 
-        # log metrics for each layer of
-        for i, layer in enumerate(self.ode_model):
-            self.log(f"nfe_forward[{i}]", float(layer.vf.nfe), prog_bar=True)
-            layer.vf.nfe = 0
+        self.log(f"nfe_forward", float(self.ode_model.vf.nfe), prog_bar=True)
+        self.ode_model.vf.nfe = 0
 
         _, preds = torch.max(logits, dim=1)
         acc = torch.sum(preds == y) / y.shape[0]
+
         return loss, preds, acc
 
     def training_step(self, batch, batch_idx):
@@ -48,14 +49,14 @@ class LitOdeClassifier(LightningModule):
 
         self.log("val_loss", loss, prog_bar=True)
         self.log("val_acc", acc, prog_bar=True)
-        return loss
+        # return loss
 
     def test_step(self, batch, batch_idx):
         loss, preds, acc = self._common_step(batch, batch_idx)
 
         self.log("test_loss", loss, prog_bar=True)
         self.log("test_acc", acc, prog_bar=True)
-        return loss
+        # return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.ode_model.parameters(), lr=0.0005)
+        return torch.optim.Adam(self.ode_model.parameters(), lr=0.001)

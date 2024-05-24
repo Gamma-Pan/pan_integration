@@ -4,6 +4,7 @@ from torch.func import vmap
 from torch.autograd import Function
 from typing import Tuple, Callable
 import ipdb
+from pan_integration.optim.matrix_chain import chain_mat_greedy
 
 
 def T_grid(t, num_coeff_per_dim):
@@ -59,7 +60,7 @@ class PanZero:
         device=None,
         callback=None,
     ):
-        self.delta = delta
+        self.delta = torch.tensor(delta)
         self.max_iters = max_iters
         self.callback = callback
         self.num_coeff_per_dim = num_coeff_per_dim
@@ -88,12 +89,11 @@ class PanZero:
         self._t_lims = value
         (
             self.t_cheb,
-            self.Dt,
             self.Phi,
             self.DPhi,
             self.inv0,
-            self.Phi_b,
-            self.Q,
+            self.Phi_c,
+            self.Phi_d
         ) = self._calc_independent(
             value, self.num_coeff_per_dim, self.num_points, self.device
         )
@@ -118,7 +118,12 @@ class PanZero:
         # invert a (num_coeff X num_coeff) matrix once
         Q = torch.linalg.inv(Phi_b @ (Dt[:, None] * Phi_b.mT))
 
-        return t_cheb, Dt, Phi, DPhi, inv0, Phi_b, Q
+        Phi_b_T = Dt[:, None] * Phi_b.mT
+        Phi_c = Phi_b_T@ Q
+
+        Phi_d =inv0 @torch.stack([DPhi[0, :], DPhi[1, :]], dim=0) @Phi_b_T @ Q
+
+        return t_cheb,  Phi, DPhi, inv0, Phi_c, Phi_d
 
     def zero_order_itr(
         self, f, t_lims, y_init, f_init=None, B_init=None
@@ -126,22 +131,15 @@ class PanZero:
         # if saved don't recalculate
         if self.t_lims is not None:
             t_cheb = self.t_cheb
-            Dt = self.Dt
             Phi = self.Phi
             DPhi = self.DPhi
             inv0 = self.inv0
-            Phi_b = self.Phi_b
-            Q = self.Q
+            Phi_c = self.Phi_c
+            Phi_d = self.Phi_d
         else:
-            t_cheb, Dt, Phi, DPhi, inv0, Phi_b, Q = self._calc_independent(
+            t_cheb,  Phi, DPhi, inv0, Phi_c, Phi_d= self._calc_independent(
                 t_lims, self.num_coeff_per_dim, self.num_points, y_init.device
             )
-
-        def head(B_tail):
-            return (
-                torch.stack([y_init, f_init], dim=-1)
-                - B_tail @ torch.stack([Phi[2:, 0], DPhi[2:, 0]], dim=-1)
-            ) @ inv0
 
         dims = y_init.shape
 
@@ -150,21 +148,22 @@ class PanZero:
         ):
             B_init = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
 
+        # costs 1 nfe
         if f_init is None:
             f_init = f(t_lims[0], y_init)
 
+        yf_init = torch.stack([y_init, f_init], dim=-1)
+        Phi_tail = torch.stack([Phi[2:, 0], DPhi[2:, 0]], dim=-1)
+
+        def head(B_tail):
+            return (yf_init - B_tail @ Phi_tail) @ inv0
+
         B = B_init
-        Phi_b_T = Dt[:, None] * Phi_b.mT
-        # Phi_a = (
-        #     torch.stack([y_init, f_init], dim=-1)
-        #     @ inv0
-        #     @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0)
-        # )
         i = 0
         delta = torch.inf
         for i in range(1, self.max_iters + 1):
             if self.callback is not None:
-                self.callback(torch.cat([head(B), B], dim=-1), t_lims)
+                self.callback(torch.cat([head(B), B], dim=-1), t_lims, y_init)
 
             B_prev = B
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
@@ -172,17 +171,10 @@ class PanZero:
                 torch.cat([head(B_prev), B_prev], dim=-1) @ Phi,
             )
 
-            B = (
-                 fapprox @ Phi_b_T @ Q
-                 - torch.stack([y_init, f_init], dim=-1)
-                 @ inv0
-                 @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0)
-                 @ Phi_b_T
-                 @ Q
-             )
+            B = fapprox@Phi_c - yf_init @ Phi_d
 
             delta = torch.norm(B - B_prev)
-            if delta < self.delta:
+            if torch.less(delta , self.delta):
                 break
 
         return torch.cat([head(B), B], dim=-1), (delta, i)
@@ -196,21 +188,21 @@ class PanZero:
             f, (t_span[0], t_span[-1]), y_init, f_init, B_init
         )
 
-        self.B_prev = B[..., 2:]
+        self.B_prev = torch.mean(B[..., 2:]).expand(*dims, self.num_coeff_per_dim - 2)
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
         approx = B @ Phi_out
-        return approx.permute(-1, *list(range(0, len(dims)))), B, metrics
+        return approx.permute(-1, *list(range(0, len(dims)))), B
 
 
 def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
     class _PanInt(Function):
         @staticmethod
         def forward(ctx, thetas, y_init, t_span):
-            traj, B, metrics = solver.solve(f, t_span, y_init, B_init="prev")
+            traj, B = solver.solve(f, t_span, y_init, B_init="prev")
             ctx.save_for_backward(t_span, traj, B)
 
-            return t_span, traj, metrics
+            return t_span, traj
 
         @staticmethod
         def backward(ctx, *grad_output):
@@ -239,6 +231,8 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
                     torch.arange(solver.num_coeff_per_dim, device=t.device)
                     * torch.arccos(t)
                 )
+
+                # ipdb.set_trace()
                 y_back = B_fwd @ T_n
 
                 _, vjp_fun = torch.func.vjp(
@@ -253,13 +247,18 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
                 t_eval[-1], t_eval[0], solver_adjoint.num_points
             ).to(device)
 
-            A_traj, _, _ = solver_adjoint.solve(
+            A_traj, _ = solver_adjoint.solve(
                 adjoint_dynamics, t_eval_adjoint, a_y_T, f_init=Da_y_T, B_init="prev"
             )
 
-            # _, test = torchdyn.numerics.odeint(adjoint_dynamics,a_y_T, t_eval_adjoint,  solver='tsit5'  )
-            # print(test[1][-1])
-            # print(A_traj[-1])
+            # import torchdyn
+            # _, test = torchdyn.numerics.odeint(
+            #     adjoint_dynamics,
+            #     a_y_T,
+            #     t_eval_adjoint,
+            #     solver="tsit5",
+            # )
+            # print(torch.norm( test[-1] - A_traj[-1]))
 
             a_y_back = A_traj.reshape(-1, *dims)
 
@@ -273,7 +272,7 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
                             * (t_eval_adjoint - t_eval[-1])
                             / (t_eval[0] - t_eval[-1]),
                             solver.num_coeff_per_dim,
-                        ).mT
+                        )
                     )
                     .permute(-1, *torch.arange(len(dims) + 1).tolist())
                     .reshape(-1, *dims)
@@ -293,8 +292,9 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
             grads_vec = torch.cat([p.contiguous().flatten() for p in grads])
             DL_theta = ((t_eval[-1] - t_eval[0]) / (solver.num_points - 1)) * grads_vec
             # ipdb.set_trace()
+            f.nfe = 0
 
-            return DL_theta, None, None, None
+            return DL_theta, None, None
 
     def _pan_int_adjoint(t_span, y_init):
         return _PanInt.apply(thetas, y_init, t_span)
@@ -326,5 +326,5 @@ class PanODE(nn.Module):
         )
 
     def forward(self, y_init, *args, **kwargs):
-        _, traj, metrics = self.pan_int(self.t_span, y_init)
-        return self.t_span, traj, metrics
+        _, traj = self.pan_int(self.t_span, y_init)
+        return self.t_span, traj
