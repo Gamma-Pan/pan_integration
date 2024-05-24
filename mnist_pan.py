@@ -23,12 +23,14 @@ BATCH_SIZE = 64
 import multiprocessing as mp
 
 NUM_WORKERS = mp.cpu_count()
-CHANNELS = 64
+CHANNELS = 32
+NUM_GROUPS = 4
 
 embedding = nn.Sequential(
-    nn.Conv2d(1, 64, 5, 2),
-    nn.GroupNorm(4, CHANNELS),
-    nn.Tanh(),
+    # nn.Conv2d(1, CHANNELS, 3, 2, padding=1),
+    # nn.GroupNorm(NUM_GROUPS, CHANNELS),
+    # nn.Tanh(),
+    nn.Flatten()
 ).to(device)
 
 
@@ -36,31 +38,33 @@ class VF(nn.Module):
     def __init__(self):
         super().__init__()
         self.nfe = 0
-        self.norm1 = nn.GroupNorm(4, CHANNELS)
-        self.norm2 = nn.GroupNorm(4, CHANNELS)
-        self.norm3 = nn.GroupNorm(4, CHANNELS)
-        self.conv1 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1)
-        self.conv2 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1)
-        self.conv3 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1)
-        self.nonlin = nn.ReLU()
+        # self.norm1 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
+        # self.conv1 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1)
+        # self.norm2 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
+        # self.conv2 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1)
+        self.lin1 = nn.Linear(28**2, 28**2)
+        self.lin2 = nn.Linear(28**2, 28**2)
+        self.lin3 = nn.Linear(28**2, 28**2)
+        self.nl_fn = nn.ReLU()
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-        x = self.nonlin(self.norm1(self.conv1(x)))
-        x = self.nonlin(self.norm2(self.conv2(x)))
-        x = self.nonlin(self.norm3(self.conv3(x)))
+        x = self.nl_fn(self.norm1(self.conv1(x)))
+        x = self.nl_fn(self.norm2(self.conv2(x)))
         return x
 
 
 classifier = nn.Sequential(
-    nn.Conv2d(CHANNELS, 1,1,1),
-    nn.Flatten(),
-    nn.Dropout(0.1),
-    nn.Linear(12*12, 10),
+    # nn.Dropout(0.01),
+    # nn.Conv2d(CHANNELS, 1, 3, 1),
+    # nn.ReLU(),
+    # nn.Flatten(),
+    # nn.Linear(144, 10),
+    nn.Linear(28**2, 10),
 )
 
 
-def train_mnist_ode(t_span, ode_model, epochs=10, test=False, loggers=()):
+def train_mnist_ode(ode_model, epochs=10, test=False, loggers=()):
     learner = LitOdeClassifier(embedding, ode_model, classifier)
     dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
@@ -96,12 +100,12 @@ if __name__ == "__main__":
         max_iters=30,
         device=device,
     )
-    ode_model = PanODE(vf, t_span, solver, solver_adjoint)
-    # ode_model = NeuralODE(VF().to(device), solver="tsit")
+    # ode_model = PanODE(vf, t_span, solver, solver_adjoint)
+    ode_model = NeuralODE(VF().to(device), solver="tsit5")
 
-    logger = WandbLogger(project='pan_integration')
-    logger.experiment.config['name'] = 'pan_32_32'
+    logger = WandbLogger(project="pan_integration")
+    logger.experiment.config["name"] = "pan_32_32"
     logger.experiment.config["num_coeff_per_dim"] = num_coeff_per_dim
     logger.experiment.config["num_points"] = num_points
-    train_mnist_ode(t_span, ode_model, epochs=30, test=True, loggers=(logger,))
+    train_mnist_ode(ode_model, epochs=30, test=True, loggers=(logger,))
     wandb.finish()

@@ -59,4 +59,4 @@ class LitOdeClassifier(LightningModule):
         # return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.ode_model.parameters(), lr=0.0005)
+        return torch.optim.Adam(self.ode_model.parameters(), lr=0.0001)
