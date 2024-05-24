@@ -27,7 +27,7 @@ CHANNELS = 64
 
 embedding = nn.Sequential(
     nn.Conv2d(1, 64, 5, 2),
-    nn.BatchNorm2d(8),
+    nn.GroupNorm(4, CHANNELS),
     nn.Tanh(),
 ).to(device)
 
