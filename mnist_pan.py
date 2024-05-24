@@ -23,9 +23,10 @@ BATCH_SIZE = 64
 import multiprocessing as mp
 
 NUM_WORKERS = mp.cpu_count()
+CHANNELS = 64
 
 embedding = nn.Sequential(
-    nn.Conv2d(1, 8, 5, 2),
+    nn.Conv2d(1, 64, 5, 2),
     nn.BatchNorm2d(8),
     nn.Tanh(),
 ).to(device)
@@ -35,12 +36,12 @@ class VF(nn.Module):
     def __init__(self):
         super().__init__()
         self.nfe = 0
-        self.norm1 = nn.GroupNorm(2, 8)
-        self.norm2 = nn.GroupNorm(2, 8)
-        self.norm3 = nn.GroupNorm(2, 8)
-        self.conv1 = nn.Conv2d(8, 8, 3, 1, padding=1)
-        self.conv2 = nn.Conv2d(8, 8, 3, 1, padding=1)
-        self.conv3 = nn.Conv2d(8, 8, 3, 1, padding=1)
+        self.norm1 = nn.GroupNorm(4, CHANNELS)
+        self.norm2 = nn.GroupNorm(4, CHANNELS)
+        self.norm3 = nn.GroupNorm(4, CHANNELS)
+        self.conv1 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1)
+        self.conv2 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1)
+        self.conv3 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1)
         self.nonlin = nn.ReLU()
 
     def forward(self, t, x, *args, **kwargs):
@@ -52,9 +53,10 @@ class VF(nn.Module):
 
 
 classifier = nn.Sequential(
+    nn.Conv2d(CHANNELS, 1,1,1),
     nn.Flatten(),
     nn.Dropout(0.1),
-    nn.Linear(1152, 10),
+    nn.Linear(12*12, 10),
 )
 
 
