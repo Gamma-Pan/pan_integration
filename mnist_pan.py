@@ -25,6 +25,7 @@ import multiprocessing as mp
 NUM_WORKERS = mp.cpu_count()
 CHANNELS = 32
 NUM_GROUPS = 4
+WANDB_LOG = True
 
 embedding = nn.Sequential(
     # nn.Conv2d(1, CHANNELS, 3, 2, padding=1),
@@ -67,8 +68,8 @@ classifier = nn.Sequential(
 )
 
 
-def train_mnist_ode(ode_model, epochs=10, test=False, loggers=()):
-    learner = LitOdeClassifier(embedding, ode_model, classifier)
+def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
+    learner = LitOdeClassifier(t_span, embedding, ode_model, classifier)
     dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
     trainer = Trainer(
@@ -76,7 +77,7 @@ def train_mnist_ode(ode_model, epochs=10, test=False, loggers=()):
         enable_checkpointing=False,
         fast_dev_run=False,
         accelerator="gpu",
-        logger=loggers,
+        logger=logger,
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -84,31 +85,66 @@ def train_mnist_ode(ode_model, epochs=10, test=False, loggers=()):
         trainer.test(learner, datamodule=dmodule)
 
 
+def train_all_pan(configs=None, sensitivity='autograd', epochs=50):
+    t_span = torch.linspace(0,1,10).to(device)
+
+    if configs is None:
+        configs = (
+            {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 20},
+            {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 20},
+            {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 20},
+            {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
+            {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
+            {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
+        )
+
+    for config in configs:
+        vf = VF().to(device)
+        logger=()
+        if WANDB_LOG:
+            logger = WandbLogger(
+                project="pan_integration",
+                name=f"pan_{config.num_coeff_per_dim}_{config.num_points}",
+                log_model=False,
+            )
+            logger.experiment.config.update(config)
+            logger.experiment.config.update({"type": "pan", "sensitivity": sensitivity})
+
+        model = PanODE(vf, t_span, solver=config, solver_adjoint=config, sensitivity=sensitivity).to(device)
+        train_mnist_ode(t_span, model, epochs=epochs, test=True, logger=logger)
+
+
+def train_all_shooting(configs=None, sensitivity='autograd', epochs=50):
+    t_span = torch.linspace(0,1,10).to(device)
+
+    if configs is None:
+        configs = (
+            {"solver":'dopri5', "atol":1e-3 },
+            {"solver":'tsit5', "atol":1e-3 ,},
+            {"solver":'dopri5', "atol":1e-4 },
+            {"solver":'tsit5', "atol":1e-4 },
+            {"solver":'rk-4',}
+        )
+
+    for config in configs:
+        vf = VF().to(device)
+        logger = ()
+        if WANDB_LOG:
+            logger = WandbLogger(
+                project="pan_integration",
+                name=f"shooting_f{config.solver}",
+                log_model=False,
+            )
+            logger.experiment.config.update(config)
+            logger.experiment.config.update({"type": "shooting", "sensitivity": sensitivity, 'fixed_step':10})
+
+        model = NeuralODE(vf,  **config, sensitivity=sensitivity)
+        train_mnist_ode(t_span, model, epochs=epochs, test=True, logger=logger)
+
+
 if __name__ == "__main__":
-    t_span = torch.linspace(0, 1, 2).to(device)
-    vf = VF().to(device)
-    num_coeff_per_dim = num_points = 32
+    train_all_pan(epochs=50)
+    train_all_shooting(epochs=50)
 
-    solver = PanZero(
-        num_coeff_per_dim,
-        num_points,
-        delta=1e-3,
-        max_iters=30,
-        device=device,
-    )
-    solver_adjoint = PanZero(
-        num_coeff_per_dim,
-        num_points,
-        delta=1e-3,
-        max_iters=30,
-        device=device,
-    )
-    # ode_model = PanODE(vf, t_span, solver, solver_adjoint)
-    ode_model = NeuralODE(VF().to(device), solver="tsit5")
 
-    logger = WandbLogger(project="pan_integration")
-    logger.experiment.config["name"] = "pan_32_32"
-    logger.experiment.config["num_coeff_per_dim"] = num_coeff_per_dim
-    logger.experiment.config["num_points"] = num_points
-    train_mnist_ode(ode_model, epochs=30, test=True, loggers=(logger,))
-    wandb.finish()
+

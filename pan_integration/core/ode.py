@@ -165,7 +165,7 @@ class PanZero:
             if self.callback is not None:
                 self.callback(torch.cat([head(B), B], dim=-1), t_lims, y_init)
 
-            B_prev = B
+            B_prev = B.detach()
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
                 t_cheb,
                 torch.cat([head(B_prev), B_prev], dim=-1) @ Phi,
@@ -307,24 +307,34 @@ class PanODE(nn.Module):
         self,
         vf,
         t_span,
-        solver,
-        solver_adjoint,
+        solver: PanZero | dict,
+        solver_adjoint: PanZero | dict,
+        sensitivity = 'adjoint'
     ):
         super().__init__()
         self.vf = vf
         self.thetas = torch.cat([p.contiguous().flatten() for p in vf.parameters()])
         self.t_span = t_span
 
+        if isinstance(solver, dict):
+            solver = PanZero(**solver, device=t_span.device)
+
+        if isinstance(solver_adjoint, dict):
+            solver_adjoint = PanZero(**solver_adjoint, device=t_span.device)
+
         solver.t_lims = [t_span[0], t_span[-1]]
         solver_adjoint.t_lims = [t_span[-1], t_span[0]]
 
-        self.pan_int = make_pan_adjoint(
-            self.vf,
-            self.thetas,
-            solver,
-            solver_adjoint,
-        )
+        if sensitivity == 'adjoint':
+            self.pan_int = make_pan_adjoint(
+                self.vf,
+                self.thetas,
+                solver,
+                solver_adjoint,
+            )
+        elif sensitivity == 'autograd':
+            self.pan_int = lambda t, y_init: (t, solver.solve( self.vf, t, y_init, B_init='prev')[0])
 
-    def forward(self, y_init, *args, **kwargs):
-        _, traj = self.pan_int(self.t_span, y_init)
+    def forward(self, y_init, t_span, *args, **kwargs):
+        _, traj = self.pan_int(t_span, y_init)
         return self.t_span, traj

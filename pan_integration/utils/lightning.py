@@ -8,11 +8,13 @@ from torch.profiler import profile, record_function, ProfilerActivity
 class LitOdeClassifier(LightningModule):
     def __init__(
             self,
+            t_span,
             embedding: nn.Module,
             ode_model: nn.Module,
             classifier: nn.Module,
     ):
         super().__init__()
+        self.t_span = t_span
         self.ode_model = ode_model
         self.embedding = embedding
         self.classifier = classifier
@@ -23,7 +25,7 @@ class LitOdeClassifier(LightningModule):
     def _common_step(self, batch, batch_idx):
         x, y = batch
         x_em = self.embedding(x)
-        _, y_hat = self.ode_model(x_em)
+        _, y_hat = self.ode_model(x_em, t_span=self.t_span)
 
         logits = self.classifier(y_hat[-1])
         loss = nn.CrossEntropyLoss()(logits, y)
