@@ -16,7 +16,6 @@ class LitOdeClassifier(LightningModule):
         self.ode_model = ode_model
         self.embedding = embedding
         self.classifier = classifier
-        self.automatic_optimization = False
 
         self.nfe = 0
         # self.save_hyperparameters()
@@ -49,14 +48,14 @@ class LitOdeClassifier(LightningModule):
 
         self.log("val_loss", loss, prog_bar=True)
         self.log("val_acc", acc, prog_bar=True)
-        # return loss
+        return loss
 
     def test_step(self, batch, batch_idx):
         loss, preds, acc = self._common_step(batch, batch_idx)
 
         self.log("test_loss", loss, prog_bar=True)
         self.log("test_acc", acc, prog_bar=True)
-        # return loss
+        return loss
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.ode_model.parameters(), lr=0.0001)
