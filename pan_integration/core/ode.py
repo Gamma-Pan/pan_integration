@@ -125,7 +125,7 @@ class PanZero:
 
         return t_cheb,  Phi, DPhi, inv0, Phi_c, Phi_d
 
-    def zero_order_itr(
+    def _zero_order_itr(
         self, f, t_lims, y_init, f_init=None, B_init=None
     ) -> Tuple[Tensor, Tuple]:
         # if saved don't recalculate
@@ -179,12 +179,17 @@ class PanZero:
 
         return torch.cat([head(B), B], dim=-1), (delta, i)
 
+    def _first_order_itr(self, t_span, y_init, f_init=None, B_init: Tensor|str=None):
+        dims = y_init.shape
+
+
+
     def solve(self, f, t_span, y_init, f_init=None, B_init: Tensor | str = None):
         if B_init == "prev":
             B_init = self.B_prev
 
         dims = y_init.shape
-        B, metrics = self.zero_order_itr(
+        B, metrics = self._zero_order_itr(
             f, (t_span[0], t_span[-1]), y_init, f_init, B_init
         )
 

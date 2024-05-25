@@ -19,7 +19,7 @@ class NfeMetrics(Callback):
     #     pl_module.log(f"nfe_backward_train", nfes, prog_bar=True)
     #     pl_module.ode_model.vf.nfe = 0
 
-    def on_test_batch_end(self, trainer, pl_module, **kwargs):
+    def on_test_batch_end(self, trainer, pl_module):
         nfes = float(pl_module.ode_model.vf.nfe)
         pl_module.log(f"nfe_test", nfes, prog_bar=True)
         pl_module.ode_model.vf.nfe = 0

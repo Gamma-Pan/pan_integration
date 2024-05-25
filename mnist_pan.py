@@ -86,18 +86,6 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
 def train_all_pan(configs=None, sensitivity="autograd", epochs=50):
     t_span = torch.linspace(0, 1, 2).to(device)
 
-    if configs is None:
-        configs = (
-            {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-3, "max_iters": 30},
-            {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 30},
-            {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
-            {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
-            {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-2, "max_iters": 20},
-            {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
-            {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
-            {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
-        )
-
     for config in configs:
         vf = VF().to(device)
         logger = ()
@@ -122,17 +110,6 @@ def train_all_pan(configs=None, sensitivity="autograd", epochs=50):
 
 
 def train_all_shooting(configs=None, sensitivity="autograd", epochs=50):
-    if configs is None:
-        configs = (
-            {"solver": "dopri5", "atol": 1e-3, "fixed_steps": 2},
-            {"solver": "tsit5", "atol": 1e-3, "fixed_steps": 2},
-            {"solver": "dopri5", "atol": 1e-4, "fixed_steps": 2},
-            {"solver": "tsit5", "atol": 1e-4, "fixed_steps": 2},
-            {"solver": "rk-4", "fixed_steps": 2},
-            {"solver": "rk-4", "fixed_steps": 5},
-            {"solver": "rk-4", "fixed_steps": 10},
-        )
-
     for config in configs:
         vf = VF().to(device)
         logger = ()
@@ -159,7 +136,28 @@ def train_all_shooting(configs=None, sensitivity="autograd", epochs=50):
 
 
 if __name__ == "__main__":
-    train_all_shooting(epochs=50, sensitivity="autograd")
+    pan_configs = (
+        # {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-3, "max_iters": 30},
+        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 30},
+        {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
+        {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
+        {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-2, "max_iters": 20},
+        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
+        {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
+        {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
+    )
+
+    shhot_configs = (
+        {"solver": "dopri5", "atol": 1e-3, "fixed_steps": 2},
+        {"solver": "tsit5", "atol": 1e-3, "fixed_steps": 2},
+        {"solver": "dopri5", "atol": 1e-4, "fixed_steps": 2},
+        {"solver": "tsit5", "atol": 1e-4, "fixed_steps": 2},
+        {"solver": "rk-4", "fixed_steps": 2},
+        {"solver": "rk-4", "fixed_steps": 5},
+        {"solver": "rk-4", "fixed_steps": 10},
+    )
+
+    # train_all_shooting(epochs=50, sensitivity="autograd")
     train_all_pan(epochs=50, sensitivity="autograd")
     train_all_pan(epochs=50, sensitivity="adjoint")
     train_all_shooting(epochs=50, sensitivity="adjoint")
