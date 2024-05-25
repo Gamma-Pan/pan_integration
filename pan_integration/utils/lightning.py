@@ -9,21 +9,20 @@ from torch.profiler import profile, record_function, ProfilerActivity
 
 
 class NfeMetrics(Callback):
-    def on_before_zero_grad(self, trainer, pl_module, optimizer):
+    def on_before_zero_grad(self, trainer, pl_module, optimizer ):
         nfes = float(pl_module.ode_model.vf.nfe)
         pl_module.log(f"nfe_forward_train", nfes, prog_bar=True)
         pl_module.ode_model.vf.nfe = 0
 
-    # def on_after_backward(self,trainer, pl_module):
-    #     nfes = float(pl_module.ode_model.vf.nfe)
-    #     pl_module.log(f"nfe_backward_train", nfes, prog_bar=True)
-    #     pl_module.ode_model.vf.nfe = 0
+    def on_after_backward(self,trainer, pl_module):
+        nfes = float(pl_module.ode_model.vf.nfe)
+        pl_module.log(f"nfe_backward_train", nfes, prog_bar=True)
+        pl_module.ode_model.vf.nfe = 0
 
-    def on_test_batch_end(self, trainer, pl_module):
+    def on_test_batch_end(self, trainer, pl_module, batch, batch_idx, dataloader_idx=0):
         nfes = float(pl_module.ode_model.vf.nfe)
         pl_module.log(f"nfe_test", nfes, prog_bar=True)
         pl_module.ode_model.vf.nfe = 0
-
 
 
 class LitOdeClassifier(LightningModule):

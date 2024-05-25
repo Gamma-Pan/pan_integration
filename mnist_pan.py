@@ -27,7 +27,7 @@ import multiprocessing as mp
 NUM_WORKERS = mp.cpu_count()
 CHANNELS = 32
 NUM_GROUPS = 4
-WANDB_LOG = True
+WANDB_LOG = False
 
 embedding = nn.Sequential(
     nn.Conv2d(1, CHANNELS, 3, 2, padding=1),
@@ -55,7 +55,7 @@ class VF(nn.Module):
 
 
 classifier = nn.Sequential(
-    nn.Dropout(0.01),
+    nn.Dropout(0.05),
     nn.Conv2d(CHANNELS, 1, 3, 1),
     nn.ReLU(),
     nn.Flatten(),
@@ -75,7 +75,8 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[nfe_callback]
+        callbacks=[nfe_callback],
+        stochastic_weight_forward=True,
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -83,7 +84,7 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         trainer.test(learner, datamodule=dmodule)
 
 
-def train_all_pan(configs=None, sensitivity="autograd", epochs=50):
+def train_all_pan(configs, sensitivity, epochs, test):
     t_span = torch.linspace(0, 1, 2).to(device)
 
     for config in configs:
@@ -104,12 +105,12 @@ def train_all_pan(configs=None, sensitivity="autograd", epochs=50):
         model = PanODE(
             vf, t_span, solver=config, solver_adjoint=config, sensitivity=sensitivity
         ).to(device)
-        train_mnist_ode(t_span, model, epochs=epochs, test=True, logger=logger)
+        train_mnist_ode(t_span, model, epochs=epochs, test=test, logger=logger)
         if WANDB_LOG:
             wandb.finish()
 
 
-def train_all_shooting(configs=None, sensitivity="autograd", epochs=50):
+def train_all_shooting(configs, sensitivity, epochs, test):
     for config in configs:
         vf = VF().to(device)
         logger = ()
@@ -130,7 +131,7 @@ def train_all_shooting(configs=None, sensitivity="autograd", epochs=50):
 
         model = NeuralODE(vf, **_config, sensitivity=sensitivity)
         t_span = torch.linspace(0, 1, int(config["fixed_steps"])).to(device)
-        train_mnist_ode(t_span, model, epochs=epochs, test=False, logger=logger)
+        train_mnist_ode(t_span, model, epochs=epochs, test=test, logger=logger)
         if WANDB_LOG:
             wandb.finish()
 
@@ -141,23 +142,23 @@ if __name__ == "__main__":
         {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 30},
         {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
         {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
-        {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-2, "max_iters": 20},
+        # {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-2, "max_iters": 20},
         {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
         {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
         {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
     )
 
-    shhot_configs = (
-        {"solver": "dopri5", "atol": 1e-3, "fixed_steps": 2},
+    shoot_configs = (
         {"solver": "tsit5", "atol": 1e-3, "fixed_steps": 2},
-        {"solver": "dopri5", "atol": 1e-4, "fixed_steps": 2},
+        {"solver": "dopri5", "atol": 1e-3, "fixed_steps": 2},
         {"solver": "tsit5", "atol": 1e-4, "fixed_steps": 2},
+        {"solver": "dopri5", "atol": 1e-4, "fixed_steps": 2},
         {"solver": "rk-4", "fixed_steps": 2},
         {"solver": "rk-4", "fixed_steps": 5},
         {"solver": "rk-4", "fixed_steps": 10},
     )
 
-    # train_all_shooting(epochs=50, sensitivity="autograd")
-    train_all_pan(epochs=50, sensitivity="autograd")
-    train_all_pan(epochs=50, sensitivity="adjoint")
-    train_all_shooting(epochs=50, sensitivity="adjoint")
+    train_all_shooting(shoot_configs, epochs=50, sensitivity="autograd", test=True)
+    train_all_pan(epochs=50, sensitivity="autograd", test=True)
+    train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
+    train_all_pan(epochs=50, sensitivity="adjoint", test=True)
