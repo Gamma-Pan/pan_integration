@@ -11,7 +11,7 @@ from torchdyn.core import MultipleShootingLayer, NeuralODE
 
 from pan_integration.data import MNISTDataModule
 from pan_integration.core.ode import PanODE, PanZero
-from pan_integration.utils.lightning import LitOdeClassifier
+from pan_integration.utils.lightning import LitOdeClassifier, NfeMetrics
 
 import wandb
 
@@ -27,7 +27,7 @@ import multiprocessing as mp
 NUM_WORKERS = mp.cpu_count()
 CHANNELS = 32
 NUM_GROUPS = 4
-WANDB_LOG = False
+WANDB_LOG = True
 
 embedding = nn.Sequential(
     nn.Conv2d(1, CHANNELS, 3, 2, padding=1),
@@ -67,12 +67,15 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
     learner = LitOdeClassifier(t_span, embedding, ode_model, classifier)
     dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
+    nfe_callback = NfeMetrics()
+
     trainer = Trainer(
         max_epochs=epochs,
         enable_checkpointing=False,
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
+        callbacks=[nfe_callback]
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -85,11 +88,11 @@ def train_all_pan(configs=None, sensitivity="autograd", epochs=50):
 
     if configs is None:
         configs = (
-            {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-3, "max_iters": 20},
-            {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 20},
-            {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 20},
-            {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 20},
-            {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-3, "max_iters": 20},
+            {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-3, "max_iters": 30},
+            {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 30},
+            {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
+            {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
+            {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-2, "max_iters": 20},
             {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
             {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
             {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
@@ -99,9 +102,10 @@ def train_all_pan(configs=None, sensitivity="autograd", epochs=50):
         vf = VF().to(device)
         logger = ()
         if WANDB_LOG:
+            name = f"pan_{config['num_coeff_per_dim']}_{config['num_points']}_{str(config['delta'])}"
             logger = WandbLogger(
                 project="pan_integration",
-                name=f"pan_{config['num_coeff_per_dim']}_{config['num_points']}",
+                name=name,
                 log_model=False,
             )
             logger.experiment.config.update(config)
@@ -133,9 +137,10 @@ def train_all_shooting(configs=None, sensitivity="autograd", epochs=50):
         vf = VF().to(device)
         logger = ()
         if WANDB_LOG:
+            name = f"shooting_{config['solver']}_{config['atol'] if 'atol' in config.keys() else config['fixed_steps'] }"
             logger = WandbLogger(
                 project="pan_integration",
-                name=f"shooting_{config['solver']}",
+                name=name,
                 log_model=False,
             )
             logger.experiment.config.update(config)
@@ -154,7 +159,7 @@ def train_all_shooting(configs=None, sensitivity="autograd", epochs=50):
 
 
 if __name__ == "__main__":
-    train_all_pan(epochs=40, sensitivity="autograd")
-    train_all_shooting(epochs=40, sensitivity="autograd")
-    # train_all_shooting(epochs=30, sensitivity="adjoint")
-    # train_all_pan(epochs=30, sensitivity="adjoint")
+    train_all_shooting(epochs=50, sensitivity="autograd")
+    train_all_pan(epochs=50, sensitivity="autograd")
+    train_all_pan(epochs=50, sensitivity="adjoint")
+    train_all_shooting(epochs=50, sensitivity="adjoint")

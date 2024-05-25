@@ -1,9 +1,30 @@
 from typing import Any
 
 from lightning import LightningModule
+from lightning.pytorch.callbacks import Callback
+
 import torch
 from torch import nn, Tensor
 from torch.profiler import profile, record_function, ProfilerActivity
+
+
+class NfeMetrics(Callback):
+    def on_before_zero_grad(self, trainer, pl_module, optimizer):
+        nfes = float(pl_module.ode_model.vf.nfe)
+        pl_module.log(f"nfe_forward_train", nfes, prog_bar=True)
+        pl_module.ode_model.vf.nfe = 0
+
+    # def on_after_backward(self,trainer, pl_module):
+    #     nfes = float(pl_module.ode_model.vf.nfe)
+    #     pl_module.log(f"nfe_backward_train", nfes, prog_bar=True)
+    #     pl_module.ode_model.vf.nfe = 0
+
+    def on_test_batch_end(self, trainer, pl_module, **kwargs):
+        nfes = float(pl_module.ode_model.vf.nfe)
+        pl_module.log(f"nfe_test", nfes, prog_bar=True)
+        pl_module.ode_model.vf.nfe = 0
+
+
 
 class LitOdeClassifier(LightningModule):
     def __init__(
@@ -29,9 +50,6 @@ class LitOdeClassifier(LightningModule):
 
         logits = self.classifier(y_hat[-1])
         loss = nn.CrossEntropyLoss()(logits, y)
-
-        self.log(f"nfe_forward", float(self.ode_model.vf.nfe), prog_bar=True)
-        self.ode_model.vf.nfe = 0
 
         _, preds = torch.max(logits, dim=1)
         acc = torch.sum(preds == y) / y.shape[0]
@@ -61,3 +79,10 @@ class LitOdeClassifier(LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.ode_model.parameters(), lr=0.0001)
+
+
+def backward(self, loss: Tensor, *args: Any, **kwargs: Any) -> None:
+        loss.backward()
+
+        self.log('nfe_backward', float(self.ode_model.vf.nfe), prog_bar=True)
+        self.ode_model.vf.nfe=0
