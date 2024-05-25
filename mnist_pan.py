@@ -71,12 +71,11 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
 
     trainer = Trainer(
         max_epochs=epochs,
-        enable_checkpointing=False,
+        enable_checkpointing=True,
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
         callbacks=[nfe_callback],
-        stochastic_weight_forward=True,
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -159,6 +158,6 @@ if __name__ == "__main__":
     )
 
     train_all_shooting(shoot_configs, epochs=50, sensitivity="autograd", test=True)
-    train_all_pan(epochs=50, sensitivity="autograd", test=True)
+    train_all_pan(pan_configs, epochs=50, sensitivity="autograd", test=True)
     train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
-    train_all_pan(epochs=50, sensitivity="adjoint", test=True)
+    train_all_pan(pan_configs,epochs=50, sensitivity="adjoint", test=True)
