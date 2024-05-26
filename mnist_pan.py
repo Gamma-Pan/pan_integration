@@ -13,11 +13,12 @@ from torchdyn.core import MultipleShootingLayer, NeuralODE
 
 from pan_integration.data import MNISTDataModule
 from pan_integration.core.ode import PanODE, PanZero
-from pan_integration.utils.lightning import LitOdeClassifier, NfeMetrics
+from pan_integration.utils.lightning import LitOdeClassifier, NfeMetrics, ProfilerCallback
 
 import wandb
 
 from copy import copy
+import argparse
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 64
@@ -78,11 +79,11 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
     dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
     nfe_callback = NfeMetrics()
-    early_callback = EarlyStopping(
-        monitor="val_accuracy",
-        check_on_train_epoch_end=True,
-        stopping_threshold=0.91,
-    )
+    # early_callback = EarlyStopping(
+    #     monitor="val_accuracy",
+    #     check_on_train_epoch_end=True,
+    #     stopping_threshold=0.91,
+    # )
 
     checkpoint = ModelCheckpoint(
         save_top_k=1,
@@ -90,13 +91,16 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         mode='min',
     )
 
+    prof_callback= ProfilerCallback()
+
     trainer = Trainer(
         max_epochs=epochs,
         enable_checkpointing=True,
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[nfe_callback, checkpoint],
+        callbacks=[nfe_callback, checkpoint, prof_callback],
+        # callbacks=[nfe_callback, checkpoint],
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -110,8 +114,9 @@ def train_all_pan(configs, sensitivity, epochs, test):
     for config in configs:
         vf = VF().to(device)
         logger = ()
+        name = f"pan_{config['num_coeff_per_dim']}_{config['num_points']}_{str(config['delta'])}"
+
         if WANDB_LOG:
-            name = f"pan_{config['num_coeff_per_dim']}_{config['num_points']}_{str(config['delta'])}"
             logger = WandbLogger(
                 project="pan_integration",
                 name=name,
@@ -165,9 +170,14 @@ def train_all_shooting(configs, sensitivity, epochs, test):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--log",  default=False, type=bool)
+    args = vars(parser.parse_args())
+    WANDB_LOG = args["log"]
+
     pan_configs = (
-        # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 30},
-        {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
+        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 30},
+        # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
         # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
         {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
@@ -183,6 +193,6 @@ if __name__ == "__main__":
     )
 
     train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
-    train_all_shooting(shoot_configs, epochs=50, sensitivity="autograd", test=True)
+    # train_all_shooting(shoot_configs, epochs=50, sensitivity="autograd", test=True)
     # train_all_pan(pan_configs, epochs=50, sensitivity="autograd", test=True)
     # train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)

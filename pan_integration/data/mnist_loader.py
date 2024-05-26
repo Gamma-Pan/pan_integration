@@ -42,16 +42,16 @@ class MNISTDataModule(L.LightningDataModule):
         )
 
     def prepare_data(self):
-        self.labels = []
-        for sample in MNIST(self.data_dir, train=True, download=True):
-            self.labels.append(sample[1])
-
         MNIST(self.data_dir, train=False, download=True)
+
+        self.labels = []
+        for sample in  MNIST(self.data_dir, train=True, download=True):
+            self.labels.append(sample[1])
 
     def setup(self, stage: str):
         if stage == "fit":
             mnist_train = MNIST(
-                self.data_dir, train=True, transform=self.train_transform
+                self.data_dir, train=True, transform=self.test_transform
             )
             mnist_val = MNIST(self.data_dir, train=True, transform=self.test_transform)
 

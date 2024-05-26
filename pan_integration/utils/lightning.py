@@ -4,6 +4,7 @@ from lightning import LightningModule
 from lightning.pytorch.callbacks import Callback
 
 import torch
+from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import nn, Tensor
 from torch.profiler import profile, record_function, ProfilerActivity
 
@@ -23,6 +24,41 @@ class NfeMetrics(Callback):
         nfes = float(pl_module.ode_model.vf.nfe)
         pl_module.log(f"nfe_test", nfes, prog_bar=True)
         pl_module.ode_model.vf.nfe = 0
+
+class ProfilerCallback(Callback):
+    def __init__(self, schedule=None, epoch=1):
+        super().__init__()
+        if schedule is None:
+            schedule = torch.profiler.schedule(
+                skip_first=10,
+                wait=10,
+                warmup=5,
+                active=2,
+                repeat=1
+            )
+        self.epoch = epoch
+
+        self.profiler = torch.profiler.profile(
+            schedule=schedule,
+            on_trace_ready=self.ready,
+            activities=[ProfilerActivity.CUDA, ProfilerActivity.CPU],
+            record_shapes=True,
+            profile_memory=True,
+        )
+
+    def ready(self, profiler ):
+        profiler.export_chrome_trace('./trace.json')
+
+    def on_train_start(self, trainer, pl_module):
+        if trainer.current_epoch == self.epoch:
+            self.profiler.start()
+
+    def on_train_end(self, trainer, pl_module ) -> None:
+        if trainer.current_epoch == self.epoch:
+            self.profiler.stop()
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        self.profiler.step()
 
 
 class LitOdeClassifier(LightningModule):
@@ -47,6 +83,7 @@ class LitOdeClassifier(LightningModule):
     def _common_step(self, batch, batch_idx):
         x, y = batch
         x_em = self.embedding(x)
+
         _, y_hat = self.ode_model(x_em, t_span=self.t_span)
 
         logits = self.classifier(y_hat[-1])
@@ -90,12 +127,11 @@ class LitOdeClassifier(LightningModule):
             "frequency": 10,
             # "patience": 10,
         }
-        out = {'optimizer': opt, 'lr_scheduler': lr_scheduler_config}
+        out = {"optimizer": opt, "lr_scheduler": lr_scheduler_config}
         return out
 
-
-def backward(self, loss: Tensor, *args: Any, **kwargs: Any) -> None:
-    loss.backward()
-
-    self.log("nfe_backward", float(self.ode_model.vf.nfe), prog_bar=True)
-    self.ode_model.vf.nfe = 0
+    # def backward(self, loss: Tensor, *args: Any, **kwargs: Any) -> None:
+    #     loss.backward()
+    #
+    #     self.log("nfe_backward", float(self.ode_model.vf.nfe), prog_bar=True)
+    #     self.ode_model.vf.nfe = 0
