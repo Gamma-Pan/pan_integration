@@ -8,7 +8,6 @@ from pan_integration.optim import newton
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-torch.manual_seed(234)
 mpl.use("TkAgg")
 
 

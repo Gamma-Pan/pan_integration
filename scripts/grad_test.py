@@ -4,8 +4,6 @@ from pan_integration.core.ode import PanZero, make_pan_adjoint
 from torchdyn.models import NeuralODE
 
 
-torch.manual_seed(42)
-
 
 class NN(nn.Module):
     def __init__(

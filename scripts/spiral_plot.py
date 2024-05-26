@@ -8,9 +8,6 @@ from torchdyn.numerics.solvers.ode import SolverTemplate
 from torchdyn.core.neuralde import odeint
 from pan_integration.core.ode import PanZero
 
-torch.random.manual_seed(42)
-
-
 
 class Spiral(nn.Module):
     def __init__(self, A):

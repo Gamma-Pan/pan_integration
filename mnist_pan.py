@@ -17,8 +17,6 @@ import wandb
 
 from copy import copy
 
-torch.manual_seed(42)
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 64
 
@@ -27,7 +25,7 @@ import multiprocessing as mp
 NUM_WORKERS = mp.cpu_count()
 CHANNELS = 32
 NUM_GROUPS = 4
-WANDB_LOG = False
+WANDB_LOG = True
 
 embedding = nn.Sequential(
     nn.Conv2d(1, CHANNELS, 3, 2, padding=1),
@@ -137,11 +135,9 @@ def train_all_shooting(configs, sensitivity, epochs, test):
 
 if __name__ == "__main__":
     pan_configs = (
-        # {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-3, "max_iters": 30},
         {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 30},
         {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
         {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
-        # {"num_coeff_per_dim": 8, "num_points": 8, "delta": 1e-2, "max_iters": 20},
         {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
         {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
         {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
@@ -150,14 +146,12 @@ if __name__ == "__main__":
     shoot_configs = (
         {"solver": "tsit5", "atol": 1e-3, "fixed_steps": 2},
         {"solver": "dopri5", "atol": 1e-3, "fixed_steps": 2},
-        {"solver": "tsit5", "atol": 1e-4, "fixed_steps": 2},
-        {"solver": "dopri5", "atol": 1e-4, "fixed_steps": 2},
         {"solver": "rk-4", "fixed_steps": 2},
         {"solver": "rk-4", "fixed_steps": 5},
         {"solver": "rk-4", "fixed_steps": 10},
     )
 
     train_all_shooting(shoot_configs, epochs=50, sensitivity="autograd", test=True)
-    train_all_pan(pan_configs, epochs=50, sensitivity="autograd", test=True)
+    # train_all_pan(pan_configs, epochs=50, sensitivity="autograd", test=True)
     train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
     train_all_pan(pan_configs,epochs=50, sensitivity="adjoint", test=True)

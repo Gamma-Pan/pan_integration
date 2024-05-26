@@ -9,7 +9,6 @@ from typing import Tuple, Callable
 
 import ipdb
 
-# torch.manual_seed(42)
 
 
 def T_grid(t, num_coeff_per_dim, device):
