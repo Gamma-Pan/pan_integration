@@ -88,6 +88,7 @@ class LitOdeClassifier(LightningModule):
             "monitor": "val_loss",
             "interval": "epoch",
             "frequency": 1,
+            "patience": 5,
         }
         out = {'optimizer': opt, 'lr_scheduler': lr_scheduler_config}
         return out

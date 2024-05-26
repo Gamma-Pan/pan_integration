@@ -79,8 +79,8 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
     nfe_callback = NfeMetrics()
     early_callback = EarlyStopping(
         monitor="val_loss",
-        min_delta=1e-3,
-        patience=5,
+        min_delta=1e-4,
+        patience=10,
         verbose=True,
         mode="min",
         check_on_train_epoch_end=False,
