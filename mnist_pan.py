@@ -13,7 +13,11 @@ from torchdyn.core import MultipleShootingLayer, NeuralODE
 
 from pan_integration.data import MNISTDataModule
 from pan_integration.core.ode import PanODE, PanZero
-from pan_integration.utils.lightning import LitOdeClassifier, NfeMetrics, ProfilerCallback
+from pan_integration.utils.lightning import (
+    LitOdeClassifier,
+    NfeMetrics,
+    ProfilerCallback,
+)
 
 import wandb
 
@@ -87,11 +91,11 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
 
     checkpoint = ModelCheckpoint(
         save_top_k=1,
-        monitor='val_accuracy',
-        mode='min',
+        monitor="val_accuracy",
+        mode="min",
     )
 
-    prof_callback= ProfilerCallback()
+    prof_callback = ProfilerCallback()
 
     trainer = Trainer(
         max_epochs=epochs,
@@ -136,6 +140,10 @@ def train_all_pan(configs, sensitivity, epochs, test):
         ).to(device)
         train_mnist_ode(t_span, model, epochs=epochs, test=test, logger=logger)
         if WANDB_LOG:
+            profile_artf = wandb.Artifact("./trace_{name}", type="profile")
+            profile_artf.add_file('./trace.json', )
+            run = wandb.init(project='pan_integration', name=name)
+            run.log_artifact(profile_artf)
             wandb.finish()
 
 
@@ -170,8 +178,10 @@ def train_all_shooting(configs, sensitivity, epochs, test):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--log",  default=False, type=bool)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--log", default=False, type=bool)
     args = vars(parser.parse_args())
     WANDB_LOG = args["log"]
 

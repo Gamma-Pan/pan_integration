@@ -25,6 +25,7 @@ class NfeMetrics(Callback):
         pl_module.log(f"nfe_test", nfes, prog_bar=True)
         pl_module.ode_model.vf.nfe = 0
 
+
 class ProfilerCallback(Callback):
     def __init__(self, schedule=None, epoch=1):
         super().__init__()
