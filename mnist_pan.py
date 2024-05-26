@@ -25,13 +25,23 @@ import multiprocessing as mp
 NUM_WORKERS = mp.cpu_count()
 CHANNELS = 32
 NUM_GROUPS = 4
-WANDB_LOG = True
+WANDB_LOG = False
 
-embedding = nn.Sequential(
-    nn.Conv2d(1, CHANNELS, 1, 1, padding=0),
-    # nn.GroupNorm(NUM_GROUPS, CHANNELS),
-    # nn.Tanh(),
-).to(device)
+
+class Augmenter(nn.Module):
+    def __init__(self, dims):
+        super().__init__()
+        self.conv = nn.Conv2d(1, CHANNELS - 1, 3, 1, 1)
+        self.norm = nn.GroupNorm(NUM_GROUPS, CHANNELS)
+
+    def forward(self, x):
+        aug = F.tanh(self.conv(x))
+        x = torch.cat([x, aug], dim=1)
+        x = self.norm(x)
+        return x
+
+
+embedding = Augmenter(CHANNELS)
 
 
 class VF(nn.Module):
@@ -54,10 +64,10 @@ class VF(nn.Module):
 
 classifier = nn.Sequential(
     nn.Dropout(0.01),
-    nn.Conv2d(CHANNELS, 1, 3, 2, 1),
+    nn.Conv2d(CHANNELS, 1, 3, padding=1),
     nn.ReLU(),
     nn.Flatten(),
-    nn.Linear(196, 10),
+    nn.Linear(28**2, 10),
 )
 
 
@@ -96,7 +106,11 @@ def train_all_pan(configs, sensitivity, epochs, test):
             )
             logger.experiment.config.update(config)
             logger.experiment.config.update(
-                {"type": "pan", "sensitivity": sensitivity, "architecture": "CNN_IL_aug"}
+                {
+                    "type": "pan",
+                    "sensitivity": sensitivity,
+                    "architecture": "CNN_IL_aug",
+                }
             )
 
         model = PanODE(
@@ -120,7 +134,11 @@ def train_all_shooting(configs, sensitivity, epochs, test):
             )
             logger.experiment.config.update(config)
             logger.experiment.config.update(
-                {"type": "shooting", "sensitivity": sensitivity, "architecture": "CNN_IL_augk"}
+                {
+                    "type": "shooting",
+                    "sensitivity": sensitivity,
+                    "architecture": "CNN_IL_augk",
+                }
             )
 
         _config = copy(config)
@@ -154,4 +172,4 @@ if __name__ == "__main__":
     train_all_shooting(shoot_configs, epochs=50, sensitivity="autograd", test=True)
     # train_all_pan(pan_configs, epochs=50, sensitivity="autograd", test=True)
     train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
-    train_all_pan(pan_configs,epochs=50, sensitivity="adjoint", test=True)
+    train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
