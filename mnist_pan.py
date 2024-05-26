@@ -51,7 +51,7 @@ class VF(nn.Module):
         self.norm1 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
         self.conv1 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1, bias=False)
         self.norm2 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
-        self.conv2 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1, bias=Falsed)
+        self.conv2 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1, bias=False)
         self.norm3 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
 
     def forward(self, t, x, *args, **kwargs):

@@ -9,12 +9,12 @@ from torch.profiler import profile, record_function, ProfilerActivity
 
 
 class NfeMetrics(Callback):
-    def on_before_zero_grad(self, trainer, pl_module, optimizer ):
+    def on_before_zero_grad(self, trainer, pl_module, optimizer):
         nfes = float(pl_module.ode_model.vf.nfe)
         pl_module.log(f"nfe_forward_train", nfes, prog_bar=True)
         pl_module.ode_model.vf.nfe = 0
 
-    def on_after_backward(self,trainer, pl_module):
+    def on_after_backward(self, trainer, pl_module):
         nfes = float(pl_module.ode_model.vf.nfe)
         pl_module.log(f"nfe_backward_train", nfes, prog_bar=True)
         pl_module.ode_model.vf.nfe = 0
@@ -27,11 +27,11 @@ class NfeMetrics(Callback):
 
 class LitOdeClassifier(LightningModule):
     def __init__(
-            self,
-            t_span,
-            embedding: nn.Module,
-            ode_model: nn.Module,
-            classifier: nn.Module,
+        self,
+        t_span,
+        embedding: nn.Module,
+        ode_model: nn.Module,
+        classifier: nn.Module,
     ):
         super().__init__()
         self.t_span = t_span
@@ -40,6 +40,8 @@ class LitOdeClassifier(LightningModule):
         self.classifier = classifier
 
         self.nfe = 0
+
+        self.learning_rate = 1e-3
         # self.save_hyperparameters()
 
     def _common_step(self, batch, batch_idx):
@@ -77,11 +79,22 @@ class LitOdeClassifier(LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.ode_model.parameters(), lr=0.0001)
+        # TODO: use LR callback
+        opt = torch.optim.AdamW(
+            self.parameters(), lr=self.learning_rate, weight_decay=5e-5
+        )
+        lr_scheduler_config = {
+            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(opt),
+            "monitor": "val_loss",
+            "interval": "epoch",
+            "frequency": 1,
+        }
+        out = {'optimizer': opt, 'lr_scheduler': lr_scheduler_config}
+        return out
 
 
 def backward(self, loss: Tensor, *args: Any, **kwargs: Any) -> None:
-        loss.backward()
+    loss.backward()
 
-        self.log('nfe_backward', float(self.ode_model.vf.nfe), prog_bar=True)
-        self.ode_model.vf.nfe=0
+    self.log("nfe_backward", float(self.ode_model.vf.nfe), prog_bar=True)
+    self.ode_model.vf.nfe = 0
