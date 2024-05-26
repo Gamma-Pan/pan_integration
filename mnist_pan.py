@@ -5,6 +5,7 @@ from torch.nn import functional as F
 
 from lightning.pytorch import Trainer
 from lightning.pytorch.loggers import WandbLogger
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.profilers import PyTorchProfiler
 
 from torchdyn.core import MultipleShootingLayer, NeuralODE
@@ -76,6 +77,14 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
     dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
     nfe_callback = NfeMetrics()
+    early_callback = EarlyStopping(
+        monitor="val_loss",
+        min_delta=1e-3,
+        patience=5,
+        verbose=True,
+        mode="min",
+        check_on_train_epoch_end=False,
+    )
 
     trainer = Trainer(
         max_epochs=epochs,
@@ -83,7 +92,7 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[nfe_callback],
+        callbacks=[nfe_callback, early_callback],
     )
 
     trainer.fit(learner, datamodule=dmodule)
