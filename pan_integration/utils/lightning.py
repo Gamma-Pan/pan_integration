@@ -86,9 +86,9 @@ class LitOdeClassifier(LightningModule):
         lr_scheduler_config = {
             "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(opt),
             "monitor": "val_loss",
-            "interval": "epoch",
-            "frequency": 1,
-            "patience": 5,
+            "interval": "step",
+            "frequency": 10,
+            # "patience": 10,
         }
         out = {'optimizer': opt, 'lr_scheduler': lr_scheduler_config}
         return out

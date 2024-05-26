@@ -6,6 +6,7 @@ from torch.nn import functional as F
 from lightning.pytorch import Trainer
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
+from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.profilers import PyTorchProfiler
 
 from torchdyn.core import MultipleShootingLayer, NeuralODE
@@ -78,12 +79,15 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
 
     nfe_callback = NfeMetrics()
     early_callback = EarlyStopping(
-        monitor="val_loss",
-        min_delta=1e-4,
-        patience=10,
-        verbose=True,
-        mode="min",
-        check_on_train_epoch_end=False,
+        monitor="val_accuracy",
+        check_on_train_epoch_end=True,
+        stopping_threshold=0.91,
+    )
+
+    checkpoint = ModelCheckpoint(
+        save_top_k=1,
+        monitor='val_accuracy',
+        mode='min',
     )
 
     trainer = Trainer(
@@ -92,7 +96,7 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[nfe_callback, early_callback],
+        callbacks=[nfe_callback, checkpoint, early_callback],
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -162,23 +166,23 @@ def train_all_shooting(configs, sensitivity, epochs, test):
 
 if __name__ == "__main__":
     pan_configs = (
-        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 30},
+        # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 30},
         {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
-        {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
-        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
+        # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
+        # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
         {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
-        {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
+        # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
     )
 
     shoot_configs = (
-        {"solver": "tsit5", "atol": 1e-3, "fixed_steps": 2},
-        {"solver": "dopri5", "atol": 1e-3, "fixed_steps": 2},
-        {"solver": "rk-4", "fixed_steps": 2},
-        {"solver": "rk-4", "fixed_steps": 5},
         {"solver": "rk-4", "fixed_steps": 10},
+        {"solver": "tsit5", "atol": 1e-3, "fixed_steps": 2},
+        # {"solver": "dopri5", "atol": 1e-3, "fixed_steps": 2},
+        # {"solver": "rk-4", "fixed_steps": 2},
+        # {"solver": "rk-4", "fixed_steps": 5},
     )
 
+    train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
     train_all_shooting(shoot_configs, epochs=50, sensitivity="autograd", test=True)
     # train_all_pan(pan_configs, epochs=50, sensitivity="autograd", test=True)
-    train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
-    train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
+    # train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
