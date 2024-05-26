@@ -28,9 +28,9 @@ NUM_GROUPS = 4
 WANDB_LOG = True
 
 embedding = nn.Sequential(
-    nn.Conv2d(1, CHANNELS, 3, 2, padding=1),
-    nn.GroupNorm(NUM_GROUPS, CHANNELS),
-    nn.Tanh(),
+    nn.Conv2d(1, CHANNELS, 1, 1, padding=0),
+    # nn.GroupNorm(NUM_GROUPS, CHANNELS),
+    # nn.Tanh(),
 ).to(device)
 
 
@@ -96,7 +96,7 @@ def train_all_pan(configs, sensitivity, epochs, test):
             )
             logger.experiment.config.update(config)
             logger.experiment.config.update(
-                {"type": "pan", "sensitivity": sensitivity, "architecture": "CNN"}
+                {"type": "pan", "sensitivity": sensitivity, "architecture": "CNN_IL_aug"}
             )
 
         model = PanODE(
@@ -120,7 +120,7 @@ def train_all_shooting(configs, sensitivity, epochs, test):
             )
             logger.experiment.config.update(config)
             logger.experiment.config.update(
-                {"type": "shooting", "sensitivity": sensitivity, "architecture": "CNN"}
+                {"type": "shooting", "sensitivity": sensitivity, "architecture": "CNN_IL_augk"}
             )
 
         _config = copy(config)
