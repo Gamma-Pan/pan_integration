@@ -41,8 +41,8 @@ class PanODE(nn.Module):
         )
 
     def forward(self, y_init, t_eval, *args, **kwargs):
-        traj, B, metrics = self.solver.solve(self.vf, t_eval, y_init)
-        return t_eval, traj, metrics
+        traj, B = self.solver.solve(self.vf, t_eval, y_init)
+        return t_eval, traj,
 
 
 if __name__ == "__main__":

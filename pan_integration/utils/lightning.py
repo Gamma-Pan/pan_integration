@@ -10,10 +10,16 @@ from torch.profiler import profile, record_function, ProfilerActivity
 
 
 class NfeMetrics(Callback):
+    def __init__(self):
+        self.running = 0
+
+
     def on_before_zero_grad(self, trainer, pl_module, optimizer):
         nfes = float(pl_module.ode_model.vf.nfe)
+        self.running += nfes
         pl_module.log(f"nfe_forward_train", nfes, prog_bar=True)
-        # pl_module.ode_model.vf.nfe = 0
+        pl_module.log(f"total_nfe_forward_train", self.running, prog_bar=True)
+        pl_module.ode_model.vf.nfe = 0
 
     # def on_after_backward(self, trainer, pl_module):
     #     nfes = float(pl_module.ode_model.vf.nfe)

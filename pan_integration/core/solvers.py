@@ -158,14 +158,14 @@ class PanZero:
             B_prev = B
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
                 t_cheb,
-                add_head(B_prev) @ Phi,
+                (add_head(B_prev).unsqueeze(-2) @ Phi).squeeze(-2),
                 )
 
             B = fapprox @ Phi_c - yf_init @ Phi_d
 
-            delta = torch.norm(B - B_prev)
-            if delta.item() < self.delta:
-                break
+            # delta = torch.norm(B - B_prev)
+            # if delta.item() < self.delta:
+            #     break
 
         return add_head(B)
 
@@ -187,8 +187,8 @@ class PanZero:
             B_init = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
 
         # costs 1 nfe
-        # if f_init is None:
-        f_init = f(t_span[0], y_init)
+        if f_init is None:
+            f_init = f(t_span[0], y_init)
 
         B = self._zero_order_itr(f, (t_span[0], t_span[-1]), y_init, f_init, B_init)
 

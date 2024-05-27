@@ -26,12 +26,12 @@ import argparse
 import glob
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 32
+BATCH_SIZE = 6
 
 import multiprocessing as mp
 
 NUM_WORKERS = mp.cpu_count()
-CHANNELS = 12
+CHANNELS = 32
 NUM_GROUPS = 2
 WANDB_LOG = False
 
@@ -41,6 +41,7 @@ class Augmenter(nn.Module):
         super().__init__()
         self.conv = nn.Conv2d(1, CHANNELS - 1, 3, 1, 1)
         self.norm = nn.GroupNorm(NUM_GROUPS, CHANNELS)
+        self.conv2 = nn.Conv2d(CHANNELS - 1, CHANNELS - 1, 3, 2, 1)
 
     def forward(self, x):
         aug = F.tanh(self.conv(x))
@@ -63,7 +64,7 @@ class VF(nn.Module):
         self.conv3 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1, bias=False)
         self.norm4 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
 
-    def forward(self, t, x, *args, **kwargs):
+    def forward(self, t, x):
         self.nfe += 1
         x = F.relu(self.norm1(x))
         x = F.relu(self.norm2(self.conv1(x)))
@@ -190,8 +191,8 @@ if __name__ == "__main__":
     WANDB_LOG = args["log"]
 
     pan_configs = (
-        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 10},
-        {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 10},
+        # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 10},
+        {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 20},
         # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
         # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
@@ -206,7 +207,7 @@ if __name__ == "__main__":
         # {"solver": "rk-4", "fixed_steps": 5},
     )
 
-    train_all_pan(pan_configs, epochs=20, sensitivity="adjoint", test=True)
+    # train_all_pan(pan_configs, epochs=20, sensitivity="adjoint", test=True)
     train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
     train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
     train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
