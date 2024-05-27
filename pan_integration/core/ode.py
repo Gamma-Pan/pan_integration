@@ -75,8 +75,6 @@ class PanZero:
         else:
             self.device = device
 
-        self.counter = 0
-
         # if t_lims don't change, like in a NODE training setting no need
         # to recalculate some quantities every pass
         if t_lims is not None:
@@ -180,13 +178,13 @@ class PanZero:
     def solve(self, f, t_span, y_init, f_init=None, B_init: Tensor | str = None):
         dims = y_init.shape
 
-        # if B_init == "prev":
-        #     B_init = self.B_prev
-        #
-        # if B_init is None or B_init.shape != torch.Size(
-        #     [*dims, self.num_coeff_per_dim - 2]
-        # ):
-        B_init = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
+        if B_init == "prev":
+            B_init = self.B_prev
+
+        if B_init is None or B_init.shape != torch.Size(
+            [*dims, self.num_coeff_per_dim - 2]
+        ):
+            B_init = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
 
         # costs 1 nfe
         # if f_init is None:
@@ -200,9 +198,6 @@ class PanZero:
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
         approx = B @ Phi_out
-
-
-        self.counter += 1
 
         return approx.permute(-1, *list(range(0, len(dims)))), B
 

@@ -186,7 +186,7 @@ if __name__ == "__main__":
     WANDB_LOG = args["log"]
 
     pan_configs = (
-        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 10},
+        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 20},
         # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
         # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
