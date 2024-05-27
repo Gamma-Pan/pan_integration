@@ -23,6 +23,7 @@ import wandb
 
 from copy import copy
 import argparse
+import glob
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 64
@@ -103,6 +104,7 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         accelerator="gpu",
         logger=logger,
         callbacks=[nfe_callback, checkpoint, prof_callback],
+        max_steps=30
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -138,12 +140,9 @@ def train_all_pan(configs, sensitivity, epochs, test):
         ).to(device)
         train_mnist_ode(t_span, model, epochs=epochs, test=test, logger=logger)
         if WANDB_LOG:
-            profile_artf = wandb.Artifact("./trace_{name}", type="profile")
-            profile_artf.add_file(
-                "./trace.json",
-            )
-            run = wandb.init(project="pan_integration", name=name)
-            run.log_artifact(profile_artf)
+            profile_artf = wandb.Artifact(f"trace_{name}", type="profile")
+            profile_artf.add_file(local_path="./trace.json")
+            logger.experiment.log_artifact(profile_artf)
             wandb.finish()
 
 
@@ -151,8 +150,8 @@ def train_all_shooting(configs, sensitivity, epochs, test):
     for config in configs:
         vf = VF().to(device)
         logger = ()
+        name = f"shooting_{config['solver']}_{config['atol'] if 'atol' in config.keys() else config['fixed_steps'] }"
         if WANDB_LOG:
-            name = f"shooting_{config['solver']}_{config['atol'] if 'atol' in config.keys() else config['fixed_steps'] }"
             logger = WandbLogger(
                 project="pan_integration",
                 name=name,
@@ -174,6 +173,10 @@ def train_all_shooting(configs, sensitivity, epochs, test):
         t_span = torch.linspace(0, 1, int(config["fixed_steps"])).to(device)
         train_mnist_ode(t_span, model, epochs=epochs, test=test, logger=logger)
         if WANDB_LOG:
+            profile_artf = wandb.Artifact(f"trace_{name}", type="profile")
+            profile_artf.add_file(local_path="./trace.json")
+            logger.experiment.log_artifact(profile_artf)
+            wandb.finish()
             wandb.finish()
 
 
