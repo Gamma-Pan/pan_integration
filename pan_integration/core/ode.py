@@ -156,19 +156,20 @@ class PanZero:
         for i in range(1, self.max_iters + 1):
             # if self.callback is not None:
             #     self.callback(t_lims, y_init, add_head(B))
-
+            B_prev = B
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
                 t_cheb,
-                add_head(B) @ Phi,
+                add_head(B_prev) @ Phi,
             )
 
             B = fapprox @ Phi_c - yf_init @ Phi_d
 
-            # delta = torch.norm(B - B_prev)
-            # if delta.to(torch.device('cpu')).item() < self.delta:
-            #     break
+            delta = torch.norm(B - B_prev)
+            if delta.item() < self.delta:
+                break
 
         return add_head(B)
+
 
     def _first_order_itr(
         self, t_span, y_init, f_init=None, B_init: Tensor | str = None

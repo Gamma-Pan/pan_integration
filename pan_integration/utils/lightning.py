@@ -118,8 +118,8 @@ class LitOdeClassifier(LightningModule):
 
     def configure_optimizers(self):
         # TODO: use LR callback
-        opt = torch.optim.AdamW(
-            self.parameters(), lr=self.learning_rate, weight_decay=5e-5
+        opt = torch.optim.Adam(
+            self.parameters(), lr=self.learning_rate,
         )
         lr_scheduler_config = {
             "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(opt),

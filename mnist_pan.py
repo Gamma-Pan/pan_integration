@@ -26,12 +26,12 @@ import argparse
 import glob
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 
 import multiprocessing as mp
 
 NUM_WORKERS = mp.cpu_count()
-CHANNELS = 32
+CHANNELS = 64
 NUM_GROUPS = 4
 WANDB_LOG = False
 
@@ -60,12 +60,15 @@ class VF(nn.Module):
         self.norm2 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
         self.conv2 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1, bias=False)
         self.norm3 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
+        self.conv3 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1, bias=False)
+        self.norm4 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
         x = F.relu(self.norm1(x))
         x = F.relu(self.norm2(self.conv1(x)))
-        x = self.norm3(self.conv2(x))
+        x = F.relu(self.norm3(self.conv2(x)))
+        x = self.norm4(self.conv3(x))
         return x
 
 
@@ -91,7 +94,7 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
 
     checkpoint = ModelCheckpoint(
         save_top_k=1,
-        monitor="val_accuracy",
+        monitor="val_acc",
         mode="min",
     )
 
@@ -103,8 +106,7 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[nfe_callback, checkpoint, prof_callback],
-        max_steps=30
+        callbacks=[nfe_callback, checkpoint] # prof_callback],
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -162,7 +164,7 @@ def train_all_shooting(configs, sensitivity, epochs, test):
                 {
                     "type": "shooting",
                     "sensitivity": sensitivity,
-                    "architecture": "CNN_IL_augk",
+                    "architecture": "CNN_IL_aug",
                 }
             )
 
@@ -177,7 +179,6 @@ def train_all_shooting(configs, sensitivity, epochs, test):
             profile_artf.add_file(local_path="./trace.json")
             logger.experiment.log_artifact(profile_artf)
             wandb.finish()
-            wandb.finish()
 
 
 if __name__ == "__main__":
@@ -189,8 +190,8 @@ if __name__ == "__main__":
     WANDB_LOG = args["log"]
 
     pan_configs = (
-        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 20},
-        # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
+        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 10},
+        {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 10},
         # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
         # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
@@ -198,14 +199,14 @@ if __name__ == "__main__":
     )
 
     shoot_configs = (
-        # {"solver": "rk-4", "fixed_steps": 10},
+        {"solver": "rk-4", "fixed_steps": 10},
         {"solver": "tsit5", "atol": 1e-3, "fixed_steps": 2},
         # {"solver": "dopri5", "atol": 1e-3, "fixed_steps": 2},
-        # {"solver": "rk-4", "fixed_steps": 2},
+        {"solver": "rk-4", "fixed_steps": 2},
         # {"solver": "rk-4", "fixed_steps": 5},
     )
 
-    # train_all_pan(pan_configs, epochs=1, sensitivity="adjoint", test=True)
-    train_all_shooting(shoot_configs, epochs=1, sensitivity="adjoint", test=True)
-    # train_all_pan(pan_configs, epochs=50, sensitivity="autograd", test=True)
-    # train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
+    train_all_pan(pan_configs, epochs=20, sensitivity="adjoint", test=True)
+    train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
+    train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
+    train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
