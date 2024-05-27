@@ -44,7 +44,6 @@ class Augmenter(nn.Module):
     def forward(self, x):
         aug = F.tanh(self.conv(x))
         x = torch.cat([x, aug], dim=1)
-        x = self.norm(x)
         return x
 
 
@@ -104,7 +103,6 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         accelerator="gpu",
         logger=logger,
         callbacks=[nfe_callback, checkpoint, prof_callback],
-        # callbacks=[nfe_callback, checkpoint],
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -141,8 +139,10 @@ def train_all_pan(configs, sensitivity, epochs, test):
         train_mnist_ode(t_span, model, epochs=epochs, test=test, logger=logger)
         if WANDB_LOG:
             profile_artf = wandb.Artifact("./trace_{name}", type="profile")
-            profile_artf.add_file('./trace.json', )
-            run = wandb.init(project='pan_integration', name=name)
+            profile_artf.add_file(
+                "./trace.json",
+            )
+            run = wandb.init(project="pan_integration", name=name)
             run.log_artifact(profile_artf)
             wandb.finish()
 
@@ -186,23 +186,23 @@ if __name__ == "__main__":
     WANDB_LOG = args["log"]
 
     pan_configs = (
-        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 30},
+        {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 10},
         # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 30},
         # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
-        {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
+        # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
         # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
     )
 
     shoot_configs = (
-        {"solver": "rk-4", "fixed_steps": 10},
+        # {"solver": "rk-4", "fixed_steps": 10},
         {"solver": "tsit5", "atol": 1e-3, "fixed_steps": 2},
         # {"solver": "dopri5", "atol": 1e-3, "fixed_steps": 2},
         # {"solver": "rk-4", "fixed_steps": 2},
         # {"solver": "rk-4", "fixed_steps": 5},
     )
 
-    train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
-    # train_all_shooting(shoot_configs, epochs=50, sensitivity="autograd", test=True)
+    # train_all_pan(pan_configs, epochs=1, sensitivity="adjoint", test=True)
+    train_all_shooting(shoot_configs, epochs=1, sensitivity="adjoint", test=True)
     # train_all_pan(pan_configs, epochs=50, sensitivity="autograd", test=True)
     # train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)

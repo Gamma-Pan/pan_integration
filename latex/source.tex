@@ -1,4 +1,4 @@
-\documentclass[11pt]{article}
+\documentclass[11pt]{report}
 \usepackage{graphicx} % Required for inserting images
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -40,19 +40,22 @@
     At the end we showcase how our method compares to some commonly used numerical solvers.
 
 
-    \section{Introduction}
+    \chapter{Introduction} \label{ch:intro}
     The machine learning scene in 2024 is dominated by gargantuan models with billions of parameters.
     Even though they have demonstrated impressive results the compute and energy requirements of such models are a
     concern.
-    It's the authors opinion that we ought to transition to analog or hybrid models of computation to reduce energy
+    It's the author's opinion that we ought to transition to analog or hybrid models of computation to reduce energy
     usage and increase speed.
     Even though digital computers are not going away any time soon studying alternative learning frameworks could ease
     the transition.
 
     Neural differential equations re-emerged in the recent years after~\cite{chen2018neural}.
-    We believe they have great potential especially in modelling physical phenomena governed by differential equations,
-    irregularly sampled time series and generative models like continuous normalising flows and stochastic differential
-    equations.
+    It's considered that they have great potential especially in:
+    \begin{itemize}
+        \item modelling physical phenomena governed by differential equations
+        \item irregularly sampled time series
+        \item generative models including continuous normalising flows and stochastic differential equations
+    \end{itemize}
     More importantly, in out opinion, they highlight a connection between deep learning and dynamical systems.
     Even thought we still operate in the discrete domain to use them in our current systems they offer an opportunity
     to close the gap between continuous time models and machine learning.
@@ -61,7 +64,7 @@
     them limitations.
 
 
-    \section{Residual Networks}
+    \chapter{Residual Networks} \label{ch:resnet}
     In order to understand the intuition behind neural ordinary differential equations one should have a basic knowledge
     of residual networks.
     Residual networks, also known as ResNets, were introduced by He and others in their seminal
@@ -240,14 +243,14 @@
     Transformers for example, employ residual connections, allowing many such layers to be stacked creating large expressive models~\cite{vaswani2017attention}.
 
 
-    \section{Neural ODEs}
+    \chapter{Neural ODEs}
     There exist examples in the literature of combining neural networks and dynamical systems, even since the 1990s~\cite{rico1992discrete}.
     Interest began to increase after the publication of ResNet~\cite{weinan2018mean}.
     But the field of Neural Differential Equations really became prominent with~\cite{chen2018neural}.
 
     \subsection{A continuous time network}
     Let's revisit Residual Networks and how they work.
-    The input-output relationship of the $k$-th ResNet block is given by:
+    The input-output relationship of the $k$-th discrete ResNet block is given by:
     \begin{equation}
         \pmb{y}_{k+1} = \pmb{y}_{k} + f(\pmb{y}_{k}; \pmb{\theta}_k) \label{resnet}
     \end{equation}
@@ -255,76 +258,85 @@
     Notice that we refer to ResNet blocks, not layers, since residual connections are generally not between the input and output of a single linear layer but a stack of them; from now on we will use the terms interchangeably.
 
     The update in the \textit{hidden state} $\pmb{y}$ in~\eqref{resnet} resembles the formula of the forward Euler iteration for solving ordinary differential equations.
-    This observation led some, like ~\cite{lu2018beyond,weinan2018mean,ruthotto2020deep} to make a connection between some neural network architectures and differential equations.
+    This observation led some researchers~\cite{lu2018beyond,weinan2018mean,ruthotto2020deep} to make a connection between neural network architectures and differential equations.
     Suppose that we could keep increasing the depth of the ResNet in~\eqref{resnet} while the time of the forward pass remained bounded, meaning each layer would take less and less time.
-    In the limit we get a differential equation governed by the dynamics defined by a neural network $f$.
+    In the limit we get a differential equation governed by the dynamics defined by a neural network $f$:
     \begin{equation}
         \frac{ \pmb{y}(t)}{dt} = f(\pmb{y}(t); \pmb{\theta}) \label{diffeq}
     \end{equation}
     Instead of a discrete sequence of hidden states, $\pmb{y}(t)$ is a continuous flow $\pmb{y} : [0,T] \to \mathbb{R}^{N_y}$ defined be the vector field parameterised by $\pmb{\theta}$.
 
-    One important issue we haven't addressed is that the weights in~\eqref{resnet} change at each layer but at~\eqref{diffeq} they are the same for the entire trajectory.
+    One important issue we haven't addressed is that the network's weights, $\pmb\theta_k$, in~\eqref{resnet} are
+    different for each $k$, but at~\eqref{diffeq} we consider them to be constant in time.
     For notation’s sake we could define $f$ as $f(\pmb{y}(t), t, \pmb{\theta})$ meaning at certain ``depths'' different sections of the weights vector $\pmb{\theta}$ are used, maybe in a piecewise constant fashion~\cite{kidger2022neural}.
     Alternatively, the weights could be time dependant which complicates the model but leads to \textit{Galerkin} Neural ODEs, a more suitable continuous time equivalent of ResNet~\cite{massaroli2020dissecting}.
     For our purposes we consider the weights constant for the rest of this paper.
 
     \subsection{Inference}
     Under this new machine learning framework depth is replaced by time.
-    Inference is performed by solving an initial value problem from initial time $t=0$ to terminal time $t=T$.
+    Inference is performed by solving an initial value problem from initial time $t=0$ to terminal time $t=T$, i.e.:
     \begin{equation}
         \pmb{y}(T) = \pmb{y}(0) + \int_{0}^{T} f(\pmb{y}(\tau); \pmb{\theta}) \, d\tau \label{ivp}
     \end{equation}
 
-    Obviously,~\eqref{ivp} is a continuous time problem while our computers work in discrete time \textit{(for now)}.
-    In order to solve it we employ a numerical method for solving \textit{Initial Value Problems}, .
+    Obviously, Eq.~\eqref{ivp} describes the solution of a continuous time differential equation, while, as we know, our
+    computers work in discrete time \textit{(for now)}.
+    In order to overcome this obstacle we employ a numerical method for solving \textit{Initial Value Problems}, .
     If we were to use forward Euler, an explicit method, we would get a recurrence relation of the form
     \begin{equation}
         \pmb{y}(t_k + h) = \pmb{y}(t_k) + h \left. \frac{d\pmb{y}(t)}{dt} \right|_{t = t_k}
         \label{forwaredEu}
     \end{equation}
-    By considering that $\frac{d \pmb{y}(t)}{dt} = f(\pmb{y}(t);\pmb{\theta})$ eq. \eqref{forwaredEu} can be written as:
+    By considering that $\frac{d \pmb{y}(t)}{dt} = f(\pmb{y}(t);\pmb{\theta})$ Eq. \eqref{forwaredEu} can be written as:
     \begin{equation}
         \pmb{y}(t_k + h) = \pmb{y}(t_k) + h f(\pmb{y}(t_k); \pmb{\theta} )
         \label{res2eul}
     \end{equation}
     which coincides with the ResNet formula.
-    Many other neural network architectures can be interpreted as solving a neural ODE using different methods~\cite{chen2019ordinary}.
+    Many other neural networks of deep architectures can be interpreted as solving a neural ODE using different methods~\cite{chen2019ordinary}.
     The field of numerical differential equation solvers is quite vast meaning one could choose one that fits his specifications.
-    A notable case is that of adaptive solvers like Runge-Kutta-Fehlberg (RKF45), that use varying step sizes.
+    A notable case is that of adaptive solvers like Runge-Kutta-Fehlberg, that use varying step sizes.
     This way to obtain  $\pmb{y}(T)$ the solver may require different number of $f$ evaluations depending on the input and the complexity of the vector field at that input.
     For simple dynamics the solver can ``decide'' to use large step sizes meaning fewer function evaluations.
-    Otherwise when the the vector field is more complex, a smaller step size will be used -to reduce error- leading to more function evaluations.
+    Otherwise when the vector field is more complex, a smaller step size will be used to reduce error thus leading to more function evaluations.
     We could interpret this behaviour as a network of ``variable depth''.
 
     It's important to clarify here that there are effectively two networks at play.
-    Firstly, there is $f$, inherited from a block or layer of the original formulation of the problem.
+    Firstly, there is $f(\cdot)$, inherited from a block or layer of the original formulation of the problem.
     It is a neural network in the classical sense comprised of matrix vector multiplications and non-linearities.
-    Secondly, there is the outlining model, the neural differential equation, which receives input $\pmb{y}_0$ and produced output $\pmb{y}(T)$; $f$ is to neural ODE what a layer is to ResNet.
-    Internally, depending on the solver, $f$ will be evaluated for many values of $\pmb{y}(t)$.
-    As disguised above, in contrast to ResNet $f$ contains all the learnable parameters of the model, which in out case are independent of depth.
-    In conclusion the Neural ODE consists of: a neural network $f$ -that defines a \textit{learnable} vector field- parameterised by $\pmb{\theta}$,  some input $y_0$ and a numerical solver that applies $f$ until it reaches $\pmb{y}(T)$.
+    Secondly, there is the outlining model, the neural differential equation, which receives input $\pmb{y}_0$ and produced
+    output $\pmb{y}(T)$; $f(\cdot)$ is to neural ODE what a layer is to ResNet.
+    Internally, depending on the solver, $f(\cdot)$ will be evaluated for many values of $\pmb{y}(t)$.
+    As disguised above, in contrast to ResNet $f(\cdot)$ contains all the learnable parameters of the model,
+    which in out case are independent of depth.
+    In conclusion the Neural ODE consists of: a neural network $f(\cdot)$ -that defines a \textit{learnable}
+    vector field- parameterised by $\pmb{\theta}$,  some input $y_0$ and a numerical solver that applies $f(\cdot)$ until it reaches $\pmb{y}(T)$.
 
     \begin{figure}[H]
         \begin{center}
             \input{resnet_to_node_plot.pgf}
         \end{center}
-        \caption{ResNets can be considered as discretizations of an ODE solution. Under this assumption as Resnet
+        \caption{ResNets can be considered as discretizations of an ODE solution. Under this assumption Resnet
         defines a continuous time vector field.}
         \label{fig:resnet_to_node}
     \end{figure}
 
     \subsection{Training}
-    Optimising any model through gradient descent, in a supervised learning setting, requires acquiring the gradient of some loss function $L(\pmb{\theta})$ with respect to (wrt.) the model's parameters $\pmb{\theta}$.
-    Usually, the loss for each sample in the dataset is calculated using a cost, or distance, function between the output of the network and the desired or ideal output.
+    Optimising any model through gradient descent, in a supervised learning setting, requires acquiring the gradient of
+    some loss function $\mathcalL(\pmb{\theta})$ with respect to (wrt.) the model's parameters $\pmb{\theta}$.
+    Usually, the loss for each sample in the dataset is calculated using a cost, or distance, function between the
+    output of the network and the desired or ideal output $\pmb{y}^*$.
     Sometimes, the loss function may be dependent on the state on multiple times.
-    But for simplicity's sake we will examine the case where it only depends on the state at time $t=T$, which as is is apparent, depends indirectly on parameters $\theta$.
+    But for simplicity's sake we will examine the case where it only depends on the state at time $t=T$,
+    which as is is apparent, depends indirectly on parameters $\theta$.
     \begin{equation}
-        L(\pmb{y}(T)) = L \left( \pmb{y}(0) +\int_{0}^{T} f(\pmb{y}(\tau), \tau, \pmb{\theta}) \,d\tau \right) \label{ode_loss}
+        L(\pmb{y}(T), \pmb{y}^*) = L \left( \pmb{y}(0) +\int_{0}^{T} f(\pmb{y}(\tau), \tau, \pmb{\theta}) \,d\tau \right, \pmb{y}^*)
+        \label{eq:ode_loss}
     \end{equation}
     One could naively solve the initial value problem using any numerical ODE solver and try to backpropagate the gradients through the steps of the solver.
-    This approach may be possible with the help of modern automatic differentiation software but its highly memory inefficient [CITATION NEEDED]. In order to overcome this problem we are going to follow a different approach.
-    To this end let's first define the gradient of $L$ wrt.
-    the hidden state at some time $t$.
+    This approach may be possible with the help of modern automatic differentiation software but its highly memory inefficient~\cite{matsubara2021symplectic}.
+    In order to overcome this problem we are going to follow a different approach.
+    To this end let's first define the gradient of $L$ wrt the hidden state at some time $t$, i.e.:
     \begin{equation}
         \pmb a(t) = \frac{\partial L}{\partial \pmb{y}(t) }
     \end{equation}
@@ -349,12 +361,12 @@
     Notice that we can easily compute $\pmb{a}(T)$ as we know the form of the loss function eg.
     mean square error loss.
     Having this initial condition $\pmb{a}(T)$ we can solve the differential equation~\eqref{adjoint} backwards in time to find $\pmb{a}(t)$ for any $t$.
-    As we solve the equation, values of $\pmb{y}(t)$ may be required.
+    Solving the equation, values of $\pmb{y}(t)$ may be required.
     We can get them by solving the initial differential equation~\eqref{ivp} starting from $\pmb{y}(t)$ and again moving from time $T$ to time $0$.
 
-    Our goal is to calculate $\frac{dL}{d\pmb{\theta}}$ which can be done by solving another differential equation or equivalently by evaluating the following integral:
+    Our goal is to calculate $\nabla_{\pmb{\theta}}L$ which can be done by solving another differential equation or equivalently by evaluating the following integral:
     \begin{equation}
-        \frac{dL}{d\pmb{\theta}}
+        \nabla_{\pmb{\theta}}L
         = \int_T^0
         \pmb{a}(t)^T
         \frac
@@ -364,12 +376,12 @@
         \label{dldtheta}
     \end{equation}
     All these results stem from optimal control theory and more specifically consist specialised cases of Pontryagin's Maximum Principle.
-    A discussion on how to prove~\eqref{adjoint} and~\eqref{dldtheta} in a simpler way is made on appendix~\ref{adjoint_proof}.
+    A discussion on how to prove~\eqref{adjoint} and~\eqref{dldtheta} in a simpler way is presented on Appendix~\ref{adjoint_proof}.
 
     \subsection{Applications, benefits and limitations}
-    There are examples in the literature where researchers have used Neural ODEs to physical problems as the continuous time dynamics fit such problems well.
+    There are examples in the literature where researchers have used Neural ODEs to simulate physical problems as the continuous time dynamics fit such problems well.
     Recently the authors of~\cite{chiu2023exploiting} showed Neural CDEs, a variant of neural ODEs, lend themselves well to video modelling tasks, with performance comparable to classical neural nets.
-    Other applications include modelling for irregularly sampled time series and continuous normalising flows.
+    Other applications include modelling for irregularly sampled time series and continuous normalising flows ~\cite{chen2018neural,kidger2022neural}.
     More generally Neural ODEs could be seen as a drop in replacement for ResNets.
 
     Despite the scientific interest in the last years continuous time models have mostly remained in the lab.
@@ -377,24 +389,32 @@
     Neural ODEs typically require more function evaluations than classical models.
     Furthermore, one subtle limitation is that as the vector fields becomes more and more complex to fit the data the harder and more expensive it gets to solve them numerically.
     For those reasons Neural ODEs tend to become computationally intractable for large datasets.
-    Work is been done though to tackle these problems like hypersolvers~\cite{poli2020hypersolvers} and algebraically reversible solvers~\cite{kidger2021efficient}~\cite{zhuang2021mali}.
-    Another way to speed up continuous time networks is to speed up the numerical solver through parallelism.
+    Researches have tried to combat these problems using methods like hypersolvers~\cite{poli2020hypersolvers} and algebraically
+    reversible solvers~\cite{kidger2021efficient,zhuang2021mali}~.
+    Another way to speed up continuous time networks is to speed up the numerical solver through parallelism ~\cite{gander201550}.
 
 
-    \section{Numerical Solvers}
+    \chapter{Numerical Solvers}
     Ordinary differential equations are heavily featured in many scientific and engineering disciplines.
     We usually wish to solve problems where the dynamics of some system $f$ along with some initial state $y_0$ are
     known, at some initial time $t_0$ and we are tasked to find the value of the state vector at some time $t_1$.
     This problem can be formulated as an initial value problem or IVP .
     \begin{equation}
         \label{eq:sol:ivp}
-        \frac{dy}{dt} = f(t, y), y(0) = y_0
+        \frac{dy}{dt} = f(t, y), \quad y(0) = y_0
     \end{equation}
     The exact solutions to these ODEs is usually hard to calculate or intractable.
     To this end, many numerical methods have been developed over the years.
 
+
     \subsection{Introduction}
-    In general even if $f$ is continuous it is not guaranteed that the there exists a unique solution to
+    In this chapter we will make a short reference to some basic theoretical prerequisites of numerical ODE solver.
+    Then we will showcase some important methods.
+    For simplicity we will focus on scalars but all the theorems are easily extensible to vectors.
+    Moreover, we can consider higher dimensional IVPs as a (coupled) collection of scalar ODEs, so the same principles as
+    those presented here apply.
+
+    In general even if $f$ is continuous it is not guaranteed that the there exists a unique solution to IVP
     ~\eqref{eq:sol:ivp}.
     Fortunately, under some mild conditions on $f$ the existence and uniqueness of a solution is ensured through the
     following theorem.
@@ -423,7 +443,7 @@
 
     The condition ~\eqref{eq:sol:lipsitz} is called \textbf{Lipschitz condition} and $L$ is called the
     \textbf{Lipschitz constant} for f.
-    For most applications we are interested in we can assume that $f$ is Lipschitz.
+    For most applications we are interested in, we can assume that $f$ is Lipschitz.
     There also exists a an extension of Picard's theorem to multivariate functions $f: \mathbb{R}^m \to \mathbb{R}^m$.
     The theorem for multiple dimensions is analogous to the scalar case except that the absolute function above is
     replaced with the Euclidean norm on vectors.
@@ -435,7 +455,7 @@
         the solution $y = w(t)$ to the differential equation $\frac{dy}{dt} y = f(t, y) $ satisfying the initial condition
         $w(t_0) = z$ is defined for all $t \in [t_0, T]$ and satisfies $ \lvert v(t) - w(t) \rvert \leq \epsilon$ for
         all $t$ in $[t_0, T]$.
-        A solution which is stable on $[t_0, \infty)$ (i.e. stable on $[t_0, Y]$) for all $Y$ and with $\delta$
+        A solution which is stable on $[t_0, \infty)$ (i.e. stable on $[t_0, Y]$ for all $Y$ and with $\delta$
         independent of $T$) is said to be \textbf{stable in the Lyapunov sense}.
         Moreover, if
         \begin{equation*}
@@ -474,8 +494,8 @@
     This can be shown formally considering the Taylor expansion of $y$ around $t_n$
     \begin{align*}
         y(t_n+h) &= y(t_n) + h y'(t_n) + \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
-        y(t_n+h) &= y_{k+1}  + \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
-        y(t_n+h) - y_{k+1} &= \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
+        y(t_n+h) &= y_{n+1}  + \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
+        y(t_n+h) - y_{n+1} &= \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
         \text{local error} &= \mathcal{O}(h^2)
     \end{align*}
     So the error scales inversely with the square of the step size, as we will see later higher order solver sacrifice
@@ -533,21 +553,21 @@
     This observation motivates the following definition.
 
     \begin{definition}
-        A general explicit one-step numerical method is said to be \textbf{consistent} with the differential equation
-        ~\eqref{eq:sol:ivp} if the truncation error defined by ~\ref{eq:sol:trunc_err} is such that for any $\epsilon$
+        A general explicit one-step numerical method is said to be \textbf{consistent} with the IVP~\eqref{eq:sol:ivp}
+        if the truncation error defined in Eq. ~\ref{eq:sol:trunc_err} is such that for any $\epsilon$
         there exists a positive $h(\epsilon)$ for which $T_n < \epsilon$ for $0 < h< h{\epsilon}$ and any pair of points
         $(t_n, y(t_n)), (t_{n+1}, y(t_{n+1}) ) $ on any solution curve in \pmb{R}.
     \end{definition}
 
-    Besides, consistent we wish our solver to be accurate, to quantify the accuracy of a solver we define its order of
-    accuracy
+    Besides consistent, we wish our solver to be accurate, to quantify the accuracy of a solver we define its order of
+    accuracy.
 
     \begin{definition}
         A general explicit one-step method is said to have \textbf{order of accuracy} p, if p is the largest positive
-        integer such that, for any sufficiently smooth solution curve $(t, y(t))$ in $\pmb{R}$ of the initial value
-        problem ~\eqref{eq:sol:ivp}, there exists constants $K$ and $h_0$ such that
+        integer such that, for any sufficiently smooth solution curve $(t, y(t))$ in $\pmb{R}$ of the
+        IVP~\eqref{eq:sol:ivp}, there exists constants $k$ and $h_0$ such that
         \begin{equation*}
-            |T_n| \leq Kh^p \quad for 0<h\leq h_0
+            |T_n| \leq Kh^p \quad for \; 0<h\leq h_0
         \end{equation*}
         for any pair of points $(t_n, y(t_n)), (t_{n+1}, y(t_{n+1}) ) $ on the solution curve.
     \end{definition}
@@ -557,7 +577,7 @@
 
     \subsection{Runge-Kutta methods}
     Runge-Kutta methods, introduced by Runge with significant contributions by Heun and Kutta, aim to improve Euler's
-    method accuracy by introducing intermediate evaluations of $f$ between $t_n$ and $t_{k+1}$.
+    method accuracy by introducing intermediate evaluations of $f$ between $t_n$ and $t_{n+1}$.
 
     In their most general formulation of a Runge-Kutta method is given by:
     \begin{equation}
@@ -594,9 +614,9 @@
         y(t_n+h) \approx y(t_n) + hb_1 f(t_n, y_n)) + hb_2 f(t_n + c_2 h, y(t_n+ c_2 h) )
     \end{equation*}
     The first term we can easily calculate since we know all the relative quantities and we denote
-    $K_1 = h\:f(t_n, y_n)$.
+    $k_1 = h\:f(t_n, y_n)$.
     The second term contains $y(t_n + c_2 h)$ which is unknown, but we can calculate its Euler approximation and
-    introduce $ K_2 = h\:f(t_n + \alpha h, y_n + \beta K_1) $ where $a=c_2, b = c_2 - t_n$.
+    introduce $ k_2 = h\:f(t_n + \alpha h, y_n + \beta k_1) $ where $a=c_2, b = c_2 - t_n$.
     Finally, we have the following (note that a third order method would also have $k_3$ term that would include $k_1$ and $k_2$, a
     fourth $k_4$ etc)
     \begin{equation*}
@@ -604,24 +624,24 @@
     \end{equation*}
     To find out the unknown variables $b_1, b_2, \alpha, \beta$ we replace the left hand side with its Taylor expansion
     around $t_n$:
-    \begin{equation*}
+    \begin{equation}
         y(t_n) + h y'(t_n) + \frac{h^{2}}{2!}y''(t_n) + \mathcal{O}\left(h^{3}\right)
         =
         y(t_n) + b_{1}k_{1} + b_{2}k_{2}.
-        \label{eq:sol:tayl1}
-    \end{equation*}
+        \label{eq:tayl1}
+    \end{equation}
     In the above equation $y'(t_n)$ is obviously $f(t_n, y(t_n))$ and
     $y''(t_n) = \left. \frac{dy}{dt} f(t, y(t)) \right|_{t=t_n}$ since $f$ has both direct and indirect dependence of t
     it is expanded as $\frac{d}{dt} f(t, y(t)) = f_{t} + ff_{y}$  from the multivariate chain rule, where $f_x$ is
     $\frac{\partial f}{\partial x}(t, y(t))$, we omit $f$'s arguments omitted for convenience.
-    Substituting $K_1$, $K_2$ in ~\eqref{eq:sol:tayl1} we get:
-    \begin{equation*}
+    Substituting $k_1$, $k_2$ in ~\eqref{eq:sol:tayl1} we get:
+    \begin{equation}
         hf + \frac{h^{2}}{2}(f_{t} + ff_{y}) + \mathcal{O}\left(h^{3}\right)
         =
         b_{1}hf + b_{2}hf(t + \alpha h, y + \beta k_{1}).
-        \label{eq:sol:tayl2}
-    \end{equation*}
-    We know apply the 2-dimensional Taylor expansion on the right-hand side of ~\eqref{eq:sol:tayl2}:
+        \label{eq:tayl2}
+    \end{equation}
+    We now apply the 2-dimensional Taylor expansion on the right-hand side of ~\eqref{eq:sol:tayl2}:
     \begin{align*}
         hf + \frac{h^{2}}{2}(f_{t} + ff_{x}) + \mathcal{O}\left(h^{3}\right)  &=
         b_{1}hf + b_{2}(hf +\alpha h^{2}f_{t} + \beta h^{2} ff_{x}) + \mathcal{O}\left(h^{3}\right)
@@ -700,12 +720,12 @@
     \end{equation*}
 
 
-    \section{Parallelism in Time}
+    \chapter{Parallelism in Time}
     It is apparent that Moore's law is crumbling.
     In the last decades focus has shifted to parallel computation to increase performance rather than increasing single
     threaded frequencies [CITATION?].
     In the field of deep learning, massive parallelisation of training and inference workloads have led to major
-    breakthroughs like~\cite{vaswani2017attention}.
+    breakthroughs ~\cite{vaswani2017attention}.
     Differential equations solvers have intrinsic serial characteristics.
     Each iteration of a time stepping algorithm depends on the previous steps.
     Nevertheless, after the seminal work presented in~\cite{nievergelt1964parallel}, several methods have been proposed
@@ -713,8 +733,8 @@
     Recent advances include the parareal algorithm~\cite{maday2002parareal} and PFASST~\cite{emmett2012toward} algorithm.
     Massaroli et al. \cite{massaroli2021differentiable} used principles of multiple shooting layers,
     a subcategory of parallel in time methods, and root finding algorithms, to accelerate neural ODES.
-    In the next subsection a new parallel in time algorithm based on refining a polynomial approximation of the solution
-    using zero order and higher optimizers.
+    In the next subsection we introduce a new parallel in time algorithm which is based on the use of a polynomial
+    approximation of the solution of the IVP.
 
     \subsection{Polynomial approximation}
     Let us consider the following initial value problem that we wish to solve in some time interval
@@ -879,7 +899,7 @@
             (N-1) \cdot U_{N-2}(t_0) & (N-1) \cdot U_{N-2}(t_1) & \dots & (N-1) \cdot U_{N-2}(t_{M-1})
         \end{bmatrix}
     \end{equation*}
-    Using these matrices we can rewrite ~\ref{eq:grad_err} in terms of matrix products as follows:
+    Using these matrices we can rewrite Eq.~\ref{eq:grad_err} in terms of matrix products as follows:
     \begin{align}
         0 &=
         B_{k+1}^T \dot\Phi (\dot\Phi^T \odot \Delta \pmb{t} \cdot \pmb{1}^T  ) -
@@ -889,7 +909,7 @@
         f \big( B_{k}^T \Phi \big) ( {\dot\Phi}^T \odot \Delta \pmb{t} \cdot \pmb{1}^T)
         ( \dot\Phi (\dot\Phi^T \odot \Delta \pmb{t} \cdot \pmb{1}^T ) )^{-1} \label{update}
     \end{align}
-    Equation ~\ref{update} outlines the iteration scheme for this zero order optimisation algorithm.
+    Eq.~\ref{update} outlines the iteration scheme for this zero order optimisation algorithm.
     Omitting the partitions' lengths terms $\Delta \pmb{t}$ temporarily for clarity:
     \begin{equation*}
         B_{k+1}^T =
@@ -912,19 +932,19 @@
 
     \subsubsection{Higher order minimization}
     It's apparent that the accuracy of this iterative solution depends on the residual of the zero order
-    approximation on ~\eqref{eq:grad_err}.
+    approximation on Eq.~\eqref{eq:grad_err}.
     The zero order algorithm converges rather fast but can't achieve high accuracy.
     Experimental results show that it oscillates around the optimum.
 
-    To combat that this, we can use the solution matrix $\bar B$ as the starting value of a higher order method to
+    To combat that, we can use the solution matrix $\bar B$ as the starting value of a higher order method to
     increase accuracy.
     A simple choice is a fist degree optimisation method such as gradient descent or one of each variants.
 
     Another choice is the Newton-Raphson algorithm with Hessian modification, a second order method.
-    A version of the algorithm is showcased in Appendix~\ref{newtonalgo}, where line-search is used for the learning
-    rate or step size of the update ~\ref{alg:linesearh}.
+    A version of the algorithm ~\ref{alg:linesearh} is showcased in Appendix~\ref{newtonalgo}, where line-search is used for the learning
+    rate or step size of the update.
 
-    Combining polynomial approximation with the Newton algorithm we arrive at algorithm \ref{alg:intapprox}.
+    Combining polynomial approximation with the Newton algorithm we arrive at algorithm ~\ref{alg:intapprox}.
 
     \begin{algorithm}
         \caption{Polynomial approximation numerical integration}
@@ -991,7 +1011,7 @@
         \end{bmatrix}
     \end{align}
     Solving for $[B_0 \; B_1]$ we have:
-    \begin{equation*}
+    \begin{equation}
         \label{eq:pan:B01}
         \begin{bmatrix}
             B_0 & B_1
@@ -1007,9 +1027,8 @@
             \phi_0(t_0) & \dot\phi_0(t_0) \\
             \phi_1(t_0) & \dot\phi_1(t_0)
         \end{bmatrix}^{-1}
-    \end{equation*}
-    The structure of $\phi(t)$ ensures this $2\times 2 $ matrix is always invertible and more specifically
-    a lower triangular matrix.
+    \end{equation}
+    The lower triangular structure of $\phi(t)$ ensures that this $2\times 2 $ matrix is always invertible.
     This can be show easily since $\phi_0(t_0) = T_0(-1)$ is always $1$,  $\phi_1(t_0) = T_1(-1) = -1$, the derivative of
     $T_0$ is obviously $0$ and $\dot\phi_1(t_0)$ is something non-zero.
 
@@ -1028,7 +1047,7 @@
 
     \subsubsection{The Hessian}
 
-    The primary concern computationally is the number of function evaluations or \textit{NFE} of $f$,
+    The primary concern computationally is the number of function evaluations or NFE of $f$,
     the neural networks.
     The number of coefficients in $B$ is orders of magnitude smaller that the number of parameters in the network,
     hence storing the full Hessian shouldn't be a limiting factor.
@@ -1888,7 +1907,6 @@
     This results in faster progress in the more gentlysloped regions of parameter space and works well when the
     gradient is sparse~\cite{duchi2011adaptive}.
 
-
     \subsubsection{RMSProp}
     The RMSProp algorithm is famous for being an unpublished but well known optimisation algorithm.
     RMSprop modifies Adagrad so that instead of accumulating the square of the gradients for each parameter, which can
@@ -1909,13 +1927,12 @@
     \begin{align*}
         \pmb{v}_k \gets \alpha \pmb{v}_{k-1} + (1 - \alpha) \nabla_{\theta_k} L( \pmb\theta_{k} ) \\
         \pmb{s}_k \gets \beta \pmb{s}_{k-1} + (1 - \beta) \nabla_{\theta_k} L( \pmb\theta_{k} ) \\
-        \pmb\theta_{k+1} \gets \pmb\theta_{k} - \eta \frac{\hat{\pmb{v}}_k}{  \sqrt{ \hat{\pmb{s}}_k  + \epsilon }} \nabla_{\theta_k} L( \pmb\theta_k)
+        \pmb\theta_{k+1} \gets \pmb\theta_{k} - \eta \frac{\hat{\pmb{v}}_k}{  \sqrt{ \hat{\pmb{s}}_k + \epsilon }} \nabla_{\theta_k} L( \pmb\theta_k)
     \end{align*}
     In the above equations $\hat{\pmb{v}}_k$, $\hat{\pmb{v}}_k$ are the bias corrected estimates of the moments to account
     for their initialization.
     Since RMSProp lacks the correction factor, it has a high-bias in the early stages of training, while Adam is
     robust to the choice of hyperparameters.
-
 
 
 \end{document}

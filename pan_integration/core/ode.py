@@ -1,10 +1,14 @@
+import contextlib
+
 import torch
 from torch import Tensor, tensor, nn
 from torch.func import vmap
 from torch.autograd import Function
 from typing import Tuple, Callable
 import ipdb
-from pan_integration.optim.matrix_chain import chain_mat_greedy
+
+import contextlib
+from torch.profiler import profile, ProfilerActivity
 
 
 def T_grid(t, num_coeff_per_dim):
@@ -60,16 +64,18 @@ class PanZero:
         device=None,
         callback=None,
     ):
-        self.delta = torch.tensor(delta)
         self.max_iters = max_iters
         self.callback = callback
         self.num_coeff_per_dim = num_coeff_per_dim
         self.num_points = num_points
+        self.delta = delta
 
         if device is None:
             self.device = torch.device("cpu")
         else:
             self.device = device
+
+        self.counter = 0
 
         # if t_lims don't change, like in a NODE training setting no need
         # to recalculate some quantities every pass
@@ -91,9 +97,10 @@ class PanZero:
             self.t_cheb,
             self.Phi,
             self.DPhi,
+            self.Phi_tail,
             self.inv0,
             self.Phi_c,
-            self.Phi_d
+            self.Phi_d,
         ) = self._calc_independent(
             value, self.num_coeff_per_dim, self.num_points, self.device
         )
@@ -111,92 +118,92 @@ class PanZero:
 
         inv0 = torch.linalg.inv(torch.stack([Phi[0:2, 0], DPhi[0:2, 0]]).T)
 
-        Phi_b = DPhi[2:, :] - torch.stack(
-            [Phi[2:, 0], DPhi[2:, 0]], dim=-1
-        ) @ inv0 @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0)
+        Phi_tail = torch.stack([Phi[2:, 0], DPhi[2:, 0]], dim=-1)
+
+        Phi_b = DPhi[2:, :] - Phi_tail @ inv0 @ torch.stack(
+            [DPhi[0, :], DPhi[1, :]], dim=0
+        )
 
         # invert a (num_coeff X num_coeff) matrix once
         Q = torch.linalg.inv(Phi_b @ (Dt[:, None] * Phi_b.mT))
 
         Phi_b_T = Dt[:, None] * Phi_b.mT
-        Phi_c = Phi_b_T@ Q
+        Phi_c = Phi_b_T @ Q
 
-        Phi_d =inv0 @torch.stack([DPhi[0, :], DPhi[1, :]], dim=0) @Phi_b_T @ Q
+        Phi_d = inv0 @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0) @ Phi_b_T @ Q
 
-        return t_cheb,  Phi, DPhi, inv0, Phi_c, Phi_d
+        return t_cheb, Phi, DPhi, Phi_tail, inv0, Phi_c, Phi_d
 
-    def _zero_order_itr(
-        self, f, t_lims, y_init, f_init=None, B_init=None
-    ) -> Tuple[Tensor, Tuple]:
+    def _zero_order_itr(self, f, t_lims, y_init, f_init, B_init) -> Tensor:
         # if saved don't recalculate
         if self.t_lims is not None:
             t_cheb = self.t_cheb
             Phi = self.Phi
-            DPhi = self.DPhi
             inv0 = self.inv0
             Phi_c = self.Phi_c
             Phi_d = self.Phi_d
+            Phi_tail = self.Phi_tail
         else:
-            t_cheb,  Phi, DPhi, inv0, Phi_c, Phi_d= self._calc_independent(
+            t_cheb, Phi, _, Phi_tail, inv0, Phi_c, Phi_d = self._calc_independent(
                 t_lims, self.num_coeff_per_dim, self.num_points, y_init.device
             )
 
-        dims = y_init.shape
-
-        if B_init is None or B_init.shape != torch.Size(
-            [*dims, self.num_coeff_per_dim - 2]
-        ):
-            B_init = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
-
-        # costs 1 nfe
-        if f_init is None:
-            f_init = f(t_lims[0], y_init)
-
         yf_init = torch.stack([y_init, f_init], dim=-1)
-        Phi_tail = torch.stack([Phi[2:, 0], DPhi[2:, 0]], dim=-1)
 
-        def head(B_tail):
-            return (yf_init - B_tail @ Phi_tail) @ inv0
+        def add_head(B_tail):
+            head = (yf_init - B_tail @ Phi_tail) @ inv0
+            return torch.cat([head, B_tail], dim=-1)
 
         B = B_init
-        i = 0
-        delta = torch.inf
         for i in range(1, self.max_iters + 1):
-            if self.callback is not None:
-                self.callback(torch.cat([head(B), B], dim=-1), t_lims, y_init)
+            # if self.callback is not None:
+            #     self.callback(t_lims, y_init, add_head(B))
 
-            B_prev = B.detach()
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
                 t_cheb,
-                torch.cat([head(B_prev), B_prev], dim=-1) @ Phi,
+                add_head(B) @ Phi,
             )
 
-            B = fapprox@Phi_c - yf_init @ Phi_d
+            B = fapprox @ Phi_c - yf_init @ Phi_d
 
-            delta = torch.norm(B - B_prev)
-            if torch.less(delta , self.delta):
-                break
+            # delta = torch.norm(B - B_prev)
+            # if delta.to(torch.device('cpu')).item() < self.delta:
+            #     break
 
-        return torch.cat([head(B), B], dim=-1), (delta, i)
+        return add_head(B)
 
-    def _first_order_itr(self, t_span, y_init, f_init=None, B_init: Tensor|str=None):
+    def _first_order_itr(
+        self, t_span, y_init, f_init=None, B_init: Tensor | str = None
+    ):
         dims = y_init.shape
-
-
 
     def solve(self, f, t_span, y_init, f_init=None, B_init: Tensor | str = None):
-        if B_init == "prev":
-            B_init = self.B_prev
-
         dims = y_init.shape
-        B, metrics = self._zero_order_itr(
-            f, (t_span[0], t_span[-1]), y_init, f_init, B_init
-        )
 
-        self.B_prev = torch.mean(B[..., 2:]).expand(*dims, self.num_coeff_per_dim - 2)
+        # if B_init == "prev":
+        #     B_init = self.B_prev
+        #
+        # if B_init is None or B_init.shape != torch.Size(
+        #     [*dims, self.num_coeff_per_dim - 2]
+        # ):
+        B_init = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
+
+        # costs 1 nfe
+        # if f_init is None:
+        f_init = f(t_span[0], y_init)
+
+        B = self._zero_order_itr(f, (t_span[0], t_span[-1]), y_init, f_init, B_init)
+
+        self.B_prev = torch.mean(B[..., 2:]).expand(
+            *dims, self.num_coeff_per_dim - 2
+        )
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
         approx = B @ Phi_out
+
+
+        self.counter += 1
+
         return approx.permute(-1, *list(range(0, len(dims)))), B
 
 
@@ -314,7 +321,7 @@ class PanODE(nn.Module):
         t_span,
         solver: PanZero | dict,
         solver_adjoint: PanZero | dict,
-        sensitivity = 'adjoint'
+        sensitivity="adjoint",
     ):
         super().__init__()
         self.vf = vf
@@ -330,15 +337,18 @@ class PanODE(nn.Module):
         solver.t_lims = [t_span[0], t_span[-1]]
         solver_adjoint.t_lims = [t_span[-1], t_span[0]]
 
-        if sensitivity == 'adjoint':
+        if sensitivity == "adjoint":
             self.pan_int = make_pan_adjoint(
                 self.vf,
                 self.thetas,
                 solver,
                 solver_adjoint,
             )
-        elif sensitivity == 'autograd':
-            self.pan_int = lambda t, y_init: (t, solver.solve( self.vf, t, y_init, B_init='prev')[0])
+        elif sensitivity == "autograd":
+            self.pan_int = lambda t, y_init: (
+                t,
+                solver.solve(self.vf, t, y_init, B_init="prev")[0],
+            )
 
     def forward(self, y_init, t_span, *args, **kwargs):
         _, traj = self.pan_int(t_span, y_init)
