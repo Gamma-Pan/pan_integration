@@ -30,13 +30,11 @@ class MNISTDataModule(L.LightningDataModule):
         )
         self.train_transform = transforms.Compose(
             [
-                # transforms.Lambda(lambda x: x.reshape(28, 28, 1)),
-                # transforms.ToPILImage(),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomAffine(
-                    degrees=10, translate=(0.1, 0.1), scale=(1.0, 1.1), shear=10
-                ),
                 transforms.ToTensor(),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomAffine(
+                    degrees=15, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10
+                ),
                 transforms.Normalize((0.1307,), (0.3081,)),
             ]
         )
@@ -45,18 +43,21 @@ class MNISTDataModule(L.LightningDataModule):
         MNIST(self.data_dir, train=False, download=True)
 
         self.labels = []
-        for sample in  MNIST(self.data_dir, train=True, download=True):
+        for sample in MNIST(self.data_dir, train=True, download=True):
             self.labels.append(sample[1])
 
     def setup(self, stage: str):
         if stage == "fit":
             mnist_train = MNIST(
-                self.data_dir, train=True, transform=self.test_transform
+                self.data_dir, train=True, transform=self.train_transform
             )
             mnist_val = MNIST(self.data_dir, train=True, transform=self.test_transform)
 
             dataset_sz = len(mnist_train)
-            ind_train,  ind_val, = train_test_split(
+            (
+                ind_train,
+                ind_val,
+            ) = train_test_split(
                 torch.arange(dataset_sz),
                 stratify=self.labels,
                 test_size=0.08,

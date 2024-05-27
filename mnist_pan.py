@@ -26,13 +26,13 @@ import argparse
 import glob
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 128
+BATCH_SIZE = 32
 
 import multiprocessing as mp
 
 NUM_WORKERS = mp.cpu_count()
-CHANNELS = 64
-NUM_GROUPS = 4
+CHANNELS = 12
+NUM_GROUPS = 2
 WANDB_LOG = False
 
 
