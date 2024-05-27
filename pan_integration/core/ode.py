@@ -3,6 +3,7 @@ import contextlib
 import torch
 from torch import Tensor, tensor, nn
 from torch.autograd import Function
+import ipdb
 
 from .solvers import PanZero, T_grid
 
@@ -12,7 +13,7 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
         @staticmethod
         def forward(ctx, thetas, y_init, t_span):
             traj, B = solver.solve(f, t_span, y_init, B_init="prev")
-            ctx.save_for_backward(t_span, traj, B)
+            ctx.save_for_backward(t_span, traj, B.unsqueeze(-2))
 
             return t_span, traj
 
@@ -44,8 +45,8 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
                     * torch.arccos(t)
                 )
 
+                y_back = (B_fwd @ T_n).view(batch_sz,*dims)
                 # ipdb.set_trace()
-                y_back = B_fwd @ T_n
 
                 _, vjp_fun = torch.func.vjp(
                     lambda x: f(t, x),
@@ -86,6 +87,7 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
                             solver.num_coeff_per_dim,
                         )
                     )
+                    .squeeze(-2)
                     .permute(-1, *torch.arange(len(dims) + 1).tolist())
                     .reshape(-1, *dims)
                 )

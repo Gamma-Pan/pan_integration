@@ -156,13 +156,13 @@ class PanZero:
             # if self.callback is not None:
             #     self.callback(t_lims, y_init, add_head(B))
             B_prev = B
-            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_cheb, (add_head(B_prev) @ Phi).squeeze(-2))
+            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_cheb, (add_head(B_prev) @ Phi).squeeze(-2)).unsqueeze(-2)
 
-            B = (fapprox.unsqueeze(-2) @ Phi_c) - yf_init @ Phi_d
+            B = (fapprox @ Phi_c) - yf_init @ Phi_d
 
-            # delta = torch.norm(B - B_prev)
-            # if delta.item() < self.delta:
-            #     break
+            delta = torch.norm(B - B_prev)
+            if delta.item() < self.delta:
+                break
 
         return add_head(B).squeeze(-2)
 

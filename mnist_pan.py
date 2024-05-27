@@ -39,13 +39,20 @@ WANDB_LOG = False
 class Augmenter(nn.Module):
     def __init__(self, dims):
         super().__init__()
-        self.conv = nn.Conv2d(1, CHANNELS - 1, 3, 1, 1)
-        self.norm = nn.GroupNorm(NUM_GROUPS, CHANNELS)
-        self.conv2 = nn.Conv2d(CHANNELS - 1, CHANNELS - 1, 3, 2, 1)
+        self.conv1 = nn.Conv2d(1, CHANNELS, 3, 2, 1)
+        self.norm1 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
+        self.conv2 = nn.Conv2d(CHANNELS , CHANNELS , 3, 2, 1)
+        self.norm2 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
 
     def forward(self, x):
-        aug = F.tanh(self.conv(x))
-        x = torch.cat([x, aug], dim=1)
+        # aug = F.tanh(self.conv(x))
+        # x = torch.cat([x, aug], dim=1)
+        x = self.conv1(x)
+        x = self.norm1(x)
+        x = F.relu(x)
+        x = self.conv2(x)
+        x = self.norm2(x)
+        x = F.relu(x)
         return x
 
 
@@ -74,11 +81,11 @@ class VF(nn.Module):
 
 
 classifier = nn.Sequential(
-    nn.Dropout(0.01),
-    nn.Conv2d(CHANNELS, 1, 3, padding=1),
+    nn.Dropout(0.05),
+    nn.Conv2d(CHANNELS, 10, 3, padding=1),
     nn.ReLU(),
     nn.Flatten(),
-    nn.Linear(28**2, 10),
+    nn.Linear(7**2*10, 10),
 )
 
 
@@ -87,11 +94,11 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
     dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
     nfe_callback = NfeMetrics()
-    # early_callback = EarlyStopping(
-    #     monitor="val_accuracy",
-    #     check_on_train_epoch_end=True,
-    #     stopping_threshold=0.91,
-    # )
+    early_callback = EarlyStopping(
+        monitor="val_acc",
+        check_on_train_epoch_end=True,
+        stopping_threshold=0.91,
+    )
 
     checkpoint = ModelCheckpoint(
         save_top_k=1,
@@ -107,7 +114,7 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[nfe_callback, checkpoint],  # prof_callback],
+        callbacks=[nfe_callback, checkpoint, early_callback], # prof_callback],
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -207,7 +214,7 @@ if __name__ == "__main__":
         # {"solver": "rk-4", "fixed_steps": 5},
     )
 
-    train_all_pan(pan_configs, epochs=20, sensitivity="adjoint", test=True)
-    train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
-    train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
-    train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
+    train_all_pan(pan_configs, epochs=40, sensitivity="adjoint", test=True)
+    train_all_shooting(shoot_configs, epochs=40, sensitivity="adjoint", test=True)
+    # train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
+    # train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
