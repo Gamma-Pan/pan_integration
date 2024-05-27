@@ -26,13 +26,13 @@ import argparse
 import glob
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 6
+BATCH_SIZE = 32
 
 import multiprocessing as mp
 
 NUM_WORKERS = mp.cpu_count()
 CHANNELS = 32
-NUM_GROUPS = 2
+NUM_GROUPS = 4
 WANDB_LOG = False
 
 
@@ -64,7 +64,7 @@ class VF(nn.Module):
         self.conv3 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1, bias=False)
         self.norm4 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
 
-    def forward(self, t, x):
+    def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
         x = F.relu(self.norm1(x))
         x = F.relu(self.norm2(self.conv1(x)))
@@ -107,7 +107,7 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[nfe_callback, checkpoint] # prof_callback],
+        callbacks=[nfe_callback, checkpoint],  # prof_callback],
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -207,7 +207,7 @@ if __name__ == "__main__":
         # {"solver": "rk-4", "fixed_steps": 5},
     )
 
-    # train_all_pan(pan_configs, epochs=20, sensitivity="adjoint", test=True)
+    train_all_pan(pan_configs, epochs=20, sensitivity="adjoint", test=True)
     train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
     train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
     train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)

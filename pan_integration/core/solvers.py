@@ -145,29 +145,26 @@ class PanZero:
                 t_lims, self.num_coeff_per_dim, self.num_points, y_init.device
             )
 
-        yf_init = torch.stack([y_init, f_init], dim=-1)
+        yf_init = torch.stack([y_init, f_init], dim=-1).unsqueeze(-2)
 
         def add_head(B_tail):
-            head = (yf_init - B_tail @ Phi_tail) @ inv0
+            head = (yf_init - (B_tail @ Phi_tail)) @ inv0
             return torch.cat([head, B_tail], dim=-1)
 
-        B = B_init
+        B = B_init.unsqueeze(-2)
         for i in range(1, self.max_iters + 1):
             # if self.callback is not None:
             #     self.callback(t_lims, y_init, add_head(B))
             B_prev = B
-            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
-                t_cheb,
-                (add_head(B_prev).unsqueeze(-2) @ Phi).squeeze(-2),
-                )
+            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_cheb, (add_head(B_prev) @ Phi).squeeze(-2))
 
-            B = fapprox @ Phi_c - yf_init @ Phi_d
+            B = (fapprox.unsqueeze(-2) @ Phi_c) - yf_init @ Phi_d
 
             # delta = torch.norm(B - B_prev)
             # if delta.item() < self.delta:
             #     break
 
-        return add_head(B)
+        return add_head(B).squeeze(-2)
 
 
     def _first_order_itr(
@@ -197,6 +194,6 @@ class PanZero:
         )
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
-        approx = B @ Phi_out
+        approx = (B.unsqueeze(-2) @ Phi_out).squeeze(-2)
 
         return approx.permute(-1, *list(range(0, len(dims)))), B
