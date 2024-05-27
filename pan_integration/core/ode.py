@@ -299,8 +299,6 @@ def make_pan_adjoint(f, thetas, solver: PanZero, solver_adjoint: PanZero):
 
             grads_vec = torch.cat([p.contiguous().flatten() for p in grads])
             DL_theta = ((t_eval[-1] - t_eval[0]) / (solver.num_points - 1)) * grads_vec
-            # ipdb.set_trace()
-            f.nfe = 0
 
             return DL_theta, None, None
 

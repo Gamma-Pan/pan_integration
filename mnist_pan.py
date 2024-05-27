@@ -26,7 +26,7 @@ import argparse
 import glob
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 32
+BATCH_SIZE = 128
 
 import multiprocessing as mp
 
@@ -142,9 +142,9 @@ def train_all_pan(configs, sensitivity, epochs, test):
         ).to(device)
         train_mnist_ode(t_span, model, epochs=epochs, test=test, logger=logger)
         if WANDB_LOG:
-            profile_artf = wandb.Artifact(f"trace_{name}", type="profile")
-            profile_artf.add_file(local_path="./trace.json")
-            logger.experiment.log_artifact(profile_artf)
+            # profile_artf = wandb.Artifact(f"trace_{name}", type="profile")
+            # profile_artf.add_file(local_path="./trace.json")
+            # logger.experiment.log_artifact(profile_artf)
             wandb.finish()
 
 
@@ -175,9 +175,9 @@ def train_all_shooting(configs, sensitivity, epochs, test):
         t_span = torch.linspace(0, 1, int(config["fixed_steps"])).to(device)
         train_mnist_ode(t_span, model, epochs=epochs, test=test, logger=logger)
         if WANDB_LOG:
-            profile_artf = wandb.Artifact(f"trace_{name}", type="profile")
-            profile_artf.add_file(local_path="./trace.json")
-            logger.experiment.log_artifact(profile_artf)
+            # profile_artf = wandb.Artifact(f"trace_{name}", type="profile")
+            # profile_artf.add_file(local_path="./trace.json")
+            # logger.experiment.log_artifact(profile_artf)
             wandb.finish()
 
 
