@@ -31,8 +31,8 @@ BATCH_SIZE = 10
 import multiprocessing as mp
 
 NUM_WORKERS = mp.cpu_count()
-CHANNELS = 10
-NUM_GROUPS = 4
+CHANNELS = 16
+NUM_GROUPS = 2
 WANDB_LOG = False
 
 
