@@ -84,7 +84,7 @@ class LitOdeClassifier(LightningModule):
 
         self.nfe = 0
 
-        self.learning_rate = 1e-3
+        self.learning_rate = 1e-2
         # self.save_hyperparameters()
 
     def _common_step(self, batch, batch_idx):
@@ -124,15 +124,18 @@ class LitOdeClassifier(LightningModule):
 
     def configure_optimizers(self):
         # TODO: use LR callback
-        opt = torch.optim.Adam(
-            self.parameters(), lr=self.learning_rate,
+        opt = torch.optim.AdamW(
+            self.parameters(), lr=self.learning_rate, weight_decay=1e-5
         )
         lr_scheduler_config = {
             "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(opt),
-            "monitor": "loss",
+            "monitor": "val_acc",
+            "mode" : 'max',
+            "factor": 0.9,
             "interval": "step",
-            "frequency": 10,
-            # "patience": 10,
+            "patience": 10,
+            "min_lr" :1e-6
+
         }
         out = {"optimizer": opt, "lr_scheduler": lr_scheduler_config}
         return out

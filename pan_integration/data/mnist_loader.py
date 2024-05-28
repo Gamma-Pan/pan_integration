@@ -30,11 +30,10 @@ class MNISTDataModule(L.LightningDataModule):
         )
         self.train_transform = transforms.Compose(
             [
-                transforms.ToTensor(),
-                transforms.RandomHorizontalFlip(p=0.5),
                 transforms.RandomAffine(
                     degrees=10, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10
                 ),
+                transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,)),
             ]
         )
@@ -77,7 +76,7 @@ class MNISTDataModule(L.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            shuffle=True,
+            shuffle=False,
         )
 
     def val_dataloader(self):

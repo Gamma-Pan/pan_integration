@@ -81,11 +81,11 @@ class VF(nn.Module):
 
 
 classifier = nn.Sequential(
-    nn.Dropout(0.05),
-    nn.Conv2d(CHANNELS, 10, 3, padding=1),
-    nn.ReLU(),
+    # nn.Dropout(0.05),
+    # nn.Conv2d(CHANNELS, CHANNELS, 3, padding=1),
+    # nn.ReLU(),
     nn.Flatten(),
-    nn.Linear(7**2*10, 10),
+    nn.Linear(7**2*CHANNELS, 10),
 )
 
 
