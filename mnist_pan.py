@@ -114,7 +114,7 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[nfe_callback, checkpoint, early_callback], # prof_callback],
+        callbacks=[nfe_callback, checkpoint], # prof_callback],
     )
 
     trainer.fit(learner, datamodule=dmodule)

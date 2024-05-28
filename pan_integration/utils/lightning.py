@@ -84,7 +84,7 @@ class LitOdeClassifier(LightningModule):
 
         self.nfe = 0
 
-        self.learning_rate = 1e-2
+        self.learning_rate = 1e-3
         # self.save_hyperparameters()
 
     def _common_step(self, batch, batch_idx):
@@ -106,7 +106,8 @@ class LitOdeClassifier(LightningModule):
 
         self.log("loss", loss, prog_bar=True)
         self.log("train_acc", acc, prog_bar=True)
-        self.log("lr", self.learning_rate, prog_bar=True)
+        self.log("lr", self.lr_schedulers().get_last_lr()[0], prog_bar=True)
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -132,10 +133,10 @@ class LitOdeClassifier(LightningModule):
             "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(opt),
             "monitor": "loss",
             "mode" : 'min',
-            "factor": 0.9,
-            "interval": "step",
-            "patience": 10,
-            "min_lr" :1e-6
+            "factor": 0.5,
+            "interval": "epoch",
+            "patience": 3,
+            "min_lr" :1e-9
 
         }
         out = {"optimizer": opt, "lr_scheduler": lr_scheduler_config}
