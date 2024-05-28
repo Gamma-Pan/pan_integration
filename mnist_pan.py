@@ -31,25 +31,23 @@ BATCH_SIZE = 10
 import multiprocessing as mp
 
 NUM_WORKERS = mp.cpu_count()
-CHANNELS = 16
-NUM_GROUPS = 2
+CHANNELS = 1
+NUM_GROUPS = 1
 WANDB_LOG = False
 
 
 class Augmenter(nn.Module):
     def __init__(self, dims):
         super().__init__()
-        self.conv1 = nn.Conv2d(1, CHANNELS, 3, 1, 1)
-        self.norm1 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
-        # self.conv2 = nn.Conv2d(CHANNELS , CHANNELS , 3, 2, 1)
-        # self.norm2 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
+        # self.conv1 = nn.Conv2d(1, CHANNELS, 3, 1, 1)
+        # self.norm1 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
 
     def forward(self, x):
         # aug = F.tanh(self.conv(x))
         # x = torch.cat([x, aug], dim=1)
-        x = self.conv1(x)
-        x = self.norm1(x)
-        x = F.relu(x)
+        # x = self.conv1(x)
+        # x = self.norm1(x)
+        # x = F.relu(x)
         # x = self.conv2(x)
         # x = self.norm2(x)
         # x = F.relu(x)
@@ -62,21 +60,13 @@ embedding = Augmenter(CHANNELS)
 class VF(nn.Module):
     def __init__(self):
         super().__init__()
+        self.conv = nn.Conv2d(1, 1, 3,1)
+        self.norm=nn.GroupNorm(1,1)
         self.nfe = 0
-        self.norm1 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
-        self.conv1 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1, bias=False)
-        self.norm2 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
-        self.conv2 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1, bias=False)
-        self.norm3 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
-        self.conv3 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, padding=1, bias=False)
-        self.norm4 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-        x = F.relu(self.norm1(x))
-        x = F.relu(self.norm2(self.conv1(x)))
-        x = F.relu(self.norm3(self.conv2(x)))
-        x = self.norm4(self.conv3(x))
+        x = F.relu( self.norm( self.conv( x ) ))
         return x
 
 
