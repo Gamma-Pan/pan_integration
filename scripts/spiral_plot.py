@@ -1,12 +1,12 @@
 import torch
 from torch import tensor, nn
 from pan_integration.core.functional import  pan_int
-from pan_integration.core.ode import PanZero, T_grid
+from pan_integration.core.ode import PanSolver, T_grid
 from pan_integration.utils.plotting import VfPlotter
 import matplotlib.pyplot as plt
 from torchdyn.numerics.solvers.ode import SolverTemplate
 from torchdyn.core.neuralde import odeint
-from pan_integration.core.ode import PanZero
+from pan_integration.core.ode import PanSolver
 
 
 class Spiral(nn.Module):
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     plotter.wait()
     f.nfe = 0
 
-    solver = PanZero(16,16, 1e-2, 30,device=device, callback=callback)
+    solver = PanSolver(16, 16, 1e-2, 30, device=device, callback=callback)
     approx, B, metrics = solver.solve(f, t_span, y_init)
 
     print(metrics)

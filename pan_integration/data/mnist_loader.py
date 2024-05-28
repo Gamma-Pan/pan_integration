@@ -33,7 +33,6 @@ class MNISTDataModule(L.LightningDataModule):
                 transforms.RandomAffine(
                     degrees=10, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10
                 ),
-                transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,)),
             ]
         )

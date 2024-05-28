@@ -12,7 +12,7 @@ from lightning.pytorch.profilers import PyTorchProfiler
 from torchdyn.core import MultipleShootingLayer, NeuralODE
 
 from pan_integration.data import MNISTDataModule
-from pan_integration.core.ode import PanODE, PanZero
+from pan_integration.core.ode import PanODE, PanSolver
 from pan_integration.utils.lightning import (
     LitOdeClassifier,
     NfeMetrics,

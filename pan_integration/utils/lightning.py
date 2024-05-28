@@ -77,8 +77,6 @@ class LitOdeClassifier(LightningModule):
         self.embedding = embedding
         self.classifier = classifier
 
-        self.nfe = 0
-
         self.learning_rate = 1e-3
         # self.save_hyperparameters()
 
@@ -119,12 +117,19 @@ class LitOdeClassifier(LightningModule):
         val_acc_epoch = self.val_acc / self.val_batches
         self.log("val_acc", val_acc_epoch, prog_bar=True)
 
+    def on_test_start(self):
+        self.test_acc = 0
+        self.test_batches = 0
+
     def test_step(self, batch, batch_idx):
         loss, preds, acc = self._common_step(batch, batch_idx)
 
         self.log("test_loss", loss, prog_bar=True)
-        self.log("test_acc", acc, prog_bar=True)
         return loss
+
+    def on_test_end(self):
+        test_acc = self.test_acc / self.test_batches
+        self.log("test_acc", test_acc, prog_bar=True)
 
     def configure_optimizers(self):
         # TODO: use LR callback
@@ -133,7 +138,7 @@ class LitOdeClassifier(LightningModule):
         )
         lr_scheduler_config = {
             "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                opt, factor=0.5, patience=3, min_lr=1e-6, threshold=0.001, mode="max"
+                opt, factor=0.5, patience=5, min_lr=1e-6, threshold=0.001, mode="max"
             ),
             "monitor": "val_acc",
             "interval": "epoch",

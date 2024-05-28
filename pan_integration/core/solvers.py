@@ -52,7 +52,7 @@ def DT_grid(t, num_coeff_per_dim):
 
     return out
 
-class PanZero:
+class PanSolver:
     def __init__(
             self,
             num_coeff_per_dim,
@@ -145,18 +145,18 @@ class PanZero:
                 t_lims, self.num_coeff_per_dim, self.num_points, y_init.device
             )
 
-        yf_init = torch.stack([y_init, f_init], dim=-1).unsqueeze(-2)
+        yf_init = torch.stack([y_init, f_init], dim=-1)
 
         def add_head(B_tail):
             head = (yf_init - (B_tail @ Phi_tail)) @ inv0
             return torch.cat([head, B_tail], dim=-1)
 
-        B = B_init.unsqueeze(-2)
+        B = B_init
         for i in range(1, self.max_iters + 1):
             # if self.callback is not None:
             #     self.callback(t_lims, y_init, add_head(B))
             B_prev = B
-            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_cheb, (add_head(B_prev) @ Phi).squeeze(-2)).unsqueeze(-2)
+            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_cheb, (add_head(B_prev) @ Phi) )
 
             B = (fapprox @ Phi_c) - yf_init @ Phi_d
 
@@ -164,13 +164,9 @@ class PanZero:
             if delta.item() < self.delta:
                 break
 
-        return add_head(B).squeeze(-2)
+        return add_head(B)
 
 
-    def _first_order_itr(
-            self, t_span, y_init, f_init=None, B_init: Tensor | str = None
-    ):
-        dims = y_init.shape
 
     def solve(self, f, t_span, y_init, f_init=None, B_init: Tensor | str = None):
         dims = y_init.shape
@@ -194,6 +190,6 @@ class PanZero:
         )
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
-        approx = (B.unsqueeze(-2) @ Phi_out).squeeze(-2)
+        approx = B @ Phi_out
 
         return approx.permute(-1, *list(range(0, len(dims)))), B
