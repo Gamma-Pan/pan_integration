@@ -8,10 +8,17 @@ from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import nn, Tensor
 from torch.profiler import profile, record_function, ProfilerActivity
 
+class PlotTrajectories(Callback):
+    def on_validation_end(self, trainer, pl_module ) -> None:
+        samples = torch.utils.data.Subset(trainer.val_dataloaders.dataset, )
 
 class NfeMetrics(Callback):
     def __init__(self):
         self.running = 0
+        self.val_running = 0
+
+    def on_after_backward(self, trainer, pl_module):
+        pl_module.ode_model.vf.nfe = 0
 
     def on_before_zero_grad(self, trainer, pl_module, optimizer):
         nfes = float(pl_module.ode_model.vf.nfe)
@@ -20,15 +27,26 @@ class NfeMetrics(Callback):
         pl_module.log(f"total_nfe_forward_train", self.running, prog_bar=True)
         pl_module.ode_model.vf.nfe = 0
 
-    # def on_after_backward(self, trainer, pl_module):
-    #     nfes = float(pl_module.ode_model.vf.nfe)
-    #     pl_module.log(f"nfe_backward_train", nfes, prog_bar=True)
-    #     pl_module.ode_model.vf.nfe = 0
-
     def on_test_batch_end(self, trainer, pl_module, batch, batch_idx, dataloader_idx=0):
         nfes = float(pl_module.ode_model.vf.nfe)
         pl_module.log(f"nfe_test", nfes, prog_bar=True)
         pl_module.ode_model.vf.nfe = 0
+
+    def on_validation_epoch_start(self, trainer, pl_module) -> None:
+        pl_module.ode_model.vf.nfe = 0
+        self.val_running = 0
+
+    def on_validation_batch_start(self, trainer, pl_module, batch, batch_idx ) -> None:
+        pl_module.ode_model.vf.nfe = 0
+
+    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx ) -> None:
+        nfes = float(pl_module.ode_model.vf.nfe)
+        self.val_running += nfes
+        self.log('nfe_val_acc_step', nfes)
+
+    def on_validation_epoch_end(self, trainer, pl_module) -> None:
+        nfes = float(pl_module.ode_model.vf.nfe)
+        self.log('nfe_val_acc_epoch', self.val_running)
 
 
 class ProfilerCallback(Callback):

@@ -26,7 +26,7 @@ import argparse
 import glob
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 10
+BATCH_SIZE = 128
 
 import multiprocessing as mp
 
@@ -43,14 +43,10 @@ class Augmenter(nn.Module):
         # self.norm1 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
 
     def forward(self, x):
-        # aug = F.tanh(self.conv(x))
-        # x = torch.cat([x, aug], dim=1)
-        # x = self.conv1(x)
-        # x = self.norm1(x)
-        # x = F.relu(x)
-        # x = self.conv2(x)
-        # x = self.norm2(x)
-        # x = F.relu(x)
+        dims = x.shape
+        x = torch.cat(
+            [x.view(dims[0], -1), torch.zeros((dims[0], 1000 - 28**2), device=device)], dim=-1
+        )
         return x
 
 
@@ -60,22 +56,23 @@ embedding = Augmenter(CHANNELS)
 class VF(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv = nn.Conv2d(1, 1, 3,1)
-        self.norm=nn.GroupNorm(1,1)
+        self.lin1 = nn.Linear(1000, 1000)
+        self.lin2 = nn.Linear(1000, 1000)
+        self.norm1 = nn.LayerNorm(1000)
+        self.norm2 = nn.LayerNorm(1000)
         self.nfe = 0
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-        x = F.relu( self.norm( self.conv( x ) ))
+        x = F.relu(self.norm1(self.lin1(x)))
+        x = F.relu(self.norm2(self.lin2(x)))
         return x
 
 
 classifier = nn.Sequential(
     # nn.Dropout(0.05),
-    # nn.Conv2d(CHANNELS, CHANNELS, 3, padding=1),
-    # nn.ReLU(),
-    nn.Flatten(),
-    nn.Linear(28**2*CHANNELS, 10),
+    nn.Linear(1000, 10),
+    nn.ReLU(),
 )
 
 
@@ -104,7 +101,7 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[nfe_callback, checkpoint], # prof_callback],
+        callbacks=[  nfe_callback,]# checkpoint,]# prof_callback],
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -133,7 +130,7 @@ def train_all_pan(configs, sensitivity, epochs, test):
                     "sensitivity": sensitivity,
                     "architecture": "CNN_IL_aug",
                     "batch_size": BATCH_SIZE,
-                    "cnn_channels": CHANNELS
+                    "cnn_channels": CHANNELS,
                 }
             )
 
@@ -192,7 +189,7 @@ if __name__ == "__main__":
     pan_configs = (
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 10},
         {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 20},
-        # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 30},
+        {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 20},
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
         # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
         # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
@@ -206,7 +203,7 @@ if __name__ == "__main__":
         # {"solver": "rk-4", "fixed_steps": 5},
     )
 
-    train_all_pan(pan_configs, epochs=40, sensitivity="adjoint", test=True)
-    train_all_shooting(shoot_configs, epochs=40, sensitivity="adjoint", test=True)
+    train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
+    train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
     # train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
     # train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
