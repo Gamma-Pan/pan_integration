@@ -1,12 +1,12 @@
 import torch
 from torch import tensor, nn
-from pan_integration.core.functional import  pan_int
-from pan_integration.core.ode import PanSolver, T_grid
+from pan_integration.core.functional import pan_int
+from pan_integration.core.pan_ode import PanSolver, T_grid
 from pan_integration.utils.plotting import VfPlotter
 import matplotlib.pyplot as plt
 from torchdyn.numerics.solvers.ode import SolverTemplate
 from torchdyn.core.neuralde import odeint
-from pan_integration.core.ode import PanSolver
+from pan_integration.core.pan_ode import PanSolver
 
 
 class Spiral(nn.Module):
@@ -17,7 +17,7 @@ class Spiral(nn.Module):
 
     def forward(self, t, y):
         self.nfe += 1
-        return (self.A @ y[..., None])[..., 0]
+        return torch.tanh(self.A @ y[..., None])[..., 0]
 
 
 if __name__ == "__main__":
@@ -38,20 +38,36 @@ if __name__ == "__main__":
         ivp_kwargs=dict(solver="tsit5", atol=1e-9),
     )
 
-    def callback(B, t_lims):
+    def callback(t_lims, y_init, B):
         plotter.approx(
-            B, t_lims, show_arrows=True, marker=None, markersize=1.5, alpha=0.9, color='green'
+            B,
+            t_lims,
+            show_arrows=False,
+            marker=None,
+            markersize=1.5,
+            alpha=0.9,
+            color="green",
         )
-        plotter.wait()
-        # plotter.fig.canvas.flush_events()
-        # plotter.fig.canvas.draw()
+        # plotter.wait()
+        plotter.fig.canvas.flush_events()
+        plotter.fig.canvas.draw()
 
     plotter.wait()
     f.nfe = 0
 
-    solver = PanSolver(16, 16, 1e-2, 30, device=device, callback=callback)
-    approx, B, metrics = solver.solve(f, t_span, y_init)
-
-    print(metrics)
+    optim = {
+        "optimizer_class": torch.optim.SGD,
+        "params": {"lr": 1e-9,}
+    }
+    solver = PanSolver(
+        32,
+        32,
+        (1e-2,1e-9),
+        (20,10),
+        device=device,
+        callback=callback,
+        optim=optim,
+    )
+    approx = solver.solve(f, t_span, y_init)
+    print(f.nfe)
     plt.show()
-

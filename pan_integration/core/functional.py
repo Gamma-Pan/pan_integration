@@ -264,19 +264,6 @@ def first_order_int(
             loss, approx, Dapprox = loss_fn(B)
             loss.backward(retain_graph=True)
 
-        nonlocal grad_norm
-        grad_norm = torch.norm(B.grad)
-
-        if callback is not None:
-            B_plot = torch.cat([head(B.detach()), B.detach()], dim=-1)
-            approx_plot = (B_plot @ Phi_plot).permute(
-                -1, *torch.arange(len(dims)).tolist()
-            )
-            Dapprox_plot = (B_plot @ DPhi_plot).permute(
-                -1, *torch.arange(len(dims)).tolist()
-            )
-            callback(t_lims[0], approx_plot, Dapprox=Dapprox_plot)
-
         return loss
 
     i = 0
