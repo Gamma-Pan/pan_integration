@@ -45,42 +45,40 @@ def DT_grid(t, num_coeff_per_dim):
             torch.zeros(1, num_points, dtype=torch.float, device=t.device),
             U_grid(t, num_coeff_per_dim - 1)
             * torch.arange(1, num_coeff_per_dim, dtype=torch.float, device=t.device)[
-              :, None
-              ],
-            ]
+                :, None
+            ],
+        ]
     )
 
     return out
 
+
 class PanSolver:
     def __init__(
-            self,
-            num_coeff_per_dim,
-            num_points,
-            delta=1e-2,
-            max_iters=20,
-            t_lims=None,
-            device=None,
-            callback=None,
+        self,
+        num_coeff_per_dim,
+        num_points,
+        delta=1e-2,
+        max_iters=20,
+        optim=None,
+        t_lims=None,
+        device=None,
+        callback=None,
     ):
-        self.max_iters = max_iters
+        self.max_iters_zero = max_iters
+        self.max_iters_one = max_iters
+        self.optim = optim
         self.callback = callback
         self.num_coeff_per_dim = num_coeff_per_dim
         self.num_points = num_points
-        self.delta = delta
+        self.delta_zero = delta
+        self.delta_one = delta
 
         if device is None:
             self.device = torch.device("cpu")
         else:
             self.device = device
-
-        # if t_lims don't change, like in a NODE training setting no need
-        # to recalculate some quantities every pass
-        if t_lims is not None:
-            self.t_lims = t_lims
-
-        # likewise keep previous B to pass as initial conditions
-        # instead of random every time
+        self._t_lims = t_lims
         self.B_prev = None
 
     @property
@@ -89,18 +87,25 @@ class PanSolver:
 
     @t_lims.setter
     def t_lims(self, value):
-        self._t_lims = value
-        (
-            self.t_cheb,
-            self.Phi,
-            self.DPhi,
-            self.Phi_tail,
-            self.inv0,
-            self.Phi_c,
-            self.Phi_d,
-        ) = self._calc_independent(
-            value, self.num_coeff_per_dim, self.num_points, self.device
-        )
+        # if t_lims don't change, like in a NODE training setting no need
+        # to recalculate some quantities every pass
+        if value is not None:
+            self._t_lims = value
+            (
+                self.t_cheb,
+                self.Dt,
+                self.Phi,
+                self.DPhi,
+                self.Phi_tail,
+                self.inv0,
+                self.Phi_c,
+                self.Phi_d,
+            ) = self._calc_independent(
+                value,
+                self.num_coeff_per_dim,
+                self.num_points,
+                self.device,
+            )
 
     @staticmethod
     def _calc_independent(t_lims, num_coeff_per_dim, num_points, device):
@@ -129,19 +134,31 @@ class PanSolver:
 
         Phi_d = inv0 @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0) @ Phi_b_T @ Q
 
-        return t_cheb, Phi, DPhi, Phi_tail, inv0, Phi_c, Phi_d
+        return t_cheb, Dt, Phi, DPhi, Phi_tail, inv0, Phi_c, Phi_d
 
-    def _zero_order_itr(self, f, t_lims, y_init, f_init, B_init) -> Tensor:
+    @torch.no_grad()
+    def _solver_itr(self, f, t_lims, y_init, f_init, B_init) -> Tensor:
         # if saved don't recalculate
         if self.t_lims is not None:
             t_cheb = self.t_cheb
+            Dt = self.Dt
             Phi = self.Phi
+            Phi = self.DPhi
             inv0 = self.inv0
             Phi_c = self.Phi_c
             Phi_d = self.Phi_d
             Phi_tail = self.Phi_tail
         else:
-            t_cheb, Phi, _, Phi_tail, inv0, Phi_c, Phi_d = self._calc_independent(
+            (
+                t_cheb,
+                Dt,
+                Phi,
+                DPhi,
+                Phi_tail,
+                inv0,
+                Phi_c,
+                Phi_d,
+            ) = self._calc_independent(
                 t_lims, self.num_coeff_per_dim, self.num_points, y_init.device
             )
 
@@ -151,22 +168,56 @@ class PanSolver:
             head = (yf_init - (B_tail @ Phi_tail)) @ inv0
             return torch.cat([head, B_tail], dim=-1)
 
+        ## zero order
         B = B_init
-        for i in range(1, self.max_iters + 1):
-            # if self.callback is not None:
-            #     self.callback(t_lims, y_init, add_head(B))
+        for i in range(1, self.max_iters_zero + 1):
+            if self.callback is not None:
+                self.callback(t_lims, y_init, add_head(B))
+
             B_prev = B
-            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_cheb, (add_head(B_prev) @ Phi) )
+            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
+                t_cheb, (add_head(B_prev) @ Phi)
+            )
 
             B = (fapprox @ Phi_c) - yf_init @ Phi_d
 
             delta = torch.norm(B - B_prev)
-            if delta.item() < self.delta:
+            if delta.item() < self.delta_zero:
                 break
 
+        # first order
+        print('first_order :)')
+        B.requires_grad=True
+        optimizer = self.optim["optimizer_class"]([B], **self.optim["params"])
+
+        def loss_fn(B_tail):
+            B = add_head(B_tail)
+            approx = B @ Phi
+            Dapprox = B @ DPhi
+            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
+                t_cheb, (add_head(B_prev) @ Phi)
+            )
+            loss = torch.sum((Dapprox - fapprox) ** 2 * Dt)
+
+            return loss
+
+        def closure():
+            optimizer.zero_grad()
+            with torch.enable_grad():
+                loss = loss_fn(B)
+                print(loss)
+                loss.backward(retain_graph=True)
+
+            return loss
+
+        for i in range(1, self.max_iters_one + 1):
+            optimizer.step(closure)
+
+            if self.callback is not None:
+                self.callback(t_lims, y_init.cpu(), add_head(B).cpu())
+
+
         return add_head(B)
-
-
 
     def solve(self, f, t_span, y_init, f_init=None, B_init: Tensor | str = None):
         dims = y_init.shape
@@ -175,7 +226,7 @@ class PanSolver:
             B_init = self.B_prev
 
         if B_init is None or B_init.shape != torch.Size(
-                [*dims, self.num_coeff_per_dim - 2]
+            [*dims, self.num_coeff_per_dim - 2]
         ):
             B_init = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
 
@@ -183,11 +234,9 @@ class PanSolver:
         if f_init is None:
             f_init = f(t_span[0], y_init)
 
-        B = self._zero_order_itr(f, (t_span[0], t_span[-1]), y_init, f_init, B_init)
+        B = self._solver_itr(f, (t_span[0], t_span[-1]), y_init, f_init, B_init)
 
-        self.B_prev = torch.mean(B[..., 2:]).expand(
-            *dims, self.num_coeff_per_dim - 2
-        )
+        self.B_prev = torch.mean(B[..., 2:]).expand(*dims, self.num_coeff_per_dim - 2)
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
         approx = B @ Phi_out

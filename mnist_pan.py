@@ -31,7 +31,7 @@ BATCH_SIZE = 32
 import multiprocessing as mp
 
 NUM_WORKERS = mp.cpu_count()
-CHANNELS = 32
+CHANNELS = 10
 NUM_GROUPS = 4
 WANDB_LOG = False
 
@@ -39,10 +39,10 @@ WANDB_LOG = False
 class Augmenter(nn.Module):
     def __init__(self, dims):
         super().__init__()
-        self.conv1 = nn.Conv2d(1, CHANNELS, 3, 2, 1)
+        self.conv1 = nn.Conv2d(1, CHANNELS, 3, 1, 1)
         self.norm1 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
-        self.conv2 = nn.Conv2d(CHANNELS , CHANNELS , 3, 2, 1)
-        self.norm2 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
+        # self.conv2 = nn.Conv2d(CHANNELS , CHANNELS , 3, 2, 1)
+        # self.norm2 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
 
     def forward(self, x):
         # aug = F.tanh(self.conv(x))
@@ -50,9 +50,9 @@ class Augmenter(nn.Module):
         x = self.conv1(x)
         x = self.norm1(x)
         x = F.relu(x)
-        x = self.conv2(x)
-        x = self.norm2(x)
-        x = F.relu(x)
+        # x = self.conv2(x)
+        # x = self.norm2(x)
+        # x = F.relu(x)
         return x
 
 
@@ -85,7 +85,7 @@ classifier = nn.Sequential(
     # nn.Conv2d(CHANNELS, CHANNELS, 3, padding=1),
     # nn.ReLU(),
     nn.Flatten(),
-    nn.Linear(7**2*CHANNELS, 10),
+    nn.Linear(28**2*CHANNELS, 10),
 )
 
 

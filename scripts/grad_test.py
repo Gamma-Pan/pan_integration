@@ -51,11 +51,12 @@ if __name__ == "__main__":
     y_init = torch.rand(10, 10, 10)
     t_span = torch.linspace(0, 1, 2)
 
-    solver = PanSolver(8, 8)
+    optim = {"optimizer_class": torch.optim.RMSprop, "params": {"lr": 1e-2}}
+    solver = PanSolver(8, 8, optim=optim)
     solver_adjoint = PanSolver(10, 10)
 
     pan_ode_model = PanODE(vf, solver, solver_adjoint)
-    _, traj_pan, _ = pan_ode_model(y_init, t_span)
+    traj_pan, _ = pan_ode_model(y_init, t_span)
     L_pan = torch.sum((traj_pan[-1] - 1 * torch.ones(10, 10)) ** 2)
     L_pan.backward()
     grads_pan = [w.grad for w in vf.parameters()]

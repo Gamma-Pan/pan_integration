@@ -6,7 +6,7 @@ from itertools import cycle
 from matplotlib.animation import PillowWriter
 import torch
 from torch import max, min, tensor, abs
-from ..core.ode import T_grid, DT_grid
+from ..core.solvers import T_grid, DT_grid
 
 from torchdyn.numerics import odeint
 
