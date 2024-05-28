@@ -1,12 +1,12 @@
 import torch
 from torch import tensor, nn
 from pan_integration.core.functional import pan_int
-from pan_integration.core.ode import PanSolver, T_grid
+from pan_integration.core.pan_ode import PanSolver, T_grid
 from pan_integration.utils.plotting import VfPlotter
 import matplotlib.pyplot as plt
 from torchdyn.numerics.solvers.ode import SolverTemplate
 from torchdyn.core.neuralde import odeint
-from pan_integration.core.ode import PanSolver
+from pan_integration.core.pan_ode import PanSolver
 
 
 class Spiral(nn.Module):
@@ -42,25 +42,28 @@ if __name__ == "__main__":
         plotter.approx(
             B,
             t_lims,
-            show_arrows=True,
+            show_arrows=False,
             marker=None,
             markersize=1.5,
             alpha=0.9,
             color="green",
         )
-        plotter.wait()
-        # plotter.fig.canvas.flush_events()
-        # plotter.fig.canvas.draw()
+        # plotter.wait()
+        plotter.fig.canvas.flush_events()
+        plotter.fig.canvas.draw()
 
     plotter.wait()
     f.nfe = 0
 
-    optim = {"optimizer_class": torch.optim.RMSprop, "params": {"lr": 1e-2}}
+    optim = {
+        "optimizer_class": torch.optim.SGD,
+        "params": {"lr": 1e-9,}
+    }
     solver = PanSolver(
         32,
         32,
-        1e-2,
-        30,
+        (1e-2,1e-9),
+        (20,10),
         device=device,
         callback=callback,
         optim=optim,

@@ -45,14 +45,12 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
                     * torch.arccos(t)
                 )
 
-                y_back = (B_fwd @ T_n).view(batch_sz,*dims)
-                # ipdb.set_trace()
-
+                y_back = B_fwd @ T_n
                 _, vjp_fun = torch.func.vjp(
                     lambda x: f(t, x),
                     y_back,
                 )
-                Da_y = vjp_fun(a_y)[0]
+                Da_y = -vjp_fun(a_y)[0]
 
                 return Da_y
 
@@ -60,18 +58,28 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
                 t_eval[-1], t_eval[0], solver_adjoint.num_points
             ).to(device)
 
-            A_traj, _ = solver_adjoint.solve(
-                adjoint_dynamics, t_eval_adjoint, a_y_T, f_init=Da_y_T, B_init="prev"
-            )
-
+            ##########
             # import torchdyn
+            #
             # _, test = torchdyn.numerics.odeint(
             #     adjoint_dynamics,
             #     a_y_T,
             #     t_eval_adjoint,
             #     solver="tsit5",
+            #     atol=1e-9,
             # )
-            # print(torch.norm( test[-1] - A_traj[-1]))
+            # import matplotlib.pyplot as plt
+            # plt.plot(
+            #     t_eval_adjoint,
+            #     test[:, 0, 0, 0].reshape(solver_adjoint.num_points, -1),
+            #     "g",
+            # )
+            # ipdb.set_trace()
+            #################
+
+            A_traj, _ = solver_adjoint.solve(
+                adjoint_dynamics, t_eval_adjoint, a_y_T, f_init=Da_y_T, B_init="prev"
+            )
 
             a_y_back = A_traj.reshape(-1, *dims)
 
