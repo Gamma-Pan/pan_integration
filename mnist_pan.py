@@ -142,6 +142,8 @@ def train_all_pan(configs, sensitivity, epochs, test):
                     "type": "pan",
                     "sensitivity": sensitivity,
                     "architecture": "CNN_IL_aug",
+                    "batch_size": BATCH_SIZE,
+                    "cnn_channels": CHANNELS
                 }
             )
 

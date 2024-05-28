@@ -110,12 +110,20 @@ class LitOdeClassifier(LightningModule):
 
         return loss
 
+    def on_validation_epoch_start(self) :
+        self.val_acc = 0
+        self.val_batches = 0
+
     def validation_step(self, batch, batch_idx):
         loss, preds, acc = self._common_step(batch, batch_idx)
-
-        self.log("val_loss", loss, prog_bar=True)
-        self.log("val_acc", acc, prog_bar=True)
+        self.val_acc += acc
+        self.val_batches+=1
         return loss
+
+    def on_validation_epoch_end(self):
+        val_acc_epoch = self.val_acc /self.val_batches
+        self.log('val_acc', val_acc_epoch, prog_bar=True)
+
 
     def test_step(self, batch, batch_idx):
         loss, preds, acc = self._common_step(batch, batch_idx)
@@ -130,13 +138,11 @@ class LitOdeClassifier(LightningModule):
             self.parameters(), lr=self.learning_rate, weight_decay=1e-5
         )
         lr_scheduler_config = {
-            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(opt),
-            "monitor": "loss",
-            "mode" : 'min',
-            "factor": 0.5,
+            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=3, min_lr=1e-6, threshold=0.001),
+            "monitor": "val_acc",
+            "mode" : 'max',
             "interval": "epoch",
-            "patience": 3,
-            "min_lr" :1e-9
+            "frequency": 1
 
         }
         out = {"optimizer": opt, "lr_scheduler": lr_scheduler_config}
