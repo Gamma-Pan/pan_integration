@@ -490,6 +490,41 @@
       \field{title}{Ordinary differential equations for deep learning}
       \field{year}{2019}
     \endentry
+    \entry{matsubara2021symplectic}{article}{}
+      \name{author}{3}{}{%
+        {{hash=5e274388763fb2deb9f78659d85341b3}{%
+           family={Matsubara},
+           familyi={M\bibinitperiod},
+           given={Takashi},
+           giveni={T\bibinitperiod}}}%
+        {{hash=066bff89c7e9e07396ac0324e4077457}{%
+           family={Miyatake},
+           familyi={M\bibinitperiod},
+           given={Yuto},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=92f431539203936b6c428cbc8fbec9ba}{%
+           family={Yaguchi},
+           familyi={Y\bibinitperiod},
+           given={Takaharu},
+           giveni={T\bibinitperiod}}}%
+      }
+      \strng{namehash}{29282c2a0fc6ae7fe4a4b4883c518cda}
+      \strng{fullhash}{29282c2a0fc6ae7fe4a4b4883c518cda}
+      \strng{bibnamehash}{29282c2a0fc6ae7fe4a4b4883c518cda}
+      \strng{authorbibnamehash}{29282c2a0fc6ae7fe4a4b4883c518cda}
+      \strng{authornamehash}{29282c2a0fc6ae7fe4a4b4883c518cda}
+      \strng{authorfullhash}{29282c2a0fc6ae7fe4a4b4883c518cda}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Advances in Neural Information Processing Systems}
+      \field{title}{Symplectic adjoint method for exact gradient of neural ode with minimal memory}
+      \field{volume}{34}
+      \field{year}{2021}
+      \field{pages}{20772\bibrangedash 20784}
+      \range{pages}{13}
+    \endentry
     \entry{pontryagin2018mathematical}{book}{}
       \name{author}{1}{}{%
         {{hash=a48ee432c764d9dc18a91735b7a57509}{%
@@ -687,6 +722,33 @@
       \verb 2102.04668
       \endverb
     \endentry
+    \entry{gander201550}{incollection}{}
+      \name{author}{1}{}{%
+        {{hash=67bfab884403165744c005f28419f592}{%
+           family={Gander},
+           familyi={G\bibinitperiod},
+           given={Martin\bibnamedelima J},
+           giveni={M\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{67bfab884403165744c005f28419f592}
+      \strng{fullhash}{67bfab884403165744c005f28419f592}
+      \strng{bibnamehash}{67bfab884403165744c005f28419f592}
+      \strng{authorbibnamehash}{67bfab884403165744c005f28419f592}
+      \strng{authornamehash}{67bfab884403165744c005f28419f592}
+      \strng{authorfullhash}{67bfab884403165744c005f28419f592}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Multiple Shooting and Time Domain Decomposition Methods: MuS-TDD, Heidelberg, May 6-8, 2013}
+      \field{title}{50 years of time parallel time integration}
+      \field{year}{2015}
+      \field{pages}{69\bibrangedash 113}
+      \range{pages}{45}
+    \endentry
     \entry{suli2010numerical}{article}{}
       \name{author}{1}{}{%
         {{hash=38d3a14c4a1c5448089a687a815acd4e}{%
@@ -701,8 +763,8 @@
       \strng{authorbibnamehash}{38d3a14c4a1c5448089a687a815acd4e}
       \strng{authornamehash}{38d3a14c4a1c5448089a687a815acd4e}
       \strng{authorfullhash}{38d3a14c4a1c5448089a687a815acd4e}
-      \field{sortinit}{1}
-      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{journaltitle}{Mathematical Institute, University of Oxford}
@@ -999,53 +1061,6 @@
       \field{pages}{1097\bibrangedash 1110}
       \range{pages}{14}
     \endentry
-    \entry{nakkiran2019deep}{article}{}
-      \name{author}{6}{}{%
-        {{hash=dcf4f0cf5051a34594b490c8c69117ba}{%
-           family={Nakkiran},
-           familyi={N\bibinitperiod},
-           given={P},
-           giveni={P\bibinitperiod}}}%
-        {{hash=1247609288212f2e0e272f0e102db489}{%
-           family={Kaplun},
-           familyi={K\bibinitperiod},
-           given={G},
-           giveni={G\bibinitperiod}}}%
-        {{hash=7080d7a97eeb2c8ac93d4b089afe26c7}{%
-           family={Bansal},
-           familyi={B\bibinitperiod},
-           given={Y},
-           giveni={Y\bibinitperiod}}}%
-        {{hash=84c7288c6b3f93ef543e0189210bbdf2}{%
-           family={Yang},
-           familyi={Y\bibinitperiod},
-           given={T},
-           giveni={T\bibinitperiod}}}%
-        {{hash=909bf04d3ddf4b0531fdbcfed494d4b4}{%
-           family={Barak},
-           familyi={B\bibinitperiod},
-           given={B},
-           giveni={B\bibinitperiod}}}%
-        {{hash=a3cfbe74042f3457db587a42603e1509}{%
-           family={Sutskever},
-           familyi={S\bibinitperiod},
-           given={I},
-           giveni={I\bibinitperiod}}}%
-      }
-      \strng{namehash}{ceb51d9b8165ee540cc00bf693c25283}
-      \strng{fullhash}{5cf3c4a247629012cabd3dd76d8803da}
-      \strng{bibnamehash}{5cf3c4a247629012cabd3dd76d8803da}
-      \strng{authorbibnamehash}{5cf3c4a247629012cabd3dd76d8803da}
-      \strng{authornamehash}{ceb51d9b8165ee540cc00bf693c25283}
-      \strng{authorfullhash}{5cf3c4a247629012cabd3dd76d8803da}
-      \field{sortinit}{3}
-      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{journaltitle}{arXiv preprint arXiv:1912.02292}
-      \field{title}{Deep double descent: where bigger models and more data hurt. arXiv}
-      \field{year}{2019}
-    \endentry
     \entry{kiwiel2001convergence}{article}{}
       \name{author}{1}{}{%
         {{hash=5a297975cc5750164323c6794920feb7}{%
@@ -1063,8 +1078,8 @@
       \strng{authorbibnamehash}{5a297975cc5750164323c6794920feb7}
       \strng{authornamehash}{5a297975cc5750164323c6794920feb7}
       \strng{authorfullhash}{5a297975cc5750164323c6794920feb7}
-      \field{sortinit}{3}
-      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{sortinit}{4}
+      \field{sortinithash}{9381316451d1b9788675a07e972a12a7}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{journaltitle}{Mathematical programming}
@@ -1101,8 +1116,8 @@
       \strng{authorbibnamehash}{fd75cea68d6982b503a0cd84f7cc7b51}
       \strng{authornamehash}{fd75cea68d6982b503a0cd84f7cc7b51}
       \strng{authorfullhash}{fd75cea68d6982b503a0cd84f7cc7b51}
-      \field{sortinit}{3}
-      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{sortinit}{4}
+      \field{sortinithash}{9381316451d1b9788675a07e972a12a7}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{journaltitle}{nature}
@@ -1112,6 +1127,35 @@
       \field{year}{1986}
       \field{pages}{533\bibrangedash 536}
       \range{pages}{4}
+    \endentry
+    \entry{polyak1964some}{article}{}
+      \name{author}{1}{}{%
+        {{hash=83cb78217e5046c7c8c8da6fc9d263df}{%
+           family={Polyak},
+           familyi={P\bibinitperiod},
+           given={Boris\bibnamedelima T},
+           giveni={B\bibinitperiod\bibinitdelim T\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Elsevier}%
+      }
+      \strng{namehash}{83cb78217e5046c7c8c8da6fc9d263df}
+      \strng{fullhash}{83cb78217e5046c7c8c8da6fc9d263df}
+      \strng{bibnamehash}{83cb78217e5046c7c8c8da6fc9d263df}
+      \strng{authorbibnamehash}{83cb78217e5046c7c8c8da6fc9d263df}
+      \strng{authornamehash}{83cb78217e5046c7c8c8da6fc9d263df}
+      \strng{authorfullhash}{83cb78217e5046c7c8c8da6fc9d263df}
+      \field{sortinit}{4}
+      \field{sortinithash}{9381316451d1b9788675a07e972a12a7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Ussr computational mathematics and mathematical physics}
+      \field{number}{5}
+      \field{title}{Some methods of speeding up the convergence of iteration methods}
+      \field{volume}{4}
+      \field{year}{1964}
+      \field{pages}{1\bibrangedash 17}
+      \range{pages}{17}
     \endentry
     \entry{kashyap2022survey}{article}{}
       \name{author}{1}{}{%
@@ -1127,8 +1171,8 @@
       \strng{authorbibnamehash}{16867464899956f69628e0ea35447809}
       \strng{authornamehash}{16867464899956f69628e0ea35447809}
       \strng{authorfullhash}{16867464899956f69628e0ea35447809}
-      \field{sortinit}{3}
-      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{sortinit}{4}
+      \field{sortinithash}{9381316451d1b9788675a07e972a12a7}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{journaltitle}{arXiv preprint arXiv:2211.15596}
@@ -1168,6 +1212,33 @@
       \field{title}{Adaptive subgradient methods for online learning and stochastic optimization.}
       \field{volume}{12}
       \field{year}{2011}
+    \endentry
+    \entry{kingma2014adam}{article}{}
+      \name{author}{2}{}{%
+        {{hash=b6fbd171848aad4edf3925543f1f1522}{%
+           family={Kingma},
+           familyi={K\bibinitperiod},
+           given={Diederik\bibnamedelima P},
+           giveni={D\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+        {{hash=8aa66e8231cc2fdbe67aa4f18ca970c6}{%
+           family={Ba},
+           familyi={B\bibinitperiod},
+           given={Jimmy},
+           giveni={J\bibinitperiod}}}%
+      }
+      \strng{namehash}{a09df9f123146b8e2c7f1134c9496932}
+      \strng{fullhash}{a09df9f123146b8e2c7f1134c9496932}
+      \strng{bibnamehash}{a09df9f123146b8e2c7f1134c9496932}
+      \strng{authorbibnamehash}{a09df9f123146b8e2c7f1134c9496932}
+      \strng{authornamehash}{a09df9f123146b8e2c7f1134c9496932}
+      \strng{authorfullhash}{a09df9f123146b8e2c7f1134c9496932}
+      \field{sortinit}{4}
+      \field{sortinithash}{9381316451d1b9788675a07e972a12a7}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{arXiv preprint arXiv:1412.6980}
+      \field{title}{Adam: A method for stochastic optimization}
+      \field{year}{2014}
     \endentry
   \enddatalist
 \endrefsection

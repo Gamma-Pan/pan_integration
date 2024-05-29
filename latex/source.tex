@@ -324,13 +324,16 @@
     \subsection{Training}
     Optimising any model through gradient descent, in a supervised learning setting, requires acquiring the gradient of
     some loss function $\mathcal{L}(\pmb{\theta})$ with respect to (wrt.) the model's parameters $\pmb{\theta}$.
+    In reality this loss function is defined upon the joint distribution of the inputs and outputs but since we don't
+    have access to such quantities we calculate the loss using a numerical approximation based on a subset of all
+    possible inputs (along with their corresponding outputs marginal probability) called the training set.
     Usually, the loss for each sample in the dataset is calculated using a cost, or distance, function between the
     output of the network and the desired or ideal output $\pmb{y}^*$.
     Sometimes, the loss function may be dependent on the state on multiple times.
     But for simplicity's sake we will examine the case where it only depends on the state at time $t=T$,
-    which as is is apparent, depends indirectly on parameters $\theta$.
+    which as it is apparent, depends indirectly on parameters $\theta$.
     \begin{equation}
-        L(\pmb{y}(T), \pmb{y}^*) = L \left( \pmb{y}(0) +\int_{0}^{T} f(\pmb{y}(\tau), \tau, \pmb{\theta}) \,d\tau \right, \pmb{y}^*)
+        L(\pmb{y}(T), \pmb{y}^*) = L \left( \pmb{y}(0) +\int_{0}^{T} f(\pmb{y}(\tau), \tau, \pmb{\theta}) \,d\tau , \pmb{y}^* \right)
         \label{eq:ode_loss}
     \end{equation}
     One could naively solve the initial value problem using any numerical ODE solver and try to backpropagate the gradients through the steps of the solver.
@@ -341,7 +344,7 @@
         \pmb a(t) = \frac{\partial L}{\partial \pmb{y}(t) }
     \end{equation}
     The above quantity is called the \textit{adjoint state}.
-    It can be proven that for its derivative \cite{pontryagin2018mathematical}, the following equation holds:
+    It can be proven that for its derivative~\cite{pontryagin2018mathematical}, the following equation holds:
     \begin{equation}
         \left.
         \frac
@@ -405,7 +408,6 @@
     \end{equation}
     The exact solutions to these ODEs is usually hard to calculate or intractable.
     To this end, many numerical methods have been developed over the years.
-
 
     \subsection{Introduction}
     In this chapter we will make a short reference to some basic theoretical prerequisites of numerical ODE solver.
@@ -482,14 +484,14 @@
     \end{align}
     Rearranging terms in the above equation and substituting the known function for the derivative we arrive at the
     Euler iteration.
-    \begin{equation*}
-        \label{eq:sol:euler}
-        y_{k+1} = y_n + h f(t_n, y_n))
-    \end{equation*}
+    \begin{equation}
+        \label{eq:euler_itr}
+        y_{n+1} = y_n + h f(t_n, y_n))
+    \end{equation}
 
     The local truncation error is the error of the approximation compared to the true solution for one step of the
     algorithm supposing $y(t_n) = y_n$
-    We can intuitively understand that as the \textit{step size} at ~\eqref{eq:sol:euler} gets smaller the lower the
+    We can intuitively understand that as the \textit{step size} at ~\eqref{eq:euler_itr} gets smaller the lower the
     truncation error becomes.
     This can be shown formally considering the Taylor expansion of $y$ around $t_n$
     \begin{align*}
@@ -567,7 +569,7 @@
         integer such that, for any sufficiently smooth solution curve $(t, y(t))$ in $\pmb{R}$ of the
         IVP~\eqref{eq:sol:ivp}, there exists constants $k$ and $h_0$ such that
         \begin{equation*}
-            |T_n| \leq Kh^p \quad for \; 0<h\leq h_0
+            |T_n| \leq Kh^p \quad \text{for} \; 0<h\leq h_0
         \end{equation*}
         for any pair of points $(t_n, y(t_n)), (t_{n+1}, y(t_{n+1}) ) $ on the solution curve.
     \end{definition}
@@ -590,7 +592,7 @@
         k_i = f\left(t_n + c_ih, y_n + h\sum_{j=1}^s a_{ij} k_j \right), \quad i=1,\dots,s
     \end{equation*}
     The above formula is quite terse, and actually includes both explicit and implicit Runge-Kutta methods, we will
-    start from explicit methods and move to implicit ones.
+    focus on explicit methods.
 
     \subsubsection{Explicit Runge-Kutta methods}
     It is helpful to start from a specific example, namely the second order Runge Kutta method and generalize to higher
@@ -634,14 +636,14 @@
     $y''(t_n) = \left. \frac{dy}{dt} f(t, y(t)) \right|_{t=t_n}$ since $f$ has both direct and indirect dependence of t
     it is expanded as $\frac{d}{dt} f(t, y(t)) = f_{t} + ff_{y}$  from the multivariate chain rule, where $f_x$ is
     $\frac{\partial f}{\partial x}(t, y(t))$, we omit $f$'s arguments omitted for convenience.
-    Substituting $k_1$, $k_2$ in ~\eqref{eq:sol:tayl1} we get:
+    Substituting $k_1$, $k_2$ in ~\eqref{eq:tayl1} we get:
     \begin{equation}
         hf + \frac{h^{2}}{2}(f_{t} + ff_{y}) + \mathcal{O}\left(h^{3}\right)
         =
         b_{1}hf + b_{2}hf(t + \alpha h, y + \beta k_{1}).
         \label{eq:tayl2}
     \end{equation}
-    We now apply the 2-dimensional Taylor expansion on the right-hand side of ~\eqref{eq:sol:tayl2}:
+    We now apply the 2-dimensional Taylor expansion on the right-hand side of ~\eqref{eq:tayl2}:
     \begin{align*}
         hf + \frac{h^{2}}{2}(f_{t} + ff_{x}) + \mathcal{O}\left(h^{3}\right)  &=
         b_{1}hf + b_{2}(hf +\alpha h^{2}f_{t} + \beta h^{2} ff_{x}) + \mathcal{O}\left(h^{3}\right)
@@ -668,7 +670,7 @@
         k_2 &= f(t_n + c_2 h, y_n + (a_{21} k_1) h), \\
         k_3 &= f(t_n + c_3 h, y_n + (a_{31} k_1 + a_{32 k_2})h), \\
         &\vdots \\
-        k_N &= f(t_n + c_s h, y_n + (a_{s1}k_1 + a_{s2}k2 + \dots + a_{s, s-1}k_{s-1})h)
+        k_N &= f(t_n + c_s h, y_n + (a_{s1}k_1 + a_{s2}k_2 + \dots + a_{s, s-1}k_{s-1})h)
     \end{align}
 
     Similarly to the second order case to specify a $N$-th order method we need the coefficient $a_{ij}$ called the
@@ -835,7 +837,7 @@
         \label{approx_error_sum}
     \end{align}
     We therefore seek to find coefficients $B^*$ that minimise the above error.
-    To find the minimum we set the derivative wrt. $B$ equal to zero and solve for $B$
+    To find the minimum we set the derivative wrt $B$ equal to zero and solve for $B$
     \begin{equation}
         \label{eq:error_zero}
         \nabla_B e(B) = 0
@@ -911,16 +913,16 @@
     \end{align}
     Eq.~\ref{update} outlines the iteration scheme for this zero order optimisation algorithm.
     Omitting the partitions' lengths terms $\Delta \pmb{t}$ temporarily for clarity:
-    \begin{equation*}
+    \begin{equation}
+        \label{eq:biter}
         B_{k+1}^T =
         f \big( B_{k}^T \Phi \big) {\dot\Phi}^T
         ( \dot\Phi \dot\Phi^T )^{-1}
-    \end{equation*}
+    \end{equation}
     It becomes apparent that the inverted matrix is the same for all iterations meaning it only needs to be inverted
     once at the beginning.
     Furthermore, $f$ is applied to each row of its input matrix in parallel, which provides a parallel speed-up to
     the algorithm.
-
     \begin{figure}[H]
         \begin{center}
             \input{sol_regression.pgf}
@@ -944,7 +946,7 @@
     A version of the algorithm ~\ref{alg:linesearh} is showcased in Appendix~\ref{newtonalgo}, where line-search is used for the learning
     rate or step size of the update.
 
-    Combining polynomial approximation with the Newton algorithm we arrive at algorithm ~\ref{alg:intapprox}.
+    Combining polynomial approximation with the Newton algorithm we arrive at algorithm ~\ref{alg:intapprox_2}.
 
     \begin{algorithm}
         \caption{Polynomial approximation numerical integration}
@@ -963,84 +965,103 @@
                 \State $ B^{[k+1]} \gets B_k + \alpha \pmb{d}^{[k]}$
                 \State $k \gets k+1$
             \Until{$k>k_max$}
-            \label{alg:intapprox}
         \end{algorithmic}
+        \label{alg:intapprox_2}
     \end{algorithm}
 
     \subsection{Realisation details}
 
     \subsubsection{Imposing initial conditions}
     Since the value of $y(t)$ and $f(y(t))$ are known at $t=0$ we can calculate a part of $B$ analytically which
-    allows to both: impose our initial conditions and to reduce the computational cost.
+    allows to:
+    \begin{itemize}
+        \item impose our initial conditions
+        \item to reduce the computational cost.
+    \end{itemize}
+    Let's denote with $\pmb{b}_n$ the $n$-th column of $B^T$, $B_{2:}$ the last $N-2$ columns of $B^T$ and $\pmb\phi_{2:}$ the last
+    $M-2$ elements of $\pmb\phi$.
     Starting with initial state:
     \begin{align}
-        \pmb{y}(t_0) = B^T \pmb\phi(t_0) = B_0 \phi_0(t_0) + B_1 \phi_1(t_0) + B^T_{2:} \pmb\phi_{2:}(t_0)
+        \pmb{y}(t_0) = B^T \pmb\phi(t_0)
+        =
+        \begin{bmatrix}
+            \pmb{b}_0 & \pmb{b}_1
+        \end{bmatrix}
+        \begin{bmatrix}
+            \phi_0(t_0) \\ \phi_1(t_0)
+        \end{bmatrix}
+        + {B}_{2:} \pmb{\phi_{2:}}(t_0)
     \end{align}
     We can write a similar equation for $f(\pmb{y}_0)$.
     \begin{align}
-        f(\pmb{y}(t_0)) = B^T \pmb{\dot\phi}(t_0) = B_0 \dot\phi_0(t_0) + B_1 \dot\phi_1(t_0) + B^T_{2:} \pmb{\dot\phi}_{2:}(0)
-    \end{align}
-    We can group this two equation in system:
-    \begin{align}
+        f(\pmb{y}(t_0)) = B^T \pmb{\dot\phi}(t_0)
+        =
         \begin{bmatrix}
-            \pmb{y}_0 & \pmb{f}_0
-        \end{bmatrix} = B_0 \begin{bmatrix}
-                                \phi_0(t_0) & \dot\phi_0(t_0)
-        \end{bmatrix} +
-        B_1 \begin{bmatrix}
-                \phi_1(t_0) & \dot\phi_1(t_0)
-        \end{bmatrix} +
-        B^T_{2:} \begin{bmatrix}
-                     \pmb\phi_{2:}(t_0) & \pmb{\dot\phi}_{2:}(t_0)
+            \pmb{b}_0 & \pmb{b}_1
         \end{bmatrix}
+        \begin{bmatrix}
+            \dot\phi_0(t_0) \\ \dot\phi_1(t_0)
+        \end{bmatrix}
+        + {B}_{2:} \pmb{\dot\phi_{2:}}(t_0)
     \end{align}
-    Which can be written as:
+    We can group this two equations in a system:
     \begin{align}
         \begin{bmatrix}
             \pmb{y}_0 & \pmb{f}_0
         \end{bmatrix} =
         \begin{bmatrix}
-            B_0 & B_1
+            \pmb{b}_0 & \pmb{b}_1
         \end{bmatrix}
         \begin{bmatrix}
-            \phi_0(t_0) & \dot\phi_0(t_0) \\
-            \phi_1(t_0) & \dot\phi_1(t_0)
+            \phi_0(t_0) & \dot{\phi}_0(t_0) \\
+            \phi_1(t_0) & \dot{\phi}_1(t_0)
         \end{bmatrix} +
-        B^T_{2:} \begin{bmatrix}
-                     \pmb\phi_{2:}(t_0) & \pmb{\dot\phi}_{2:}(t_0)
+        B_{2:}
+        \begin{bmatrix}
+            \pmb\phi_{2:}(t_0) \\ \pmb{\dot{\phi}_{2:}}(t_0)
         \end{bmatrix}
     \end{align}
-    Solving for $[B_0 \; B_1]$ we have:
+    Solving for $[\pmb{b}_0 \;\; \pmb{b}_1]$ we have:
     \begin{equation}
         \label{eq:pan:B01}
         \begin{bmatrix}
-            B_0 & B_1
-        \end{bmatrix} = \left(
+            \pmb{b}_0 & \pmb{b}_1
+        \end{bmatrix}
+        =
+        \left(
         \begin{bmatrix}
             \pmb{y}_0 & \pmb{f}_0
-        \end{bmatrix}  -
-        B^T_{2:} \begin{bmatrix}
-                     \pmb\phi_{2:}(0) & \pmb{\dot\phi}_{2:}(0)
+        \end{bmatrix}
+        -
+        B_{2:}
+        \begin{bmatrix}
+            \pmb\phi_{2:}(t_0) \\ \pmb{\dot{\phi}_{2:}}(t_0)
         \end{bmatrix}
         \right)
-        \begin{bmatrix}
-            \phi_0(t_0) & \dot\phi_0(t_0) \\
-            \phi_1(t_0) & \dot\phi_1(t_0)
-        \end{bmatrix}^{-1}
+        U^{-1}
     \end{equation}
+    where:
+    \begin{equation*}
+        U =
+        \begin{bmatrix}
+            \phi_0(t_0) & \dot{\phi}_0(t_0) \\
+            \phi_1(t_0) & \dot{\phi}_1(t_0)
+        \end{bmatrix}
+    \end{equation*}
+
     The lower triangular structure of $\phi(t)$ ensures that this $2\times 2 $ matrix is always invertible.
     This can be show easily since $\phi_0(t_0) = T_0(-1)$ is always $1$,  $\phi_1(t_0) = T_1(-1) = -1$, the derivative of
     $T_0$ is obviously $0$ and $\dot\phi_1(t_0)$ is something non-zero.
 
     Equation ~\eqref{eq:pan:B01} allows us to express the first two rows of the coefficients matrix $B$ as a linear combination
-    of the rest $(N-1)-2$ rows.
+    of the rest $N-2$ rows.
     This means we don't need to ``learn'' them though optimisation, we instead minimize the error subject to the
     remaining rows.
 
     The initialisation of $B$ is in the users choice, it could be random matrix.
     Alternatively, one could use a coarse ODE solver, likely a forward Euler iteration with relatively large step size,
     to get a rough estimate $\pmb{y}_c(t)$.
-    Then by solving the least squares problem $\pmb{y}_c(t) - \Phi B_0$ get an initialisation that's closer to the
+    Then by solving the least squares problem $\pmb{y}_c(t) - B^T_0 \Phi $ get an initialisation that's closer to the
     optimum, $B^*$, for faster convergence.
     One has to figure out a good balance between the number of steps of the coarse solver -which are innately serial-
     and how far the initial $B$ is from the optimum, which will increase the number of iterations.
@@ -1066,11 +1087,11 @@
     First of all, the parallelisation potential of such a method comes from the fact that $f$ can be evaluated for all
     input points $\hat y(t)$ simultaneously at a single iteration.
     More specifically, during the fist, zero-th order part of the algorithm, a vector of points is passed into $f$ to
-    update the coeffecients as can be seen in ~\eqref{eq:Bitaration}.
+    update the coeffecients as can be seen in Eq.~\eqref{eq:Biter}.
     In reality, $f$ is applied on each element of this vector but since the calculations are independent all elements are
     evaluated in parallel.
     Similarly, during the Newton iteration the Hessian can, up to some degree, be computed in parallel by exploiting
-    vectorization [CITE PYTORCH vmap?].
+    vectorization.
     This is in contrast to classical ODE solvers where the solution, or the trajectory in state space, is calculated from
     initial time to terminal time, step by step; in our case the whole trajectory (a continuous time approximation
     of it rather) is known from the start.
@@ -1079,7 +1100,7 @@
     Obviously, more than one iteration is needed to obtain a solution to some specified accuracy.
     But if there are sufficiently many computing nodes available, each iteration should be at least comparable to a
     single step of many common ODE solvers.
-    The critical point of out method is that it takes less parallel/batch evaluations of $f$ to converge to a solution
+    The critical point of the proposed method is that it takes less parallel/batch evaluations of $f$ to converge to a solution
     than steps of a time stepping solver.
 
     For the second part of the algotithm the Jacobian and Hessian matrices of $e$ also have to be calculated.
@@ -1088,15 +1109,13 @@
     Additionally, the line search algorithm -for finding step sizes along the path of the Newton direction requires
     some evaluations of $e$ and its Jacobian.
     Decreasing the number of function evaluations is crucial for further speeding up this algorithm.
-    To this goal the cheaper recursive least squares solution is found first at significally less number of function
-    evaluations and the Newton algorithm is used for refining the solution to highter accuracy.
+    To this goal the cheaper recursive least squares solution is found first and the Newton algorithm is used for
+    refining the solution to accuracy.
 
     It's important to note that traditional ODE numerical solver also take more that 1 (serial) function evaluations at
     each step.
     For example RK45, a widely used algorithm from the family of Runge-Kutta methods, involves six sequential function
-    evaluations (NFE) [CITE?] at each step.
-    Likewise, Dormand-Prince, the default method in many software packages [CITE?], sometimes referred as DOPRI5 also
-    has an NFE of 6 for a single step.
+    evaluations at each step~\cite{suli2010numerical}.
 
     Comparing popular parallel in time ODE solving methods, like PFASST and parareal, to our approach showcases
     similarities but also differences.
@@ -1132,7 +1151,7 @@
     expect at least 4 more function evaluations that will be performed serialy ~\cite{wright2006numerical}.
 
     These limitations of Newton optimisation with line search call for more numerical methods to be tested like
-    Quasi-Newton, Conjugate Gradients and BFGS.
+    Quasi-Newton methods such as BFGS and Conjugate Gradients~\cite{wright2006numerical}.
 
 %    \subsection{hyper solver + parallel in time(???)}
 %    Shifting out focus to the more specific problem of training neural ODEs.
@@ -1144,9 +1163,9 @@
     For our case, we define tolerances for both steps of the algorithm, least squares and Newton iteration in the
     following ways.
     For the first part, the algorithm stops when there is no sufficient change in the parameters:
-    $\lVert B^{[k]} - B^{[k-1]} \rVert < $ tol\_ls.
+    $\lVert B^{[k]} - B^{[k-1]} \rVert_2 < $ tol\_ls.
     While for the Newton part the iteration stops when the gradient is sufficiently close to zero:
-    $ \lVert \partial_k e \rVert < $ tol\_newton.
+    $ \lVert \nabla_e \rVert < $ tol\_newton.
     Adjusting these two \textit{hyperparameters} as well as the number of approximation coefficients and the number of
     points where the error is calculated; we can change the convergence properties of the algorithm.
 
@@ -1216,7 +1235,7 @@
 
     We remind that for PAN, during optimisation $f$ is evaluated on multiple points, but since this calculations can be
     performed in parallel we assume the wall clock time is similar to one evaluation plus parallelisation overhead.
-    As we can see in table ~\ref{spiral-metrics} for this simple problem our method achieves better accuracy while
+    As we can see in Table ~\ref{spiral-metrics} for this simple problem our method achieves better accuracy while
     taking significantly less number of function evaluation.
 
     \subsubsection{Lorenz Attractor}
@@ -1272,49 +1291,40 @@
         \end{center}
     \end{table}
 
-    In table, \ref{lorenz_metric} we see that our method achieves better accuracy for less amount of function
-    evaluation on this system of ODEs.
-    Although, we have to note that accuracy seems to become saturated and decreasing tolerances or increasing number
+    In Table~\ref{lorenz_metric} we see that the proposed method achieves better accuracy for less amount of function
+    evaluations on this system of ODEs.
+    However, we must address at this point that accuracy seems to become saturated and decreasing tolerances or increasing number
     of coefficients doesn't improve results.
     It becomes apparent that finding the optimal hyperparameters is crucial for the most efficient use of the algorithm.
 
     \newpage
-
     \printbibliography
 
     \appendix
 
-
-    \section{The backpropagation equations}
-    In order to contrast and highlight the differences between classical neural networks, residual neural networks and neural ODEs we showcase how the gradients of the loss wrt.
-    the learnable parameters is calculated in each architecture.
+    \chapter{The backpropagation equations}
+    In order to contrast and highlight the differences between classical neural networks, residual neural networks and
+    neural ODEs we showcase how the gradients of the loss wrt the learnable parameters is calculated in each architecture.
     This quantity is necessary in order to minimise the loss of the network using any -gradient descent based- optimisation algorithm.
-
     \subsection{Vanilla Neural Networks}
     Classical artificial neural networks are comprised of linear transformations followed by non-linear activation functions.
     The equation that describes the input-output relationship of the $n$-th layer is:
     \begin{equation}
         \bm{y}_{n} = \phi( W_{n} \bm{y}_{n-1} )
     \end{equation}
-
     Where $\phi$ is a non-linear function, $W_n$ is the layer's weights, $\bm{y}_{n-1}$ the output of the previous layer, we omit the biases vector to simplify the equations but the logic is the same.
     Unfolding this equation for the whole network of depth $N$ we get:
-
     \begin{equation}
         \bm{y}_{out} = \phi ( W_{N} \cdot \phi(W_{N-1} \cdot  \phi(W_{N-2}( \dots ))))
     \end{equation}
-
     The output of the network is passed in a (scalar) cost function $C(\bm{y}_{out},\bm{y}^*)$.
     In order to apply gradient descent based optimisation algorithms it is necessary to calculate the gradient wrt.
     all the weights:
-
     \begin{equation}
         \frac{ \partial C}{\partial W_{n} }, \quad \text{for} \ n=1,2,\dots,l
     \end{equation}
-
-    Focusing on a single layer, lets use $\textbf{z}_{n}$ to denote $W_{n}\cdot \textbf{y}_{n-1}$ or whats goes in the non-linear function at each layer.
+    Focusing on a single layer, lets use $\textbf{z}_{n}$ to denote $W_{n} \textbf{y}_{n-1}$ or whats goes in the non-linear function at each layer.
     By applying the chain rule we get:
-
     \begin{align}
         \frac{ \partial C}{\partial \textbf{y}_{n-1} }
         =
@@ -1333,10 +1343,8 @@
         W_n \;
         \frac{ \partial C}{\partial \textbf{y}_{n} }
     \end{align}
-
     The non-linearity $\phi$ is applied on each element of the input vector independently, so its partial derivative wrt.
-    the input its a diagonal matrix and its transpose is the same as itself.
-
+    the input its a diagonal matrix and its transpose is the same as itself
     \begin{align}
         \frac{ \partial C}{\partial \textbf{y}_{n-1} }
         =
@@ -1345,11 +1353,9 @@
         \frac{ \partial C}{\partial \textbf{y}_{n} }
         \label{dCdy}
     \end{align}
-
-    Equation~\eqref{dCdy} allows to calculate all such derivatives recursively starting from the last layer where $\frac{\partial C}{\partial \textbf{y}_{out}}$ has a closed form solution.
+    Eq.~\eqref{dCdy} allows to calculate all such derivatives recursively starting from the last layer where $\frac{\partial C}{\partial \textbf{y}_{out}}$ has a closed form solution.
     We can now calculate the desired gradients with respect to the weights.
     Below $W_n^i$ is the $i$-th column of the weights matrix of the $n$-th layer.
-
     \begin{align*}
         \frac{ \partial C}{\partial W_n^{[i]} }
         =
@@ -1371,9 +1377,7 @@
         \phi^{(1)}(\pmb{z}_n ) \; \pmb{y}_{n-1}^{[i]}
         \frac{ \partial C}{\partial \pmb{y}_{n} }
     \end{align*}
-
     Stacking all the columns together we get:
-
     \begin{equation}
         \label{dCdW}
         \frac{ \partial C}{\partial W_n}
@@ -1382,9 +1386,7 @@
         \frac{ \partial C}{\partial \pmb{y}_{n} }  \,
         \pmb{y}_{n-1}
     \end{equation}
-
     Using~\eqref{dCdy} and~\eqref{dCdW} together we can find all the necessary gradients for backpropagation; as expressed in algorithm~\ref{alg:backprop}
-
     \begin{algorithm}
         \caption{Backpropagation}
         \label{alg:backprop}
@@ -1392,8 +1394,8 @@
             \State Do the forward pass, save in memory $W_n, \textbf{z}_n, \textbf{y}_n$
             \State Calculate $\frac{\partial C}{\partial \textbf{y}_{out}}$ which is trivial
             \For{$n=N-1, \dots, 1$}
-                \State Using~\eqref{dCdy} and  $\frac{\partial C}{\partial \textbf{y}_{n+1}} $ find $\frac{\partial C}{\partial \textbf{y}_n}$
-                \State  Using~\eqref{dCdW} and $\frac{\partial C}{\partial \textbf{y}_n}$ find $\frac{\partial C}{\partial W_n}$
+                \State Using Eq.~\eqref{dCdy} and  $\frac{\partial C}{\partial \textbf{y}_{n+1}} $ find $\frac{\partial C}{\partial \textbf{y}_n}$
+                \State  Using Eq.~\eqref{dCdW} and $\frac{\partial C}{\partial \textbf{y}_n}$ find $\frac{\partial C}{\partial W_n}$
             \EndFor
         \end{algorithmic}
     \end{algorithm}
@@ -1403,11 +1405,9 @@
 
     \subsection{Residual Networks}
     Residual neural networks operate quire similarly to classical ones in terms of training.
-
     \begin{equation}
         \bm{y}_{n} = \phi( W_{n} \bm{y}_{n-1} ) + \bm{y}_{n-1}
     \end{equation}
-
     \begin{align}
         \label{resnet_dCdy}
         \frac{ \partial C}{\partial \textbf{y}_{n-1} }
@@ -1429,11 +1429,9 @@
             \right]^T
         \frac{ \partial C}{\partial \textbf{y}_{n} }
     \end{align}
-
-    Equation~\eqref{resnet_dCdy} is again a recursive relation that can be used to find all intermediate ``states '' starting from the output layer.
+    Eq.~\eqref{resnet_dCdy} is again a recursive relation that can be used to find all intermediate ``states '' starting from the output layer.
     The gradients wrt.
     weights becomes:
-
     \begin{align}
         \frac{ \partial C}{\partial W_n^{[i]} }
         =
@@ -1449,19 +1447,17 @@
         \frac{ \partial C}{\partial \pmb{y}_{n} }
         \label{resnet_dCdW}
     \end{align}
-
     Since the output of layer $n-1$ doesn't depend on the weights of layer $n$,~\eqref{resnet_dCdW} becomes identical to~\eqref{dCdW} and the same backpropagation algorithm is used to train the network.
-
     \begin{tikzpicture}
         \node [rectangle, draw, text width=0.8\textwidth, inner sep=10pt] (content) at (0,0) {
-            Backpropagation can be seen as a specific of Automatic Differentiation, a very powerful framework to acquire gradients numerically.
+            Backpropagation can be seen as a specific form of Automatic Differentiation, a very powerful framework to acquire gradients numerically.
             The governing principle is the same, propagating the gradients through functions with closed form derivative, utilising the chain rule.
         };
     \end{tikzpicture}
 
     \subsection{Neural ODEs}
     Calculating $\nabla_{\theta}L$ in neural ODEs can be achieved by differentiating through the solver steps but as we will demonstrate there is a much more efficient way, using tools from optimal control theory, namely adjoint sensitivities.
-    The governing equations for neural ODEs are~\eqref{ivp},~\eqref{adjoint},~\eqref{dldtheta} we repeat them for convenience:
+    The governing equations for neural ODEs are Eqs.~\eqref{ivp},~\eqref{adjoint},~\eqref{dldtheta} we repeat them for convenience:
 
     \begin{equation*}
         \pmb{y}(T) =  \pmb{y}(0) +\int_{0}^{T} f(\pmb{y}(\tau), \tau, \pmb{\theta}) \,d\tau
@@ -1491,7 +1487,6 @@
         {\partial \pmb{\theta}}
         \, d\tau
     \end{equation*}
-
     Calculating the last integral numerically requires the values of $\pmb{a}(t)$ at all the points in time the solver chooses.
     In the case of a fixed step size solver with step $h$ those would be $t_m = T - mh, \; m=0,1,\dots$.
     In the case of an adaptive step size $t_m$ could be any point between $T$ and $0$.
@@ -1500,7 +1495,7 @@
     Notice that we don't need to save any intermediate state or activations from the forward pass since we can re-calculate them moving backwards.
     In this sense, neural ODEs are reversible (up to numerical tolerances).
 
-    In algorithm~\ref{alg:adjoint} we reformulate the integral equation for the gradient of the loss wrt.
+    Algorithm~\ref{alg:adjoint} reformulates the integral equation for the gradient of the loss wrt.
     weights as a differential equation: $ \frac{d}{dt} \pmb{a}_\theta(t) = -\pmb{a}(t)^T \frac{\partial f}{\partial \pmb{\theta}}$.
     We know that $\pmb{a}_\theta(T) = 0$ and we search for $\pmb{a}_\theta(0) = \nabla_\theta L$.
 
@@ -1528,11 +1523,10 @@
     \end{algorithm}
 
 
-    \section{An alternative derivation for $\frac{dL}{d \pmb{\theta}}$}
+    \chapter{An alternative derivation for $\frac{dL}{d \pmb{\theta}}$}
     \label{adjoint_proof}
     There are already many ways in the literature for finding this quantity without delving into control theory and reverse sensitivities.
-    Intuitively in can be thought as a continuous analogous to classical backpropagation.
-
+    Intuitively in can be thought as a continuous analogous to classical backpropagation
     \begin{align}
         \text{classical} &\to
         \frac{d L}{ d \pmb{\theta}} =
@@ -1546,13 +1540,12 @@
         \frac{\partial L}{\partial \pmb{y}(\tau)}
         \frac{\partial f(\pmb{y}(\tau), \pmb{\theta})}{\partial \pmb{\theta}} \, d\tau
     \end{align}
-
-    In the original neural ODEs paper~\cite{chen2018neural} the authors prove~\eqref{adjoint} and use an augmented state to prove~\eqref{dldtheta} while others like~\cite{kidger2022neural} provide alternative proofs.
-    We present another, in our opinion much simpler, derivation for~\eqref{dldtheta}.
+    In the original neural ODEs paper~\cite{chen2018neural} the authors prove Eq.~\eqref{adjoint} and use an augmented
+    state to prove Eq.~\eqref{dldtheta} while others like~\cite{kidger2022neural} provide alternative proofs.
+    We present another, in our opinion much simpler, derivation for Eq.~\eqref{dldtheta}.
     Consider the more general case where the loss is dependant on intermediate state on a point $s \in (0,T)$.
     This is equivalent to the usual case where the loss depends only on the output state with $\mathcal{L}(s) = L(\pmb{y}(s))=0$ for $s\neq T$.
     Moreover, the state $\pmb{y}$ is a also dependant on the weights even though it's not explicitly written.
-
     \begin{align*}
         \frac{ d L(\bm{y}(s, \bm{\theta})) }{ d \bm{\theta} }
         &= \int_0^s \frac{d}{dt} \left( \frac{ d L(\bm{y}(s, \bm{\theta})}{ d \bm{\theta}} \right) dt \\
@@ -1586,7 +1579,7 @@
         \bm{a}(t) \frac{\partial \bm{f}}{\partial \bm{\theta}}
         dt \\
     \end{align*}
-    From~\eqref{adjoint} the sum in the parenthesis is 0:
+    From Eq.~\eqref{adjoint} the sum in the parenthesis is 0:
     \begin{align}
         \frac{ d L(\bm{y}(s, \bm{\theta})) }{ d \bm{\theta} }
         = \int_0^s
@@ -1595,15 +1588,7 @@
     \end{align}
     Setting $s=T$ we arrive at the desired formula.
 
-
-    \section{Vector-Jacobian products}
-    Modern software packages utilise automatic differentiation methods to calculate derivatives of some arbitrary function $f$, usually with respect to some parameters or weights $\theta$.
-    \begin{equation}
-        \frac{\partial f(x; \theta)}{ \partial \theta}
-    \end{equation}
-
-
-    \section{Optimisation}
+    \chapter{Optimisation}
     In the field of numerical optimisation many methods have been developed for minimising a \textit{scalar} objective function $f$.
     One category of those, \textit{line search} methods, are iterative algorithms that seek to update the current iterate $x_k$ to a new value closer to the minimum.
     They work by choosing a direction $p_k$ -and step size $\alpha$- along which $f$ is decreased.
@@ -1655,7 +1640,7 @@
         \nabla f_k + \nabla^2 f_k p_t &= 0  \label{grad_m} \\
         p = -\left[ \nabla^2 f_k \right]^{-1} \nabla f_k \label{newton_dir}
     \end{align}
-    Equation~\eqref{newton_dir} gives the definition of the newton direction.
+    Eq.~\eqref{newton_dir} gives the definition of the newton direction.
     As mentioned before, in order for the algorithm to be globally convergent the search direction has to be a descent direction.
     By multiplying~\eqref{grad_m} from the left with $p^t$ we get:
     \begin{align}
@@ -1670,7 +1655,7 @@
 
     For example in~\cite{cheng1998modified} is shown that, if $H_k$ has spectral decomposition $H_k = Q \Lambda Q^T$ then the correction matrix of minimum Frobenius norm that ensures that the smallest eigenvalue of $H_k + \Delta H$ is larger or equal to $\delta$ is given by:
     \begin{equation*}
-        \Delta H = Q \text(diag){\tau_i} Q^T, \quad \text{with} \quad \tau_i =
+        \Delta H = Q \text{diag}(\tau_i) Q^T, \quad \text{with} \quad \tau_i =
         \left\{
         \begin{array}{ll}
             0,                  & \lambda_i \geq \delta, \\
@@ -1690,9 +1675,8 @@
     \end{equation}
 
     The algorithm calculates the elements of the diagonal $D$ and the unitriangular matrix $L$ column by column.
-    It is a simpler version of the algorithm presented by~\cite{gill2019practical} that additionally introduces symmetric row-column interchanges resulting in lower $ \lVert H_k - \hat{H}_k \rVert$, $\hat{H}_k$ being the approximation.
-
-    \begin{algorithm}
+    It is a simpler version of the algorithm presented in Eq.~\cite{gill2019practical} that additionally introduces symmetric row-column interchanges resulting in lower $ \lVert H_k - \hat{H}_k \rVert$, $\hat{H}_k$ being the approximation.
+    \begin{algorithm} \label{alg:mod_chol}
         \caption{Modified Cholesky}
         \begin{algorithmic}
             \For{ $i = j+1,\dots,n$ }
@@ -1710,12 +1694,10 @@
             \EndFor
         \end{algorithmic}
     \end{algorithm}
-
     After addressing the definiteness of the the Hessian let's describe how an algorithm would decide on the step size.
     As noted earlier Zoutendijk's theorem requires the search direction to be a descent direction as well as the step size to fulfil a certain set of conditions.
     One can prove Zoutedijk's theorem for multiple sets of conditions, namely the Wolfe, strong Wolfe and Goldstein conditions.
     We will focus on the strong Wolfe conditions.
-
     Assume we have chose direction $p_k$ at step $k$ of the algorithm, our second objective is to find step size $a$ to proceed to the next step without minimising $\phi(\alpha) = f(x_k + \alpha p_k)$ explicitly.
     The first strong Wolfe condition states that our guess for $a$ should give \textit{sufficient decrease} in the objective function in the following way:
     \begin{equation}
@@ -1817,11 +1799,10 @@
 
     \subsection{Gradient Descent Methods}
     For the sake of completeness we will present some fist order optimisation methods.
-    Gradient descent and its derivative are by far the most used optimizers in machine learning.
     For really high dimensional problems, such as those we are concerned with in modern deep learning settings, second
     order methods introduce quadratically scaled (on the number of parameters) computation and memory cost.
     This cost is related to the computation and storage of the Hessian (or an approximation of it) which is of size
-    ${num_parameters}^2$.
+    ${num_{parameters}}^2$.
     The tradeoff between number of iterations and cost per iteration leans in favor of gradient descent optimizers as
     the number of parameters increases, especially considering the fact that they lend themselves well to automatic
     differentiation and distributing training.
@@ -1837,16 +1818,12 @@
     Since the distribution of data is largely unknown we create an empirical estimate from a set of training examples
     ${\pmb{x}_i,\pmb{y}_i}_{i=1}^{N}$
     \begin{equation*}
-        \tilde L(\theta ) = \frac{1}{N} \sum_{i=1}^N L( f(\pmb{x}_i; \theta), \pmb{y}_i )
+        \tilde L(\pmb\theta ) = \frac{1}{N} \sum_{i=1}^N L( f(\pmb{x}_i; \pmb\theta), \pmb{y}_i )
     \end{equation*}
-    Even though this approach is theoretically prone to overfitting, since models with high number of parameters and
-    resultantly high capacity can simply memorise all training examples, without the ability to generalize outside
-    the training set; empirical evidence show that models with large number of parameters achieve state-of-the-art
-    performance in many tasks ~\cite{nakkiran2019deep}.
     Minimising such a loss function though traditional gradient descent would require to evaluate the cost for all
     samples in the training set on each iteration to obtain the loss.
     \begin{equation*}
-        \pmb\theta^{k+1} = \pmb\theta^{k} + \eta \nabla_{\theta_k} L(\pmb\theta_k)
+        \pmb\theta^{k+1} = \pmb\theta^{k} + \eta \nabla_{\theta_k} L(\pmb\theta^{k})
     \end{equation*}
     To alleviate some computational cost on each iteration Stochastic Gradient Descent (SGD) is used which instead of calculating
     the loss for all samples in the training set it samples a subset of them and performs the weights updated based
@@ -1863,7 +1840,7 @@
 
     \subsubsection{ Momentum }
     Based on the idea of physical momentum in real world objects the momentum method was proposed in the context of machine
-    learning by ~\cite{rumelhart1986learning} borrowing the idea from previous work by Polyak.
+    learning in~\cite{rumelhart1986learning} borrowing the idea from previous work by Polyak~\cite{polyak1964some}.
     This algorithm considers previous values of the gradient in the update step in a exponentially decaying manner.
     The update along dimensions that keep moving in the same direction keeps getting bigger and for dimensions that
     change direction the update gets smaller.
@@ -1873,8 +1850,8 @@
     curvatures by combining gradients of opposite signs.
     SGD Momentum can be expressed with the following equation
     \begin{align*}
-        \Delta \pmb\theta_{k+1} \gets \alpha \Delta \pmb\theta_k - \eta \nabla_{\theta_k} L (\pmb\theta_k) \\
-        \pmb\theta_{k+1} \gets \pmb\theta_{k} + \Delta \pmb\theta_{k+1}
+        \Delta \pmb\theta_{k+1} = \alpha \Delta \pmb\theta_k - \eta \nabla_{\theta_k} L (\pmb\theta_k) \\
+        \pmb\theta_{k+1} = \pmb\theta_{k} + \Delta \pmb\theta_{k+1}
     \end{align*}
     where $\alpha$ is an exponential decay factor between $0$ and $1$ that determines the amount of contribution
     previous gradients have to the weights update.
@@ -1884,8 +1861,8 @@
     Nesterov momentum seeks to solve this problem drawing from Nesterov's accelerated gradient method for convex functions.
     The equations for Nesterov's momemtum are:
     \begin{align*}
-        \Delta \pmb\theta_{k+1} \gets \alpha \Delta \pmb\theta_k - \eta \nabla_{\theta_k} L(\pmb\theta_{k} + \alpha \Delta \pmb\theta{k}) \\
-        \pmb\theta_{k+1} \gets \pmb\theta_{k} + \Delta \pmb\theta_{k+1}
+        \Delta \pmb\theta_{k+1} = \alpha \Delta \pmb\theta_k - \eta \nabla_{\theta_k} L(\pmb\theta_{k} + \alpha \Delta \pmb\theta_{k}) \\
+        \pmb\theta_{k+1} = \pmb\theta_{k} + \Delta \pmb\theta_{k+1}
     \end{align*}
     This formula resembles CM but instead of calculating the gradient of loss at the current $\pmb\theta$ it is
     calculated after the previous velocity is added.
@@ -1900,8 +1877,8 @@
     \begin{align*}
         \pmb\theta_{k+1} \gets \pmb\theta_{k} - \frac{\eta}{  \sqrt{G_{k}} + \epsilon } \nabla_{\theta_k} L( \pmb\theta_k)
     \end{align*}
-    $G$ is a matrix containing the squared sum of the past gradients with regards to all $\pmb\theta$ along its diagonal.
-    $\epsilon$ is a small quantity to avoid dividing by zero.
+    Where $G$ is a matrix containing the squared sum of the past gradients with regards to all $\pmb\theta_k$ along its
+    diagonal and $\epsilon$ is a small quantity to avoid dividing by zero.
     For weight parameter with the largest gradient has the largest decrease in its learning rate, while the parameter
     with the smallest gradient has the smallest decrease in its learning rate.
     This results in faster progress in the more gentlysloped regions of parameter space and works well when the
@@ -1909,27 +1886,29 @@
 
     \subsubsection{RMSProp}
     The RMSProp algorithm is famous for being an unpublished but well known optimisation algorithm.
+    It was introduced by Hinton in one of his courses.
     RMSprop modifies Adagrad so that instead of accumulating the square of the gradients for each parameter, which can
-    cause the learning rate to diminish; uses a exponentially decaying moving average of the squared gradients to
+    cause the learning rate to diminish uses an exponentially decaying moving average of the squared gradients to
     discard the past history.
     \begin{align*}
-        G_{k+1} \gets \beta G_{k} + (1 - \beta) ( \nabla_{\theta_k} L (\pmb\theta_k) )^2\\
-        \pmb\theta_{k+1} \gets \pmb\theta_{k} - \frac{\eta}{  \sqrt{G_{k}} + \epsilon } \nabla_{\theta_k} L( \pmb\theta_k)
+        G_{k+1} = \beta G_{k} + (1 - \beta) ( \nabla_{\theta_k} L (\pmb\theta_k) )^2\\
+        \pmb\theta_{k+1} = \pmb\theta_{k} - \frac{\eta}{  \sqrt{G_{k}} + \epsilon } \nabla_{\theta_k} L( \pmb\theta_k)
     \end{align*}
 
     \subsubsection{Adam}
-    One of the most widely used optimisation algorithms used in deep learning today is Adam (adaptive moments).
+    One of the most widely used optimisation algorithms used in deep learning today is Adam, which stands for
+    adaptive moments~\cite{kingma2014adam}.
     It combines elements of momentum and RMSprop with some modifications.
     Firstly, we incorporate momentum by computing the first order moment of the gradient as exponentially decaying
     moving average.
     Secondly, we calculate the second order moment as the gradient, again as an exponentially decaying average.
     The parameter update rule is given as:
     \begin{align*}
-        \pmb{v}_k \gets \alpha \pmb{v}_{k-1} + (1 - \alpha) \nabla_{\theta_k} L( \pmb\theta_{k} ) \\
-        \pmb{s}_k \gets \beta \pmb{s}_{k-1} + (1 - \beta) \nabla_{\theta_k} L( \pmb\theta_{k} ) \\
-        \pmb\theta_{k+1} \gets \pmb\theta_{k} - \eta \frac{\hat{\pmb{v}}_k}{  \sqrt{ \hat{\pmb{s}}_k + \epsilon }} \nabla_{\theta_k} L( \pmb\theta_k)
+        \pmb{v}_k = \alpha \pmb{v}_{k-1} + (1 - \alpha) \nabla_{\theta_k} L( \pmb\theta_{k} ) \\
+        \pmb{s}_k = \beta \pmb{s}_{k-1} + (1 - \beta) \nabla_{\theta_k} L( \pmb\theta_{k} ) \\
+        \pmb\theta_{k+1} = \pmb\theta_{k} - \eta \frac{\hat{\pmb{v}}_k}{  \sqrt{ \hat{\pmb{s}}_k + \epsilon }} \nabla_{\theta_k} L( \pmb\theta_k)
     \end{align*}
-    In the above equations $\hat{\pmb{v}}_k$, $\hat{\pmb{v}}_k$ are the bias corrected estimates of the moments to account
+    In the above equations $\hat{\pmb{s}}_k$, $\hat{\pmb{v}}_k$ are the bias corrected estimates of the moments to account
     for their initialization.
     Since RMSProp lacks the correction factor, it has a high-bias in the early stages of training, while Adam is
     robust to the choice of hyperparameters.

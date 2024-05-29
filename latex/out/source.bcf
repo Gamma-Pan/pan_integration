@@ -2398,19 +2398,22 @@
     <bcf:citekey order="27" intorder="1">massaroli2021differentiable</bcf:citekey>
     <bcf:citekey order="28" intorder="1">trefethen1996finite</bcf:citekey>
     <bcf:citekey order="29" intorder="1">gill2019practical</bcf:citekey>
-    <bcf:citekey order="30" intorder="1">emmett2012toward</bcf:citekey>
-    <bcf:citekey order="31" intorder="1">maday2002parareal</bcf:citekey>
-    <bcf:citekey order="32" intorder="1">wright2006numerical</bcf:citekey>
-    <bcf:citekey order="33" intorder="1">chen2018neural</bcf:citekey>
-    <bcf:citekey order="34" intorder="1">kidger2022neural</bcf:citekey>
-    <bcf:citekey order="35" intorder="1">cheng1998modified</bcf:citekey>
-    <bcf:citekey order="36" intorder="1">wright2006numerical</bcf:citekey>
-    <bcf:citekey order="37" intorder="1">gill2019practical</bcf:citekey>
-    <bcf:citekey order="38" intorder="1">nakkiran2019deep</bcf:citekey>
-    <bcf:citekey order="39" intorder="1">kiwiel2001convergence</bcf:citekey>
-    <bcf:citekey order="40" intorder="1">rumelhart1986learning</bcf:citekey>
-    <bcf:citekey order="41" intorder="1">kashyap2022survey</bcf:citekey>
-    <bcf:citekey order="42" intorder="1">duchi2011adaptive</bcf:citekey>
+    <bcf:citekey order="30" intorder="1">suli2010numerical</bcf:citekey>
+    <bcf:citekey order="31" intorder="1">emmett2012toward</bcf:citekey>
+    <bcf:citekey order="32" intorder="1">maday2002parareal</bcf:citekey>
+    <bcf:citekey order="33" intorder="1">wright2006numerical</bcf:citekey>
+    <bcf:citekey order="34" intorder="1">wright2006numerical</bcf:citekey>
+    <bcf:citekey order="35" intorder="1">chen2018neural</bcf:citekey>
+    <bcf:citekey order="36" intorder="1">kidger2022neural</bcf:citekey>
+    <bcf:citekey order="37" intorder="1">cheng1998modified</bcf:citekey>
+    <bcf:citekey order="38" intorder="1">wright2006numerical</bcf:citekey>
+    <bcf:citekey order="39" intorder="1">gill2019practical</bcf:citekey>
+    <bcf:citekey order="40" intorder="1">kiwiel2001convergence</bcf:citekey>
+    <bcf:citekey order="41" intorder="1">rumelhart1986learning</bcf:citekey>
+    <bcf:citekey order="42" intorder="1">polyak1964some</bcf:citekey>
+    <bcf:citekey order="43" intorder="1">kashyap2022survey</bcf:citekey>
+    <bcf:citekey order="44" intorder="1">duchi2011adaptive</bcf:citekey>
+    <bcf:citekey order="45" intorder="1">kingma2014adam</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="none">
