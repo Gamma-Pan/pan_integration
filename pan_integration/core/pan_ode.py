@@ -69,12 +69,12 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
                 adjoint_dynamics,
                 _a_y_T,
                 t_eval_adjoint,
-                solver="tsit5",
-                atol=1e-6,
+                solver="euler",
+                # atol=1e-6,
             )
             fig = plt.gcf()
-            for ax, data in zip(fig.axes, test[:,0,:].T):
-                ax.plot(t_eval_adjoint,data)
+            for ax, data in zip(fig.axes, test[:, 0, :].T):
+                ax.plot(t_eval_adjoint, data,'g--')
 
             plotting.wait()
             #################
@@ -82,8 +82,6 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
             A_traj, _ = solver_adjoint.solve(
                 adjoint_dynamics, t_eval_adjoint, a_y_T, f_init=Da_y_T, B_init="prev"
             )
-
-            # ipdb.set_trace()
 
             a_y_back = A_traj.reshape(-1, *dims)
 
@@ -105,7 +103,6 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
 
                 y_back.requires_grad_(True)
                 f_back = f(t_eval_adjoint, y_back)
-                ipdb.set_trace()
 
                 grads = torch.autograd.grad(
                     f_back,
@@ -115,7 +112,12 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
                     retain_graph=False,
                 )
 
-            grads_vec = torch.cat([p.contiguous().flatten() for p in grads])
+            grads_vec = torch.cat(
+                [
+                    p.contiguous().flatten() if p is not None else torch.zeros(1)
+                    for p in grads
+                ]
+            )
             DL_theta = ((t_eval[-1] - t_eval[0]) / (solver.num_points - 1)) * grads_vec
 
             return DL_theta, None, None

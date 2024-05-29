@@ -188,6 +188,7 @@ class PanSolver(nn.Module):
 
             delta = torch.norm(B - B_prev)
             if delta.item() < self.delta_zero:
+                print(delta)
                 break
 
         # B = add_head(B)

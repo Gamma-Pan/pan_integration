@@ -1,12 +1,15 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 from pan_integration.core.pan_ode import PanODE, PanSolver
 from torchdyn.models import NeuralODE
 from pan_integration.utils.plotting import wait
 
-torch.manual_seed(42)
+# torch.manual_seed(634)
 
 DIM = 4
+
+factor = 1
 
 
 class NN(nn.Module):
@@ -16,18 +19,18 @@ class NN(nn.Module):
         super().__init__()
         self.w1 = torch.nn.Linear(DIM, DIM)
         torch.nn.init.normal_(self.w1.weight, std=1)
-        self.w2 = torch.nn.Linear(DIM, DIM)
-        torch.nn.init.normal_(self.w2.weight, std=1)
-        self.w3 = torch.nn.Linear(DIM, DIM)
-        torch.nn.init.normal_(self.w3.weight, std=1)
-        self.tanh = torch.nn.Tanh()
+        # self.w2 = torch.nn.Linear(DIM, DIM)
+        # torch.nn.init.normal_(self.w2.weight, std=1)
+        # self.w3 = torch.nn.Linear(DIM, DIM)
+        # torch.nn.init.normal_(self.w3.weight, std=1)
         self.nfe = 0
 
-    def forward(self, t, y, *args, **kwargs):
+    def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-        x = self.tanh(self.w1(y))
-        x = self.tanh(self.w2(y))
-        x = self.tanh(self.w3(y))
+        # x = self.w1(x)
+        x = F.sigmoid(factor*self.w1(x))
+        # x = F.tanh(factor*self.w2(x))
+        # x = F.tanh(factor*self.w3(x))
         return x
 
 
@@ -46,7 +49,7 @@ if __name__ == "__main__":
     fig, axes = plt.subplots(ceil(sqrt(DIM)), ceil(sqrt(DIM)))
     lines = []
     for ax in axes.reshape(-1):
-        lines.append(ax.plot(t_span, torch.zeros_like(t_span), color='red')[0])
+        lines.append(ax.plot(t_span, torch.zeros_like(t_span), "r")[0])
 
     def callback(t, y, B):
         dims = len(B.shape) - 1
@@ -59,37 +62,35 @@ if __name__ == "__main__":
         for line, data in zip(lines, approx):
             line.set_data(t_in, data)
 
-        for ax in axes.reshape(-1):
-            ax.relim()
-            ax.autoscale_view()
-
+        # for ax in axes.reshape(-1):
+        #     ax.relim()
+        #     ax.autoscale_view()
+        #
         fig.canvas.flush_events()
         fig.canvas.draw()
         # wait()
 
-    optim = {"optimizer_class": torch.optim.Adam, "params": {"lr": 1e-4}}
-    max_iters = (20, 0)
+    optim = {"optimizer_class": torch.optim.Adam, "params": {"lr": 1e-6}}
     solver_conf = dict(
-        num_points=POINTS,
-        num_coeff_per_dim=32,
+        num_points=256,
+        num_coeff_per_dim=16,
         optim=optim,
-        deltas=(1e-2,1e-3 ),
-        max_iters=max_iters,
+        deltas=(-1, 1e-3),
+        max_iters=(50, 0),
     )
     solver_conf_adjoint = dict(
-        num_points=POINTS,
-        num_coeff_per_dim=32,
+        num_points=256,
+        num_coeff_per_dim=16,
         optim=optim,
-        deltas=(1e-2, 1e-3),
-        max_iters=(1, int(30)),
+        deltas=(-1, 1e-5),
+        max_iters=(50, 0),
     )
     solver = PanSolver(**solver_conf)
     solver_adjoint = PanSolver(**solver_conf_adjoint, callback=callback)
 
     pan_ode_model = PanODE(vf, t_span, solver, solver_adjoint, sensitivity="adjoint")
     _, traj_pan = pan_ode_model(y_init, t_span)
-
-    L_pan = torch.sum((traj_pan[-1] - 1 * torch.ones_like(y_init)) ** 2)
+    L_pan = torch.sum((traj_pan[-1] - 2 * torch.ones_like(y_init)) ** 2)
     L_pan.backward()
     grads_pan = [w.grad for w in vf.parameters()]
 
@@ -99,21 +100,22 @@ if __name__ == "__main__":
         vf, sensitivity="adjoint", return_t_eval=False, atol=1e-9, atol_adjoint=1e-9
     )
     traj = ode_model(y_init, t_span)
-    L = torch.sum((traj[-1] - 1 * torch.ones_like(y_init)) ** 2)
+    L = torch.sum((traj[-1] - 2 * torch.ones_like(y_init)) ** 2)
     L.backward()
     grads = [w.grad for w in vf.parameters()]
 
-    fig, ax = plt.subplots()
-    ax.plot(t_span, traj_pan[:, 0, 3].detach(), "r")
-    ax.plot(t_span, traj[:, 0, 3].detach(), "g")
-    plt.show()
+    fig2, axes = plt.subplots(ceil(sqrt(DIM)), ceil(sqrt(DIM)))
+    for ax, data, data_pan in zip(fig2.axes, traj[:, 0, :].mT, traj_pan[:, 0, :].mT):
+        ax.plot(t_span, data.detach(), "g")
+        ax.plot(t_span, data_pan.detach(), "r--")
+    wait()
 
     print("SOLUTION \n")
     print(torch.norm(traj[-1] - traj_pan[-1]), "\n")
 
     print("GRADS\n")
-    print(grads[0], "\n", grads_pan[0], "\n")
-    print(grads[1], "\n", grads_pan[1], "\n")
-    print(grads[2], "\n", grads_pan[2], "\n")
+    print(torch.norm(grads[0] - grads_pan[0]), "\n")
+    print(torch.norm(grads[1] - grads_pan[1]), "\n")
+    print(torch.norm(grads[2] - grads_pan[2]), "\n")
 
     # print(grads_pan[2]/ grads[2])
