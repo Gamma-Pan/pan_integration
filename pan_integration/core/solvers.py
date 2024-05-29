@@ -192,9 +192,11 @@ class PanSolver(nn.Module):
                 break
 
         # B = add_head(B)
+
         ##### first order
         if self.max_iters_one ==0:
             return add_head(B)
+
         B.requires_grad = True
         optimizer = self.optim["optimizer_class"]([B], **self.optim["params"])
 
@@ -214,15 +216,14 @@ class PanSolver(nn.Module):
             optimizer.zero_grad()
             with torch.enable_grad():
                 loss = loss_fn(B)
-
-                if loss < self.delta_one:
-                    nonlocal breakflag
-                    breakflag = True
-                    return loss
-
                 loss.backward(retain_graph=True)
-                print(loss)
 
+            if loss < self.delta_one:
+                nonlocal breakflag
+                breakflag = True
+                return loss
+
+            print(loss)
             return loss
 
         for i in range(1, self.max_iters_one + 1):
@@ -231,9 +232,9 @@ class PanSolver(nn.Module):
                 break
 
             if self.callback is not None:
-                self.callback(t_lims, y_init.cpu(), add_head(B).detach().cpu())
+                self.callback(t_lims, y_init.cpu(), add_head(B).clone().detach().cpu())
 
-        return add_head(B)
+        return add_head(B).detach()
 
     def solve(self, f, t_span, y_init, f_init=None, B_init: Tensor | str = None):
         dims = y_init.shape
@@ -252,9 +253,9 @@ class PanSolver(nn.Module):
 
         B = self._solver_itr(f, (t_span[0], t_span[-1]), y_init, f_init, B_init)
 
-        self.B_prev = torch.mean(B[..., 2:]).expand(*dims, self.num_coeff_per_dim - 2).detach()
+        self.B_prev = torch.mean(B[..., 2:]).expand(*dims, self.num_coeff_per_dim - 2)
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
         approx = B @ Phi_out
 
-        return approx.permute(-1, *list(range(0, len(dims)))), B
+        return approx.permute(-1, *range(0, len(dims))), B

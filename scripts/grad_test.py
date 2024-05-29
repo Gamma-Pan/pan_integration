@@ -27,10 +27,7 @@ class NN(nn.Module):
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-        # x = self.w1(x)
-        x = F.sigmoid(factor*self.w1(x))
-        # x = F.tanh(factor*self.w2(x))
-        # x = F.tanh(factor*self.w3(x))
+        x = F.sigmoid(factor * self.w1(x)) + t * torch.ones_like(x)
         return x
 
 
@@ -47,12 +44,25 @@ if __name__ == "__main__":
     t_span = torch.linspace(0, 1, POINTS)
 
     fig, axes = plt.subplots(ceil(sqrt(DIM)), ceil(sqrt(DIM)))
+
+    ode_model = NeuralODE(
+        vf, sensitivity="adjoint", return_t_eval=False, atol=1e-9, atol_adjoint=1e-9
+    )
+    traj = ode_model(y_init, t_span)
+    L = torch.sum((traj[-1] - 2 * torch.ones_like(y_init)) ** 2)
+    # L.backward()
+    grads = [w.grad for w in vf.parameters()]
+
+    fig1, axes = plt.subplots(ceil(sqrt(DIM)), ceil(sqrt(DIM)))
+    for ax, data in zip(fig1.axes, traj[:, 0, :].mT):
+        ax.plot(t_span, data.detach(), "g")
+
     lines = []
     for ax in axes.reshape(-1):
         lines.append(ax.plot(t_span, torch.zeros_like(t_span), "r")[0])
+    wait()
 
     def callback(t, y, B):
-        dims = len(B.shape) - 1
         num_coeff = B.shape[-1]
         t_in = torch.linspace(*t, POINTS)
         t_out = -1 + 2 * (t_in - t_in[0]) / (t_in[-1] - t_in[0])
@@ -60,23 +70,31 @@ if __name__ == "__main__":
         approx = (B @ Phi)[0, :, :]
 
         for line, data in zip(lines, approx):
-            line.set_data(t_in, data)
+            line.set_data(t_span, data)
 
         # for ax in axes.reshape(-1):
         #     ax.relim()
         #     ax.autoscale_view()
         #
-        fig.canvas.flush_events()
-        fig.canvas.draw()
+        # fig.canvas.flush_events()
+        # fig.canvas.draw()
+        plt.pause(0.001)
         # wait()
 
-    optim = {"optimizer_class": torch.optim.Adam, "params": {"lr": 1e-6}}
+
+    optim = {
+        "optimizer_class": torch.optim.Adam,
+        "params": {
+            "lr": 1e-4,
+            # "capturable": True,
+        },
+    }
     solver_conf = dict(
         num_points=256,
         num_coeff_per_dim=16,
         optim=optim,
         deltas=(-1, 1e-3),
-        max_iters=(50, 0),
+        max_iters=(10, 1000),
     )
     solver_conf_adjoint = dict(
         num_points=256,
@@ -85,37 +103,23 @@ if __name__ == "__main__":
         deltas=(-1, 1e-5),
         max_iters=(50, 0),
     )
-    solver = PanSolver(**solver_conf)
+    solver = PanSolver(**solver_conf, callback=callback)
     solver_adjoint = PanSolver(**solver_conf_adjoint, callback=callback)
 
     pan_ode_model = PanODE(vf, t_span, solver, solver_adjoint, sensitivity="adjoint")
     _, traj_pan = pan_ode_model(y_init, t_span)
     L_pan = torch.sum((traj_pan[-1] - 2 * torch.ones_like(y_init)) ** 2)
-    L_pan.backward()
+    # L_pan.backward()
     grads_pan = [w.grad for w in vf.parameters()]
 
     vf.zero_grad()
 
-    ode_model = NeuralODE(
-        vf, sensitivity="adjoint", return_t_eval=False, atol=1e-9, atol_adjoint=1e-9
-    )
-    traj = ode_model(y_init, t_span)
-    L = torch.sum((traj[-1] - 2 * torch.ones_like(y_init)) ** 2)
-    L.backward()
-    grads = [w.grad for w in vf.parameters()]
-
-    fig2, axes = plt.subplots(ceil(sqrt(DIM)), ceil(sqrt(DIM)))
-    for ax, data, data_pan in zip(fig2.axes, traj[:, 0, :].mT, traj_pan[:, 0, :].mT):
-        ax.plot(t_span, data.detach(), "g")
-        ax.plot(t_span, data_pan.detach(), "r--")
-    wait()
-
     print("SOLUTION \n")
     print(torch.norm(traj[-1] - traj_pan[-1]), "\n")
 
-    print("GRADS\n")
-    print(torch.norm(grads[0] - grads_pan[0]), "\n")
-    print(torch.norm(grads[1] - grads_pan[1]), "\n")
-    print(torch.norm(grads[2] - grads_pan[2]), "\n")
+    # print("GRADS\n")
+    # print(torch.norm(grads[0] - grads_pan[0]), "\n")
+    # print(torch.norm(grads[1] - grads_pan[1]), "\n")
+    # print(torch.norm(grads[2] - grads_pan[2]), "\n")
 
     # print(grads_pan[2]/ grads[2])
