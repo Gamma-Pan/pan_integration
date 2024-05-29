@@ -179,7 +179,7 @@ class PanSolver(nn.Module):
             if self.callback is not None:
                 self.callback(t_lims, y_init, add_head(B))
 
-            B_prev = B
+            B_prev =B
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
                 t_cheb, (add_head(B_prev) @ Phi)
             )
@@ -190,10 +190,10 @@ class PanSolver(nn.Module):
             if delta.item() < self.delta_zero:
                 break
 
-        B = add_head(B)
+        # B = add_head(B)
         ##### first order
         if self.max_iters_one ==0:
-            return B
+            return add_head(B)
         B.requires_grad = True
         optimizer = self.optim["optimizer_class"]([B], **self.optim["params"])
 
@@ -220,6 +220,7 @@ class PanSolver(nn.Module):
                     return loss
 
                 loss.backward(retain_graph=True)
+                print(loss)
 
             return loss
 
@@ -250,7 +251,7 @@ class PanSolver(nn.Module):
 
         B = self._solver_itr(f, (t_span[0], t_span[-1]), y_init, f_init, B_init)
 
-        self.B_prev = torch.mean(B[..., 2:]).expand(*dims, self.num_coeff_per_dim - 2)
+        self.B_prev = torch.mean(B[..., 2:]).expand(*dims, self.num_coeff_per_dim - 2).detach()
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
         approx = B @ Phi_out

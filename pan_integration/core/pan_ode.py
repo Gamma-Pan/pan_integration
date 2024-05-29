@@ -59,27 +59,31 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
             ).to(device)
 
             ##########
-            # import torchdyn
-            #
-            # _, test = torchdyn.numerics.odeint(
-            #     adjoint_dynamics,
-            #     a_y_T,
-            #     t_eval_adjoint,
-            #     solver="tsit5",
-            #     atol=1e-9,
-            # )
-            # import matplotlib.pyplot as plt
-            # plt.plot(
-            #     t_eval_adjoint,
-            #     test[:, 0, 0, 0].reshape(solver_adjoint.num_points, -1),
-            #     "g",
-            # )
-            # ipdb.set_trace()
+            import torchdyn
+            import matplotlib.pyplot as plt
+            from pan_integration.utils import plotting
+
+            _a_y_T = torch.clone(a_y_T)
+
+            _, test = torchdyn.numerics.odeint(
+                adjoint_dynamics,
+                _a_y_T,
+                t_eval_adjoint,
+                solver="tsit5",
+                atol=1e-6,
+            )
+            fig = plt.gcf()
+            for ax, data in zip(fig.axes, test[:,0,:].T):
+                ax.plot(t_eval_adjoint,data)
+
+            plotting.wait()
             #################
 
             A_traj, _ = solver_adjoint.solve(
                 adjoint_dynamics, t_eval_adjoint, a_y_T, f_init=Da_y_T, B_init="prev"
             )
+
+            # ipdb.set_trace()
 
             a_y_back = A_traj.reshape(-1, *dims)
 
@@ -101,6 +105,7 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
 
                 y_back.requires_grad_(True)
                 f_back = f(t_eval_adjoint, y_back)
+                ipdb.set_trace()
 
                 grads = torch.autograd.grad(
                     f_back,

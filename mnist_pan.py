@@ -12,7 +12,7 @@ from lightning.pytorch.profilers import PyTorchProfiler
 from torchdyn.core import MultipleShootingLayer, NeuralODE
 
 from pan_integration.data import MNISTDataModule
-from pan_integration.core.ode import PanODE, PanSolver
+from pan_integration.core.pan_ode import PanODE, PanSolver
 from pan_integration.utils.lightning import (
     LitOdeClassifier,
     NfeMetrics,
@@ -45,7 +45,11 @@ class Augmenter(nn.Module):
     def forward(self, x):
         dims = x.shape
         x = torch.cat(
-            [x.view(dims[0], -1), torch.zeros((dims[0], 1000 - 28**2), device=device)], dim=-1
+            [
+                x.view(dims[0], -1),
+                torch.zeros((dims[0], 1000 - 28**2), device=device),
+            ],
+            dim=-1,
         )
         return x
 
@@ -101,7 +105,9 @@ def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
         fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[  nfe_callback,]# checkpoint,]# prof_callback],
+        callbacks=[
+            nfe_callback,
+        ],  # checkpoint,]# prof_callback],
     )
 
     trainer.fit(learner, datamodule=dmodule)
@@ -115,7 +121,7 @@ def train_all_pan(configs, sensitivity, epochs, test):
     for config in configs:
         vf = VF().to(device)
         logger = ()
-        name = f"pan_{config['num_coeff_per_dim']}_{config['num_points']}_{str(config['delta'])}"
+        name = f"pan_{config['num_coeff_per_dim']}_{config['num_points']}_{str(config['deltas'])}"
 
         if WANDB_LOG:
             logger = WandbLogger(
@@ -188,8 +194,18 @@ if __name__ == "__main__":
 
     pan_configs = (
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 10},
-        {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-3, "max_iters": 20},
-        {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-3, "max_iters": 20},
+        {
+            "num_coeff_per_dim": 32,
+            "num_points": 32,
+            "deltas": (1e-3, 1e-5),
+            "max_iters": (30, 0),
+        },
+        {
+            "num_coeff_per_dim": 64,
+            "num_points": 64,
+            "deltas": (1e-3, 1e-5),
+            "max_iters": (30, 0),
+        },
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
         # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
         # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
@@ -203,7 +219,7 @@ if __name__ == "__main__":
         # {"solver": "rk-4", "fixed_steps": 5},
     )
 
-    train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
-    train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
-    # train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
+    # train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
+    # train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
+    train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
     # train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
