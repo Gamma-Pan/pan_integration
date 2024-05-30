@@ -142,6 +142,7 @@ class LitOdeClassifier(LightningModule):
     def test_step(self, batch, batch_idx):
         loss, preds, acc = self._common_step(batch, batch_idx)
         self.test_batches+=1
+        self.test_acc+= acc
 
         self.log("test_loss", loss, prog_bar=True)
         return loss
