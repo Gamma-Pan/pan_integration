@@ -146,7 +146,7 @@ class LitOdeClassifier(LightningModule):
         self.log("test_loss", loss, prog_bar=True)
         return loss
 
-    def on_test_end(self):
+    def on_test_epoch_end(self):
         test_acc = self.test_acc / self.test_batches
         self.log("test_acc", test_acc, prog_bar=True)
 

@@ -208,7 +208,7 @@ if __name__ == "__main__":
         # {"solver": "rk-4", "fixed_steps": 5},
     )
 
-    train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
     train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
+    train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
     # train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
     # train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
