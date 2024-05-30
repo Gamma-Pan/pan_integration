@@ -174,6 +174,7 @@ class PanSolver(nn.Module):
             return torch.cat([head, B_tail], dim=-1)
 
         ## zero order
+        t_f =  (t_cheb - t_lims[0])*(t_cheb[-1]- t_cheb[0])/(t_lims[-1] - t_lims[0]) + t_lims[0]
         B = B_init
         for i in range(1, self.max_iters_zero + 1):
             if self.callback is not None:
@@ -181,7 +182,7 @@ class PanSolver(nn.Module):
 
             B_prev =B
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
-                t_cheb, (add_head(B_prev) @ Phi)
+               t_f, (add_head(B_prev) @ Phi)
             )
 
             B = (fapprox @ Phi_c) - yf_init @ Phi_d

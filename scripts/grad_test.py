@@ -43,14 +43,12 @@ if __name__ == "__main__":
     POINTS = 128
     t_span = torch.linspace(0, 1, POINTS)
 
-    fig, axes = plt.subplots(ceil(sqrt(DIM)), ceil(sqrt(DIM)))
-
     ode_model = NeuralODE(
         vf, sensitivity="adjoint", return_t_eval=False, atol=1e-9, atol_adjoint=1e-9
     )
     traj = ode_model(y_init, t_span)
     L = torch.sum((traj[-1] - 2 * torch.ones_like(y_init)) ** 2)
-    # L.backward()
+    L.backward()
     grads = [w.grad for w in vf.parameters()]
 
     fig1, axes = plt.subplots(ceil(sqrt(DIM)), ceil(sqrt(DIM)))
@@ -70,7 +68,7 @@ if __name__ == "__main__":
         approx = (B @ Phi)[0, :, :]
 
         for line, data in zip(lines, approx):
-            line.set_data(t_span, data)
+            line.set_data(t_in, data)
 
         # for ax in axes.reshape(-1):
         #     ax.relim()
@@ -86,30 +84,27 @@ if __name__ == "__main__":
         "optimizer_class": torch.optim.Adam,
         "params": {
             "lr": 1e-4,
-            # "capturable": True,
+            "betas": (0.9, 0.9)
         },
     }
     solver_conf = dict(
-        num_points=256,
-        num_coeff_per_dim=16,
+        num_points=32,
+        num_coeff_per_dim=32,
         optim=optim,
-        deltas=(-1, 1e-3),
-        max_iters=(10, 1000),
+        deltas=(1e-2, 1e-3),
+        max_iters=(30, 1000),
     )
-    solver_conf_adjoint = dict(
-        num_points=256,
-        num_coeff_per_dim=16,
-        optim=optim,
-        deltas=(-1, 1e-5),
-        max_iters=(50, 0),
+    solver_conf_adjoint = dict(num_points=32, num_coeff_per_dim=32, optim=optim, deltas=(1e-2, 1e-3), max_iters=(30, 10000)
     )
     solver = PanSolver(**solver_conf, callback=callback)
     solver_adjoint = PanSolver(**solver_conf_adjoint, callback=callback)
 
     pan_ode_model = PanODE(vf, t_span, solver, solver_adjoint, sensitivity="adjoint")
     _, traj_pan = pan_ode_model(y_init, t_span)
+
+    wait()
     L_pan = torch.sum((traj_pan[-1] - 2 * torch.ones_like(y_init)) ** 2)
-    # L_pan.backward()
+    L_pan.backward()
     grads_pan = [w.grad for w in vf.parameters()]
 
     vf.zero_grad()
