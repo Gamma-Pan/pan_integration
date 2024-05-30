@@ -99,6 +99,7 @@ class PanSolver(nn.Module):
             self._t_lims = value
             (
                 self.t_cheb,
+                self.t_true,
                 self.Dt,
                 self.Phi,
                 self.DPhi,
@@ -118,6 +119,7 @@ class PanSolver(nn.Module):
         t_cheb = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(
             device
         )
+        t_true = t_lims[0]+0.5*(t_lims[-1]-t_lims[0])*(t_cheb +1)
 
         Dt = torch.diff(torch.cat([t_cheb, tensor([1], device=device)]))
 
@@ -140,12 +142,13 @@ class PanSolver(nn.Module):
 
         Phi_d = inv0 @ torch.stack([DPhi[0, :], DPhi[1, :]], dim=0) @ Phi_b_T @ Q
 
-        return t_cheb, Dt, Phi, DPhi, Phi_tail, inv0, Phi_c, Phi_d
+        return t_cheb, t_true, Dt, Phi, DPhi, Phi_tail, inv0, Phi_c, Phi_d
 
     def _solver_itr(self, f, t_lims, y_init, f_init, B_init) -> Tensor:
         # if saved don't recalculate
         if self.t_lims is not None:
             t_cheb = self.t_cheb
+            t_true = self.t_true
             Dt = self.Dt
             Phi = self.Phi
             DPhi = self.DPhi
@@ -156,6 +159,7 @@ class PanSolver(nn.Module):
         else:
             (
                 t_cheb,
+                t_true,
                 Dt,
                 Phi,
                 DPhi,
@@ -174,7 +178,7 @@ class PanSolver(nn.Module):
             return torch.cat([head, B_tail], dim=-1)
 
         ## zero order
-        t_f =  (t_cheb - t_lims[0])*(t_cheb[-1]- t_cheb[0])/(t_lims[-1] - t_lims[0]) + t_lims[0]
+        # t_f =  (t_cheb - t_lims[0])*(t_cheb[-1]- t_cheb[0])/(t_lims[-1] - t_lims[0]) + t_lims[0]
         B = B_init
         for i in range(1, self.max_iters_zero + 1):
             if self.callback is not None:
@@ -182,14 +186,13 @@ class PanSolver(nn.Module):
 
             B_prev =B
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
-               t_f, (add_head(B_prev) @ Phi)
+               t_true, (add_head(B_prev) @ Phi)
             )
 
             B = (fapprox @ Phi_c) - yf_init @ Phi_d
 
             delta = torch.norm(B - B_prev)
             if delta.item() < self.delta_zero:
-                print(delta)
                 break
 
         # B = add_head(B)
@@ -205,7 +208,7 @@ class PanSolver(nn.Module):
             B = add_head(B_tail)
             Dapprox = B @ DPhi
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
-                t_cheb, (add_head(B_prev) @ Phi)
+                t_true, (add_head(B_prev) @ Phi)
             )
             loss = torch.sum((Dapprox - fapprox) ** 2 * Dt)
 
@@ -224,7 +227,6 @@ class PanSolver(nn.Module):
                 breakflag = True
                 return loss
 
-            print(loss)
             return loss
 
         for i in range(1, self.max_iters_one + 1):

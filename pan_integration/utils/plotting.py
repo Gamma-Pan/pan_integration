@@ -189,10 +189,10 @@ class LsPlotter:
         self.alpha_max = alpha_max
 
         (self.alpha_line_art,) = self.ax.plot(
-            [], [], color="#EE2233", label="$\phi(a)$"
+            [], [], color="#EE2233", label="$\\phi(a)$"
         )
 
-        (self.alpha_slope,) = self.ax.plot([], [], color="green", label="$\phi'(a)$")
+        (self.alpha_slope,) = self.ax.plot([], [], color="green", label="$\\phi'(a)$")
 
         (self.curpoint,) = self.ax.plot(
             [], [], color="#FF5566", label="$a_i$", marker="o"
@@ -202,7 +202,7 @@ class LsPlotter:
             [],
             [],
             color="orange",
-            label="$\phi(0) + c_1 a \phi'$",
+            label="$\\phi(0) + c_1 a \\phi'$",
             linestyle="--",
         )
 
@@ -210,7 +210,7 @@ class LsPlotter:
             [],
             [],
             color="yellow",
-            label="$-c_2 \phi'(0)$",
+            label="$-c_2 \\phi'(0)$",
             linestyle="--",
         )
 

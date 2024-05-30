@@ -194,18 +194,8 @@ if __name__ == "__main__":
 
     pan_configs = (
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 10},
-        {
-            "num_coeff_per_dim": 32,
-            "num_points": 32,
-            "deltas": (1e-3, 1e-5),
-            "max_iters": (30, 0),
-        },
-        {
-            "num_coeff_per_dim": 64,
-            "num_points": 64,
-            "deltas": (1e-3, 1e-5),
-            "max_iters": (30, 0),
-        },
+        {"num_coeff_per_dim": 32, "num_points": 32, "deltas": (1e-3, 1e-5), "max_iters": (30, 0)},
+        # {"num_coeff_per_dim": 64, "num_points": 64, "deltas": (1e-3, 1e-5), "max_iters": (30, 0)},
         # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
         # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
         # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
@@ -219,7 +209,7 @@ if __name__ == "__main__":
         # {"solver": "rk-4", "fixed_steps": 5},
     )
 
-    # train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
-    # train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
-    train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
+    train_all_pan(pan_configs, epochs=20, sensitivity="adjoint", test=True)
+    train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
+    # train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
     # train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
