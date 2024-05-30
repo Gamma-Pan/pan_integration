@@ -141,6 +141,7 @@ class LitOdeClassifier(LightningModule):
 
     def test_step(self, batch, batch_idx):
         loss, preds, acc = self._common_step(batch, batch_idx)
+        self.test_batches+=1
 
         self.log("test_loss", loss, prog_bar=True)
         return loss
@@ -156,7 +157,7 @@ class LitOdeClassifier(LightningModule):
         )
         lr_scheduler_config = {
             "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                opt, factor=0.5, patience=5, min_lr=1e-6, threshold=0.001, mode="max"
+                opt, factor=0.5, patience=4, min_lr=1e-6, threshold=0.001, mode="max"
             ),
             "monitor": "val_acc",
             "interval": "epoch",

@@ -69,14 +69,13 @@ class VF(nn.Module):
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
         x = F.relu(self.norm1(self.lin1(x)))
-        x = F.relu(self.norm2(self.lin2(x)))
+        x = F.tanh(self.norm2(self.lin2(x)))
         return x
 
 
 classifier = nn.Sequential(
-    # nn.Dropout(0.05),
+    nn.Dropout(0.01),
     nn.Linear(1000, 10),
-    nn.ReLU(),
 )
 
 
@@ -209,7 +208,7 @@ if __name__ == "__main__":
         # {"solver": "rk-4", "fixed_steps": 5},
     )
 
-    train_all_pan(pan_configs, epochs=20, sensitivity="adjoint", test=True)
-    train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
+    train_all_pan(pan_configs, epochs=50, sensitivity="adjoint", test=True)
+    train_all_shooting(shoot_configs, epochs=50, sensitivity="adjoint", test=True)
     # train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
     # train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
