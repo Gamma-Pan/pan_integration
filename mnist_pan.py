@@ -24,6 +24,7 @@ import wandb
 from copy import copy
 import argparse
 import glob
+from typing import Union
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 128
@@ -34,6 +35,7 @@ NUM_WORKERS = mp.cpu_count()
 CHANNELS = 1
 NUM_GROUPS = 1
 WANDB_LOG = False
+EPOCHS = 60
 
 
 class Augmenter(nn.Module):
@@ -54,9 +56,6 @@ class Augmenter(nn.Module):
         return x
 
 
-embedding = Augmenter(CHANNELS)
-
-
 class VF(nn.Module):
     def __init__(self):
         super().__init__()
@@ -73,114 +72,92 @@ class VF(nn.Module):
         return x
 
 
-classifier = nn.Sequential(
-    nn.Dropout(0.01),
-    nn.Linear(1000, 10),
-)
+class Classifier(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.lin1 = nn.Linear(1000, 10)
+        self.drop = nn.Dropout(0.01)
+
+    def forward(self, x):
+        x = self.lin1(x)
+        x = self.drop(x)
+        return x
 
 
-def train_mnist_ode(t_span, ode_model, epochs=10, test=False, logger=()):
+dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
+
+
+def run(
+    name,
+    mode=Union["pan", "shoot"],
+    solver_config=None,
+    log=False,
+    points=10,
+    epochs=50,
+    max_steps=-1,
+    profile=False,
+    test=True,
+):
+    vf = VF().to(device)
+    t_span = torch.linspace(0, 1, 10, device=device)
+    if mode == "pan":
+        sensitivity = "adjoint"
+        ode_model = PanODE(
+            vf,
+            t_span,
+            solver=solver_config,
+            solver_adjoint=solver_config,
+            sensitivity=sensitivity,
+        ).to(device)
+
+    if mode == "shoot":
+        sensitivity = "interpolated_adjoint"
+        ode_model = NeuralODE(vf, **solver_config, sensitivity=sensitivity).to(device)
+
+    embedding = Augmenter(CHANNELS)
+    classifier = Classifier()
+
+    logger = ()
+    if log:
+        logger = WandbLogger(project="pan_integration", name=name, log_model=False)
+        logger.experiment.config.update(solver_config)
+        logger.experiment.config.update(
+            {"type": mode, "sensitivity": sensitivity, "points": points}
+        )
+
     learner = LitOdeClassifier(t_span, embedding, ode_model, classifier)
-    dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
-
     nfe_callback = NfeMetrics()
-    early_callback = EarlyStopping(
-        monitor="val_acc",
-        check_on_train_epoch_end=True,
-        stopping_threshold=0.91,
-    )
-
-    checkpoint = ModelCheckpoint(
+    checkpoint_callback = ModelCheckpoint(
+        dirpath="./checkpoints",
         save_top_k=1,
-        monitor="val_acc",
+        monitor="val_acc_epoch",
         mode="min",
     )
-
     prof_callback = ProfilerCallback()
+
+    callbacks = [nfe_callback]
+    if profile:
+        callbacks.append(prof_callback)
 
     trainer = Trainer(
         max_epochs=epochs,
         enable_checkpointing=True,
-        fast_dev_run=False,
         accelerator="gpu",
         logger=logger,
-        callbacks=[
-            nfe_callback,
-        ],  # checkpoint,]# prof_callback],
+        callbacks=callbacks,
+        max_steps=max_steps,
     )
 
     trainer.fit(learner, datamodule=dmodule)
     if test:
         trainer.test(learner, datamodule=dmodule)
 
-
-def train_all_pan(configs, sensitivity, epochs, test):
-    t_span = torch.linspace(0, 1, 2).to(device)
-
-    for config in configs:
-        vf = VF().to(device)
-        logger = ()
-        name = f"pan_{config['num_coeff_per_dim']}_{config['num_points']}_{str(config['deltas'])}"
-
-        if WANDB_LOG:
-            logger = WandbLogger(
-                project="pan_integration",
-                name=name,
-                log_model=False,
-            )
-            logger.experiment.config.update(config)
-            logger.experiment.config.update(
-                {
-                    "type": "pan",
-                    "sensitivity": sensitivity,
-                    "architecture": "CNN_IL_aug",
-                    "batch_size": BATCH_SIZE,
-                    "cnn_channels": CHANNELS,
-                }
-            )
-
-        model = PanODE(
-            vf, t_span, solver=config, solver_adjoint=config, sensitivity=sensitivity
-        ).to(device)
-        train_mnist_ode(t_span, model, epochs=epochs, test=test, logger=logger)
-        if WANDB_LOG:
-            # profile_artf = wandb.Artifact(f"trace_{name}", type="profile")
-            # profile_artf.add_file(local_path="./trace.json")
-            # logger.experiment.log_artifact(profile_artf)
-            wandb.finish()
-
-
-def train_all_shooting(configs, sensitivity, epochs, test):
-    for config in configs:
-        vf = VF().to(device)
-        logger = ()
-        name = f"shooting_{config['solver']}_{config['atol'] if 'atol' in config.keys() else config['fixed_steps'] }"
-        if WANDB_LOG:
-            logger = WandbLogger(
-                project="pan_integration",
-                name=name,
-                log_model=False,
-            )
-            logger.experiment.config.update(config)
-            logger.experiment.config.update(
-                {
-                    "type": "shooting",
-                    "sensitivity": sensitivity,
-                    "architecture": "CNN_IL_aug",
-                }
-            )
-
-        _config = copy(config)
-        del _config["fixed_steps"]
-
-        model = NeuralODE(vf, **_config, sensitivity=sensitivity)
-        t_span = torch.linspace(0, 1, int(config["fixed_steps"])).to(device)
-        train_mnist_ode(t_span, model, epochs=epochs, test=test, logger=logger)
-        if WANDB_LOG:
-            # profile_artf = wandb.Artifact(f"trace_{name}", type="profile")
-            # profile_artf.add_file(local_path="./trace.json")
-            # logger.experiment.log_artifact(profile_artf)
-            wandb.finish()
+    if log and profile:
+        profile_artf = wandb.Artifact(f"trace_{name}", type="profile")
+        profile_artf.add_file(local_path="./trace.json")
+        logger.experiment.log_artifact(profile_artf)
+    elif log and not profile:
+        wandb.finish()
 
 
 if __name__ == "__main__":
@@ -191,24 +168,36 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
     WANDB_LOG = args["log"]
 
-    pan_configs = (
-        # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-3, "max_iters": 10},
-        {"num_coeff_per_dim": 32, "num_points": 32, "deltas": (1e-4, 1e-5), "max_iters": (30, 0)},
-        # {"num_coeff_per_dim": 64, "num_points": 64, "deltas": (1e-3, 1e-5), "max_iters": (30, 0)},
-        # {"num_coeff_per_dim": 16, "num_points": 16, "delta": 1e-2, "max_iters": 20},
-        # {"num_coeff_per_dim": 32, "num_points": 32, "delta": 1e-2, "max_iters": 20},
-        # {"num_coeff_per_dim": 64, "num_points": 64, "delta": 1e-2, "max_iters": 20},
+    configs = (
+        dict(
+            name="pan_16_16",
+            mode="pan",
+            solver_config={
+                "num_coeff_per_dim": 16,
+                "num_points": 16,
+                "deltas": (1e-3, -1),
+                "max_iters": (20, 0),
+            },
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+        ),
+        dict(
+            name="rk4-10",
+            mode="shoot",
+            solver_config={"solver": "rk-4"},
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+        ),
+        dict(
+            name="tsit5",
+            mode="shoot",
+            solver_config={
+                "solver": "tsit5",
+            },
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+        ),
     )
 
-    shoot_configs = (
-        {"solver": "rk-4", "fixed_steps": 10},
-        {"solver": "tsit5", "atol": 1e-3, "fixed_steps": 2},
-        # {"solver": "dopri5", "atol": 1e-3, "fixed_steps": 2},
-        {"solver": "rk-4", "fixed_steps": 2},
-        # {"solver": "rk-4", "fixed_steps": 5},
-    )
-
-    train_all_shooting(shoot_configs, epochs=100, sensitivity="adjoint", test=True)
-    train_all_pan(pan_configs, epochs=100, sensitivity="adjoint", test=True)
-    # train_all_pan(pan_configs, epochs=20, sensitivity="autograd", test=True)
-    # train_all_shooting(shoot_configs, epochs=20, sensitivity="adjoint", test=True)
+    for config in configs:
+        run(**config)

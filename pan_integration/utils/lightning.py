@@ -12,41 +12,60 @@ class PlotTrajectories(Callback):
     def on_validation_end(self, trainer, pl_module ) -> None:
         samples = torch.utils.data.Subset(trainer.val_dataloaders.dataset, )
 
+
 class NfeMetrics(Callback):
     def __init__(self):
-        self.running = 0
-        self.val_running = 0
+        self.running_fwd = 0
+        self.running_back = 0
+
+        self.step_fwd = 0
+
+        self.epoch_start_fwd= 0
+        self.epoch_start_back= 0
+
+    def on_before_backward(self, trainer, pl_module, optimizer):
+        fwd_nfes = float(pl_module.ode_model.vf.nfe)
+        self.step_fwd = fwd_nfes
+        self.running_fwd += fwd_nfes
+
+        pl_module.log("nfe_train_fwd", fwd_nfes, prog_bar=True)
+        pl_module.log("nfe_train_fwd_cum", self.running_fwd)
+
+        pl_module.ode_model.vf.nfe = 0
 
     def on_after_backward(self, trainer, pl_module):
+        back_nfes = float(pl_module.ode_model.vf.nfe)
+        self.running_back += back_nfes
+
+        pl_module.log("nfe_train_back", back_nfes, prog_bar=True)
+        pl_module.log("nfe_train_back_cum", self.running_back)
+
+        step_total = self.step_fwd + back_nfes
+        pl_module.log("nfe_train_total", step_total)
+        pl_module.log("nfe_train_total_cum", self.running_fwd + self.running_back)
+
         pl_module.ode_model.vf.nfe = 0
 
-    def on_before_zero_grad(self, trainer, pl_module, optimizer):
-        nfes = float(pl_module.ode_model.vf.nfe)
-        self.running += nfes
-        pl_module.log(f"nfe_forward_train", nfes, prog_bar=True)
-        pl_module.log(f"total_nfe_forward_train", self.running, prog_bar=True)
-        pl_module.ode_model.vf.nfe = 0
+    def on_train_epoch_start(self, trainer , pl_module ) -> None:
+        self.epoch_start_fwd = self.running_fwd
+        self.epoch_start_back = self.running_back
+
+    def on_train_epoch_end(self, trainer, pl_module ) -> None:
+        nfes_epoch_fwd = self.running_fwd - self.epoch_start_fwd
+        nfes_epoch_back = self.running_back - self.epoch_start_back
+
+        pl_module.log("nfe_train_fwd_epoch", nfes_epoch_fwd)
+        pl_module.log("nfe_train_back_epoch", nfes_epoch_back)
+        pl_module.log("nfe_train_total_epoch", nfes_epoch_fwd + nfes_epoch_back)
+
+        pl_module.log("nfe_train_fwd_epoch_cum", self.running_fwd)
+        pl_module.log("nfe_train_back_epoch_cum", self.running_back)
+        pl_module.log("nfe_train_total_epoch_cum", self.running_fwd + self.running_back)
 
     def on_test_batch_end(self, trainer, pl_module, batch, batch_idx, dataloader_idx=0):
         nfes = float(pl_module.ode_model.vf.nfe)
-        pl_module.log(f"nfe_test", nfes, prog_bar=True)
+        pl_module.log(f"nfe_test_step", nfes, prog_bar=True)
         pl_module.ode_model.vf.nfe = 0
-
-    def on_validation_epoch_start(self, trainer, pl_module) -> None:
-        pl_module.ode_model.vf.nfe = 0
-        self.val_running = 0
-
-    def on_validation_batch_start(self, trainer, pl_module, batch, batch_idx ) -> None:
-        pl_module.ode_model.vf.nfe = 0
-
-    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx ) -> None:
-        nfes = float(pl_module.ode_model.vf.nfe)
-        self.val_running += nfes
-        self.log('nfe_val_acc_step', nfes)
-
-    def on_validation_epoch_end(self, trainer, pl_module) -> None:
-        nfes = float(pl_module.ode_model.vf.nfe)
-        self.log('nfe_val_acc_epoch', self.val_running)
 
 
 class ProfilerCallback(Callback):

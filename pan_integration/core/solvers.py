@@ -67,8 +67,6 @@ class PanSolver(nn.Module):
     ):
         super().__init__()
 
-        self.max_iters_zero = max_iters
-        self.max_iters_one = max_iters
         self.optim = optim
         self.callback = callback
         self.num_coeff_per_dim = num_coeff_per_dim
@@ -198,7 +196,7 @@ class PanSolver(nn.Module):
         # B = add_head(B)
 
         ##### first order
-        if self.max_iters_one ==0:
+        if self.max_iters_one < 1:
             return add_head(B)
 
         B.requires_grad = True
