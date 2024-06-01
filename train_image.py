@@ -188,6 +188,13 @@ if __name__ == "__main__":
 
     configs = (
         dict(
+            name="rk4-10",
+            mode="shoot",
+            solver_config={"solver": "rk-4"},
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+        ),
+        dict(
             name="pan_16_16",
             mode="pan",
             solver_config={
@@ -196,13 +203,6 @@ if __name__ == "__main__":
                 "deltas": (1e-4, -1),
                 "max_iters": (30, 0),
             },
-            log=WANDB_LOG,
-            epochs=EPOCHS,
-        ),
-        dict(
-            name="rk4-10",
-            mode="shoot",
-            solver_config={"solver": "rk-4"},
             log=WANDB_LOG,
             epochs=EPOCHS,
         ),
