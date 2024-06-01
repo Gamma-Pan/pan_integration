@@ -44,11 +44,12 @@ DATASET = 'CIFAR10'
 class Augmenter(nn.Module):
     def __init__(self, channels, num_groups):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, channels, 3, 1, 1)
-        self.norm1 = nn.GroupNorm(num_groups, channels)
+        self.conv1 = nn.Conv2d(3, channels-3, 3, 1, 1)
+        # self.norm1 = nn.GroupNorm(num_groups, channels)
 
     def forward(self, x):
-        x = F.tanh(self.norm1(self.conv1(x)))
+        aug = F.tanh(self.conv1(x))
+        x = torch.cat( [x, aug], dim=1  )
         return x
 
 
@@ -188,10 +189,10 @@ if __name__ == "__main__":
             name="pan_16_16",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 16,
-                "num_points": 16,
-                "deltas": (1e-3, -1),
-                "max_iters": (20, 0),
+                "num_coeff_per_dim": 20,
+                "num_points": 20,
+                "deltas": (1e-4, -1),
+                "max_iters": (30, 0),
             },
             log=WANDB_LOG,
             epochs=EPOCHS,
