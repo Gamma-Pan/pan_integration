@@ -184,7 +184,7 @@ if __name__ == "__main__":
     CHANNELS= args["channels"]
     NUM_GROUPS= args["num_groups"]
     BATCH_SIZE= args["batch_size"]
-    EPOCHS= args["EPOCHS"]
+    EPOCHS= args["epochs"]
 
     configs = (
         dict(

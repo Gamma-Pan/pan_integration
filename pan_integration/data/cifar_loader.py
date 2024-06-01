@@ -1,4 +1,5 @@
 import torch.utils.data
+import torchvision
 from torchvision.datasets import CIFAR10
 from torchvision.transforms import v2 as transforms
 from torch import utils
@@ -24,7 +25,8 @@ class CIFAR10DataModule(L.LightningDataModule):
         self.pin_memory = pin_memory
         self.test_transform = transforms.Compose(
             [
-                transforms.ToTensor(),
+                transforms.ToImage(),
+                transforms.ToDtype(torch.float32, scale=True),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
             ]
         )
@@ -36,7 +38,8 @@ class CIFAR10DataModule(L.LightningDataModule):
                 ),
                 transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
                 transforms.RandomCrop(32, padding=4),
-                transforms.ToTensor(),
+                transforms.ToImage(),
+                transforms.ToDtype(torch.float32, scale=True),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
             ]
         )
