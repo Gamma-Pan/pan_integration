@@ -26,11 +26,11 @@ import argparse
 import glob
 from typing import Union
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 32
-
 import multiprocessing as mp
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+BATCH_SIZE = 32
 NUM_WORKERS = mp.cpu_count()
 CHANNELS = 32
 NUM_GROUPS = 2
@@ -176,18 +176,20 @@ if __name__ == "__main__":
     parser.add_argument("--log", default=False, type=bool)
     parser.add_argument("--channels", default=1, type=int)
     parser.add_argument("--num_groups", default=1, type=int)
+    parser.add_argument("--batch_size", default=32, type=int)
     args = vars(parser.parse_args())
     WANDB_LOG = args["log"]
     CHANNELS= args["channels"]
     NUM_GROUPS= args["num_groups"]
+    BATCH_SIZE= args["batch_size"]
 
     configs = (
         dict(
             name="pan_16_16",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 20,
-                "num_points": 20,
+                "num_coeff_per_dim": 16,
+                "num_points": 16,
                 "deltas": (1e-3, -1),
                 "max_iters": (20, 0),
             },
