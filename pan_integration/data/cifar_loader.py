@@ -1,6 +1,6 @@
 import torch.utils.data
 from torchvision.datasets import CIFAR10
-from torchvision import transforms
+from torchvision.transforms import v2 as transforms
 from torch import utils
 from torch.utils.data import DataLoader, random_split
 import lightning as L
@@ -25,7 +25,7 @@ class CIFAR10DataModule(L.LightningDataModule):
         self.test_transform = transforms.Compose(
             [
                 transforms.ToTensor(),
-                transforms.Normalize((0, 0, 0), (1, 1, 1)),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
             ]
         )
         self.train_transform = transforms.Compose(
@@ -34,10 +34,10 @@ class CIFAR10DataModule(L.LightningDataModule):
                 transforms.RandomAffine(
                     degrees=10, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10
                 ),
-                transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
                 transforms.RandomCrop(32, padding=4),
                 transforms.ToTensor(),
-                transforms.Normalize((0, 0, 0), (1, 1, 1)),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
             ]
         )
 
