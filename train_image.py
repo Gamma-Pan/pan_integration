@@ -42,10 +42,10 @@ DATASET = 'CIFAR10'
 
 
 class Augmenter(nn.Module):
-    def __init__(self):
+    def __init__(self, channels, num_groups):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, CHANNELS, 3, 1, 1)
-        self.norm1 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
+        self.conv1 = nn.Conv2d(3, channels, 3, 1, 1)
+        self.norm1 = nn.GroupNorm(num_groups, channels)
 
     def forward(self, x):
         x = F.tanh(self.norm1(self.conv1(x)))
@@ -53,14 +53,14 @@ class Augmenter(nn.Module):
 
 
 class VF(nn.Module):
-    def __init__(self):
+    def __init__(self, channels, num_groups):
         super().__init__()
-        self.conv1 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, 1)
-        self.conv2 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, 1)
-        self.conv3 = nn.Conv2d(CHANNELS, CHANNELS, 3, 1, 1)
-        self.norm1 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
-        self.norm2 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
-        self.norm3 = nn.GroupNorm(NUM_GROUPS, CHANNELS)
+        self.conv1 = nn.Conv2d(channels, channels, 3, 1, 1)
+        self.conv2 = nn.Conv2d(channels, channels, 3, 1, 1)
+        self.conv3 = nn.Conv2d(channels, channels, 3, 1, 1)
+        self.norm1 = nn.GroupNorm(num_groups, channels)
+        self.norm2 = nn.GroupNorm(num_groups, channels)
+        self.norm3 = nn.GroupNorm(num_groups, channels)
         self.nfe = 0
 
     def forward(self, t, x, *args, **kwargs):
@@ -72,9 +72,9 @@ class VF(nn.Module):
 
 
 class Classifier(nn.Module):
-    def __init__(self):
+    def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(CHANNELS, 1, 3, 1, 1)
+        self.conv1 = nn.Conv2d(channels, 1, 3, 1, 1)
         self.linear1 = nn.Linear(32 * 32, 10)
         self.flatten = nn.Flatten()
         self.drop = nn.Dropout(0.01)
@@ -102,7 +102,7 @@ def run(
     profile=False,
     test=TEST,
 ):
-    vf = VF().to(device)
+    vf = VF(channels=CHANNELS, num_groups=NUM_GROUPS).to(device)
     t_span = torch.linspace(0, 1, 10, device=device)
     if mode == "pan":
         sensitivity = "adjoint"
@@ -118,8 +118,8 @@ def run(
         sensitivity = "adjoint"
         ode_model = NeuralODE(vf, **solver_config, sensitivity=sensitivity).to(device)
 
-    embedding = Augmenter().to(device)
-    classifier = Classifier().to(device)
+    embedding = Augmenter(channels=CHANNELS, num_groups=NUM_GROUPS).to(device)
+    classifier = Classifier(channels=CHANNELS).to(device)
 
     logger = ()
     if log:
@@ -174,22 +174,26 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--log", default=False, type=bool)
+    parser.add_argument("--channels", default=1, type=int)
+    parser.add_argument("--num_groups", default=1, type=int)
     args = vars(parser.parse_args())
     WANDB_LOG = args["log"]
+    CHANNELS= args["channels"]
+    NUM_GROUPS= args["num_groups"]
 
     configs = (
-        dict(
-            name="pan_16_16",
-            mode="pan",
-            solver_config={
-                "num_coeff_per_dim": 20,
-                "num_points": 20,
-                "deltas": (1e-3, -1),
-                "max_iters": (30, 0),
-            },
-            log=WANDB_LOG,
-            epochs=EPOCHS,
-        ),
+        # dict(
+        #     name="pan_16_16",
+        #     mode="pan",
+        #     solver_config={
+        #         "num_coeff_per_dim": 20,
+        #         "num_points": 20,
+        #         "deltas": (1e-3, -1),
+        #         "max_iters": (30, 0),
+        #     },
+        #     log=WANDB_LOG,
+        #     epochs=EPOCHS,
+        # ),
         dict(
             name="rk4-10",
             mode="shoot",
