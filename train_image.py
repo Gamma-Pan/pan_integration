@@ -48,7 +48,7 @@ class Augmenter(nn.Module):
         # self.norm1 = nn.GroupNorm(num_groups, channels)
 
     def forward(self, x):
-        aug = F.tanh(self.conv1(x))
+        aug = F.sigmoid(self.conv1(x))
         x = torch.cat( [x, aug], dim=1  )
         return x
 
@@ -68,15 +68,15 @@ class VF(nn.Module):
         self.nfe += 1
         x = F.relu(self.norm1(self.conv1(x)))
         x = F.relu(self.norm2(self.conv2(x)))
-        x = F.tanh(self.norm3(self.conv3(x)))
+        x = F.relu(self.norm3(self.conv3(x)))
         return x
 
 
 class Classifier(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(channels, 1, 3, 1, 1)
-        self.linear1 = nn.Linear(32 * 32, 10)
+        self.conv1 = nn.Conv2d(channels, 3, 3, 2, 1)
+        self.linear1 = nn.Linear(16 * 16 * 3, 10)
         self.flatten = nn.Flatten()
         self.drop = nn.Dropout(0.01)
 
