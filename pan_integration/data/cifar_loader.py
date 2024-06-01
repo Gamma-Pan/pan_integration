@@ -25,8 +25,9 @@ class CIFAR10DataModule(L.LightningDataModule):
         self.pin_memory = pin_memory
         self.test_transform = transforms.Compose(
             [
-                transforms.ToImage(),
-                transforms.ToDtype(torch.float32, scale=True),
+                # transforms.ToImage(),
+                # transforms.ToDtype(torch.float32, scale=True),
+                transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
             ]
         )
@@ -37,8 +38,9 @@ class CIFAR10DataModule(L.LightningDataModule):
                     degrees=10, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10
                 ),
                 transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
-                transforms.ToImage(),
-                transforms.ToDtype(torch.float32, scale=True),
+                # transforms.ToImage(),
+                # transforms.ToDtype(torch.float32, scale=True),
+                transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
             ]
         )
