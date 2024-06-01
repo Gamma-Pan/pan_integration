@@ -178,11 +178,13 @@ if __name__ == "__main__":
     parser.add_argument("--channels", default=1, type=int)
     parser.add_argument("--num_groups", default=1, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
+    parser.add_argument("--epochs", default=32, type=int)
     args = vars(parser.parse_args())
     WANDB_LOG = args["log"]
     CHANNELS= args["channels"]
     NUM_GROUPS= args["num_groups"]
     BATCH_SIZE= args["batch_size"]
+    EPOCHS= args["EPOCHS"]
 
     configs = (
         dict(
