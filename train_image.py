@@ -32,8 +32,8 @@ BATCH_SIZE = 32
 import multiprocessing as mp
 
 NUM_WORKERS = mp.cpu_count()
-CHANNELS = 5
-NUM_GROUPS = 1
+CHANNELS = 32
+NUM_GROUPS = 2
 WANDB_LOG = False
 EPOCHS = 100
 MAX_STEPS = -1
@@ -182,18 +182,18 @@ if __name__ == "__main__":
     NUM_GROUPS= args["num_groups"]
 
     configs = (
-        # dict(
-        #     name="pan_16_16",
-        #     mode="pan",
-        #     solver_config={
-        #         "num_coeff_per_dim": 20,
-        #         "num_points": 20,
-        #         "deltas": (1e-3, -1),
-        #         "max_iters": (30, 0),
-        #     },
-        #     log=WANDB_LOG,
-        #     epochs=EPOCHS,
-        # ),
+        dict(
+            name="pan_16_16",
+            mode="pan",
+            solver_config={
+                "num_coeff_per_dim": 20,
+                "num_points": 20,
+                "deltas": (1e-3, -1),
+                "max_iters": (20, 0),
+            },
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+        ),
         dict(
             name="rk4-10",
             mode="shoot",
