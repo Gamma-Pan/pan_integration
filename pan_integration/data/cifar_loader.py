@@ -17,8 +17,10 @@ class CIFAR10DataModule(L.LightningDataModule):
             batch_size: int = 64,
             num_workers: int = 1,
             pin_memory=False,
+            aug = False
     ):
         super().__init__()
+        self.aug = aug
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -55,7 +57,7 @@ class CIFAR10DataModule(L.LightningDataModule):
     def setup(self, stage: str):
         if stage == "fit":
             mnist_train = CIFAR10(
-                self.data_dir, train=True, transform=self.train_transform
+                self.data_dir, train=True, transform=self.train_transform if self.aug else self.test_transform
             )
             mnist_val = CIFAR10(self.data_dir, train=True, transform=self.test_transform)
 

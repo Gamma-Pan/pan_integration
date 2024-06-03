@@ -32,43 +32,40 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 BATCH_SIZE = 32
 NUM_WORKERS = mp.cpu_count()
-CHANNELS = 32
-NUM_GROUPS = 2
+CHANNELS = 42
 WANDB_LOG = False
-EPOCHS = 100
-MAX_STEPS = -1
+EPOCHS = 1
+MAX_STEPS = 20
 TEST = True
 DATASET = 'CIFAR10'
 
 
 class Augmenter(nn.Module):
-    def __init__(self, channels, num_groups):
+    def __init__(self, channels ):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, channels-3, 3, 1, 1)
-        # self.norm1 = nn.GroupNorm(num_groups, channels)
+        self.conv1 = nn.Conv2d(3, channels, 3, 1, 1)
 
     def forward(self, x):
-        aug = F.sigmoid(self.conv1(x))
-        x = torch.cat( [x, aug], dim=1  )
+        x = self.conv1(x)
         return x
 
 
 class VF(nn.Module):
-    def __init__(self, channels, num_groups):
+    def __init__(self, channels):
         super().__init__()
         self.conv1 = nn.Conv2d(channels, channels, 3, 1, 1)
         self.conv2 = nn.Conv2d(channels, channels, 3, 1, 1)
         self.conv3 = nn.Conv2d(channels, channels, 3, 1, 1)
-        self.norm1 = nn.GroupNorm(num_groups, channels)
-        self.norm2 = nn.GroupNorm(num_groups, channels)
-        self.norm3 = nn.GroupNorm(num_groups, channels)
+        self.norm1 = nn.InstanceNorm2d( channels)
+        self.norm2 = nn.InstanceNorm2d( channels)
+        self.norm3 = nn.InstanceNorm2d( channels)
         self.nfe = 0
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
         x = F.relu(self.norm1(self.conv1(x)))
         x = F.relu(self.norm2(self.conv2(x)))
-        x = F.relu(self.norm3(self.conv3(x)))
+        x = F.tanh(self.norm3(self.conv3(x)))
         return x
 
 
@@ -76,13 +73,14 @@ class Classifier(nn.Module):
     def __init__(self, channels):
         super().__init__()
         self.conv1 = nn.Conv2d(channels, 3, 3, 2, 1)
-        self.linear1 = nn.Linear(16 * 16 * 3, 10)
+        self.linear1 = nn.Linear( 16 * 16 * channels, 10)
         self.flatten = nn.Flatten()
         self.drop = nn.Dropout(0.01)
+        self.pool = nn.AvgPool2d(2,2,0,)
 
     def forward(self, x):
-        x = F.relu(self.conv1(x))
         x = self.drop(x)
+        x = self.pool(x)
         x = self.flatten(x)
         x = self.linear1(x)
         return x
@@ -103,7 +101,7 @@ def run(
     profile=False,
     test=TEST,
 ):
-    vf = VF(channels=CHANNELS, num_groups=NUM_GROUPS).to(device)
+    vf = VF(channels=CHANNELS ).to(device)
     t_span = torch.linspace(0, 1, 10, device=device)
     if mode == "pan":
         sensitivity = "adjoint"
@@ -119,7 +117,7 @@ def run(
         sensitivity = "adjoint"
         ode_model = NeuralODE(vf, **solver_config, sensitivity=sensitivity).to(device)
 
-    embedding = Augmenter(channels=CHANNELS, num_groups=NUM_GROUPS).to(device)
+    embedding = Augmenter(channels=CHANNELS).to(device)
     classifier = Classifier(channels=CHANNELS).to(device)
 
     logger = ()
@@ -176,32 +174,23 @@ if __name__ == "__main__":
     )
     parser.add_argument("--log", default=False, type=bool)
     parser.add_argument("--channels", default=1, type=int)
-    parser.add_argument("--num_groups", default=1, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--epochs", default=32, type=int)
     args = vars(parser.parse_args())
     WANDB_LOG = args["log"]
     CHANNELS= args["channels"]
-    NUM_GROUPS= args["num_groups"]
     BATCH_SIZE= args["batch_size"]
     EPOCHS= args["epochs"]
 
     configs = (
         dict(
-            name="rk4-10",
-            mode="shoot",
-            solver_config={"solver": "rk-4"},
-            log=WANDB_LOG,
-            epochs=EPOCHS,
-        ),
-        dict(
-            name="pan_16_16",
+            name="pan_20_20",
             mode="pan",
             solver_config={
                 "num_coeff_per_dim": 20,
                 "num_points": 20,
                 "deltas": (1e-4, -1),
-                "max_iters": (30, 0),
+                "max_iters": (15, 0),
             },
             log=WANDB_LOG,
             epochs=EPOCHS,
@@ -210,6 +199,13 @@ if __name__ == "__main__":
             name="tsit5",
             mode="shoot",
             solver_config={"solver": "tsit5", "atol": 1e-3},
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+        ),
+        dict(
+            name="rk4-10",
+            mode="shoot",
+            solver_config={"solver": "rk-4"},
             log=WANDB_LOG,
             epochs=EPOCHS,
         ),

@@ -8,9 +8,12 @@ from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import nn, Tensor
 from torch.profiler import profile, record_function, ProfilerActivity
 
+
 class PlotTrajectories(Callback):
-    def on_validation_end(self, trainer, pl_module ) -> None:
-        samples = torch.utils.data.Subset(trainer.val_dataloaders.dataset, )
+    def on_validation_end(self, trainer, pl_module) -> None:
+        samples = torch.utils.data.Subset(
+            trainer.val_dataloaders.dataset,
+        )
 
 
 class NfeMetrics(Callback):
@@ -20,8 +23,8 @@ class NfeMetrics(Callback):
 
         self.step_fwd = 0
 
-        self.epoch_start_fwd= 0
-        self.epoch_start_back= 0
+        self.epoch_start_fwd = 0
+        self.epoch_start_back = 0
 
     def on_before_backward(self, trainer, pl_module, optimizer):
         fwd_nfes = float(pl_module.ode_model.vf.nfe)
@@ -46,11 +49,11 @@ class NfeMetrics(Callback):
 
         pl_module.ode_model.vf.nfe = 0
 
-    def on_train_epoch_start(self, trainer , pl_module ) -> None:
+    def on_train_epoch_start(self, trainer, pl_module) -> None:
         self.epoch_start_fwd = self.running_fwd
         self.epoch_start_back = self.running_back
 
-    def on_train_epoch_end(self, trainer, pl_module ) -> None:
+    def on_train_epoch_end(self, trainer, pl_module) -> None:
         nfes_epoch_fwd = self.running_fwd - self.epoch_start_fwd
         nfes_epoch_back = self.running_back - self.epoch_start_back
 
@@ -160,8 +163,8 @@ class LitOdeClassifier(LightningModule):
 
     def test_step(self, batch, batch_idx):
         loss, preds, acc = self._common_step(batch, batch_idx)
-        self.test_batches+=1
-        self.test_acc+= acc
+        self.test_batches += 1
+        self.test_acc += acc
 
         self.log("test_loss", loss, prog_bar=True)
         return loss
@@ -173,11 +176,11 @@ class LitOdeClassifier(LightningModule):
     def configure_optimizers(self):
         # TODO: use LR callback
         opt = torch.optim.AdamW(
-            self.parameters(), lr=self.learning_rate, weight_decay=1e-5
+            self.parameters(), lr=self.learning_rate, weight_decay=5 * 1e-4
         )
         lr_scheduler_config = {
             "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                opt, factor=0.5, patience=4, min_lr=1e-6, threshold=0.001, mode="max"
+                opt, factor=0.9, patience=5, min_lr=1e-6, threshold=0.01, mode="max"
             ),
             "monitor": "val_acc",
             "interval": "epoch",

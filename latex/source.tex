@@ -20,10 +20,10 @@
 \usepackage[style=ieee]{biblatex} %Imports biblatex package
 \addbibresource{references.bib} %Import the bibliography file
 
-\title{Polynomial approximation numerical integration\\ \large{A parallel approach to Initial Value Problems through optimization} \\ v0.9}
+\title{Polynomial approximation numerical integration\\ \large{A parallel approach to Initial Value Problems through error minimisation} \\ v0.99}
 
 \author{Yiorgos Panagiotopoulos}
-\date{May 2024}
+\date{June 2024}
 
 \begin{document}
 
@@ -262,7 +262,7 @@
     Suppose that we could keep increasing the depth of the ResNet in~\eqref{resnet} while the time of the forward pass remained bounded, meaning each layer would take less and less time.
     In the limit we get a differential equation governed by the dynamics defined by a neural network $f$:
     \begin{equation}
-        \frac{ \pmb{y}(t)}{dt} = f(\pmb{y}(t); \pmb{\theta}) \label{diffeq}
+        \pmb{y}^{(1)}(t) = f(\pmb{y}(t); \pmb{\theta}) \label{diffeq}
     \end{equation}
     Instead of a discrete sequence of hidden states, $\pmb{y}(t)$ is a continuous flow $\pmb{y} : [0,T] \to \mathbb{R}^{N_y}$ defined be the vector field parameterised by $\pmb{\theta}$.
 
@@ -284,10 +284,10 @@
     In order to overcome this obstacle we employ a numerical method for solving \textit{Initial Value Problems}, .
     If we were to use forward Euler, an explicit method, we would get a recurrence relation of the form
     \begin{equation}
-        \pmb{y}(t_k + h) = \pmb{y}(t_k) + h \left. \frac{d\pmb{y}(t)}{dt} \right|_{t = t_k}
+        \pmb{y}(t_k + h) = \pmb{y}(t_k) + h \; \pmb{y}^{(1)}(t_k)
         \label{forwaredEu}
     \end{equation}
-    By considering that $\frac{d \pmb{y}(t)}{dt} = f(\pmb{y}(t);\pmb{\theta})$ Eq. \eqref{forwaredEu} can be written as:
+    By considering that $\pmb{y}^{(1)}(t) = f(\pmb{y}(t);\pmb{\theta})$ Eq. \eqref{forwaredEu} can be written as:
     \begin{equation}
         \pmb{y}(t_k + h) = \pmb{y}(t_k) + h f(\pmb{y}(t_k); \pmb{\theta} )
         \label{res2eul}
@@ -346,18 +346,12 @@
     The above quantity is called the \textit{adjoint state}.
     It can be proven that for its derivative~\cite{pontryagin2018mathematical}, the following equation holds:
     \begin{equation}
-        \left.
-        \frac
-        {d \pmb{a}(t)}
-        {dt}
-        \right|_{t=t_k}
+        \pmb{a}^{(1)}(t)
         =
         - \pmb{a}(t)^T
-        \left.
         \frac
         {\partial f( \pmb{y}(t), t, \pmb{\theta} )}
         {\partial \pmb{y}(t) }
-        \right|_{t=t_k}
         \label{adjoint}
     \end{equation}
 
@@ -404,7 +398,7 @@
     This problem can be formulated as an initial value problem or IVP .
     \begin{equation}
         \label{eq:sol:ivp}
-        \frac{dy}{dt} = f(t, y), \quad y(0) = y_0
+        y^{(1)}(t) = f(t, y), \quad y(0) = y_0
     \end{equation}
     The exact solutions to these ODEs is usually hard to calculate or intractable.
     To this end, many numerical methods have been developed over the years.
@@ -454,7 +448,7 @@
     \begin{definition}
         A solution $y = v(t)$ to ~\eqref{ivp} is said to be \textbf{stable} on the interval $[t_0, T ]$ if for every
         $\epsilon >0$ there exists $\delta > 0$ such that for all $z$ satisfying $\lvert  v(t_0) - z \rvert < \delta$
-        the solution $y = w(t)$ to the differential equation $\frac{dy}{dt} y = f(t, y) $ satisfying the initial condition
+        the solution $y = w(t)$ to the differential equation $y^{(1)}(t) = f(t, y) $ satisfying the initial condition
         $w(t_0) = z$ is defined for all $t \in [t_0, T]$ and satisfies $ \lvert v(t) - w(t) \rvert \leq \epsilon$ for
         all $t$ in $[t_0, T]$.
         A solution which is stable on $[t_0, \infty)$ (i.e. stable on $[t_0, Y]$ for all $Y$ and with $\delta$
@@ -479,7 +473,7 @@
     calculate an approximation $y_n$ for the value of $y(t_n)$ at the mesh points.
     It can be derived directly by the forward difference approximation of the derivative.
     \begin{align}
-        \left. \frac{dy}{dt} \right|_{t=t_n}  &= \lim_{h \to 0} \frac{y(t_n+h) - y(t_n)}{h} \\
+        y^{(1)}(t_n) &= \lim_{h \to 0} \frac{y(t_n+h) - y(t_n)}{h} \\
         &\approx \frac{y(t_n+h) - y(t_n)}{ h} \quad \text{for small $h$}
     \end{align}
     Rearranging terms in the above equation and substituting the known function for the derivative we arrive at the
@@ -495,9 +489,9 @@
     truncation error becomes.
     This can be shown formally considering the Taylor expansion of $y$ around $t_n$
     \begin{align*}
-        y(t_n+h) &= y(t_n) + h y'(t_n) + \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
-        y(t_n+h) &= y_{n+1}  + \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
-        y(t_n+h) - y_{n+1} &= \frac{1}{2} h^2 y''(t_n) + \mathcal{O}(h^3) \\
+        y(t_n+h) &= y(t_n) + h y^{(1)}(t_n) + \frac{1}{2} h^2 y^{(2)}(t_n) + \mathcal{O}(h^3) \\
+        y(t_n+h) &= y_{n+1}  + \frac{1}{2} h^2 y^{(2)}(t_n) + \mathcal{O}(h^3) \\
+        y(t_n+h) - y_{n+1} &= \frac{1}{2} h^2 y^{(2)}(t_n) + \mathcal{O}(h^3) \\
         \text{local error} &= \mathcal{O}(h^2)
     \end{align*}
     So the error scales inversely with the square of the step size, as we will see later higher order solver sacrifice
@@ -627,13 +621,13 @@
     To find out the unknown variables $b_1, b_2, \alpha, \beta$ we replace the left hand side with its Taylor expansion
     around $t_n$:
     \begin{equation}
-        y(t_n) + h y'(t_n) + \frac{h^{2}}{2!}y''(t_n) + \mathcal{O}\left(h^{3}\right)
+        y(t_n) + h y^{(1)}(t_n) + \frac{h^{2}}{2!}y^{(1)}(t_n) + \mathcal{O}\left(h^{3}\right)
         =
         y(t_n) + b_{1}k_{1} + b_{2}k_{2}.
         \label{eq:tayl1}
     \end{equation}
-    In the above equation $y'(t_n)$ is obviously $f(t_n, y(t_n))$ and
-    $y''(t_n) = \left. \frac{dy}{dt} f(t, y(t)) \right|_{t=t_n}$ since $f$ has both direct and indirect dependence of t
+    In the above equation $y^{(1)}(t_n)$ is obviously $f(t_n, y(t_n))$ and
+    $y^{(2)}(t_n) = \left. \frac{d}{dt} f(t, y(t)) \right|_{t=t_n}$ since $f$ has both direct and indirect dependence of t
     it is expanded as $\frac{d}{dt} f(t, y(t)) = f_{t} + ff_{y}$  from the multivariate chain rule, where $f_x$ is
     $\frac{\partial f}{\partial x}(t, y(t))$, we omit $f$'s arguments omitted for convenience.
     Substituting $k_1$, $k_2$ in ~\eqref{eq:tayl1} we get:
@@ -725,7 +719,7 @@
     \chapter{Parallelism in Time}
     It is apparent that Moore's law is crumbling.
     In the last decades focus has shifted to parallel computation to increase performance rather than increasing single
-    threaded frequencies [CITATION?].
+    threaded frequencies~\cite{theis2017end}.
     In the field of deep learning, massive parallelisation of training and inference workloads have led to major
     breakthroughs ~\cite{vaswani2017attention}.
     Differential equations solvers have intrinsic serial characteristics.
@@ -738,12 +732,14 @@
     In the next subsection we introduce a new parallel in time algorithm which is based on the use of a polynomial
     approximation of the solution of the IVP.
 
+    \subsection{Parareal}
+
     \subsection{Polynomial approximation}
     Let us consider the following initial value problem that we wish to solve in some time interval
     $t \in [0 , T]$ with $\pmb{y} (t_0)= \pmb{y}_0$.
     We will examine the scalar case first where $y : \mathbb{R} \to \mathbb{R}$:
     \begin{equation}
-        \frac{d y(t)}{dt} = f(y(t)) \label{dydt}
+        y^{(1)}(t) = f(y(t)) \label{dydt}
     \end{equation}
     We define the $N$-th order polynomial approximation  $\hat{y}(t)=\sum_{n=0}^{N-1} b_n \phi_n(t) $  where $ \phi_n(t) $ are basis functions
     for a vector space of polynomials and $b_n$ are some coefficients we wish to find.
@@ -751,7 +747,7 @@
     $\pmb{\phi} : [0,T] \to \mathbb{R}^N$ and $\pmb{b} \in \mathbb{R}^N$.
     By substituting $\hat{y}$ in~\eqref{dydt} we get:
     \begin{align}
-        \frac{d}{dt}  \pmb{b}^T \pmb{\phi}(t)   &\approx f( \pmb{b}^T \pmb{\phi}(t) ) \label{dPhidt}
+        \pmb{b}^T \pmb{\phi}^{(1)}(t)   &\approx f( \pmb{b}^T \pmb{\phi}(t) ) \label{dPhidt}
         \\
         \pmb{b}^T \pmb{\dot{\phi}}(t)  &\approx f( \pmb{b}^T \pmb{\phi}(t)) \label{dphi_fphi}
     \end{align}
@@ -776,8 +772,8 @@
     By substituting $t = \hat{t}$  in ~\eqref{dPhidt} we get:
     \begin{align*}
 %        \label{dydt_hat}
-        \frac{d}{dt}  \pmb{b}^T \pmb{\phi}(t) &= f( \pmb{b}^T \pmb{\phi}(t) ) \\
-        \frac{d}{d\hat{t}} \frac{d \hat{t}}{dt} \; ( \pmb{b}^T \pmb{\phi}(\hat{t}) ) &= f( \pmb{b}^T \pmb{\phi}(\hat{t}) ) \\
+         \pmb{b}^T \pmb{\phi}^{(1)}(\hat{t}(t)) &= f( \pmb{b}^T \pmb{\phi}(\hat{t}(t)) ) \\
+        \hat{t}^{(1)}(t)  \;  \pmb{b}^T \pmb{\phi}^{(1)}(\hat{t}(t))  &= f( \pmb{b}^T \pmb{\phi}(\hat{t}(t)) ) \\
         \frac{2}{b-a} \pmb{b}^T \pmb{\dot\phi}(\hat{t}) &= f( \pmb{b}^T \pmb{\phi}(\hat{t}) )
     \end{align*}
     For the sake of convenience for the rest of the section we omit the hat from $t$ and the constant in front of
@@ -809,7 +805,7 @@
     \end{equation}
     It can also be shown that for the derivative of $T_n$ it holds that:
     \begin{equation}
-        \frac{dT_n}{dt} = n U_{n-1}
+        T_n^{(1)} = n U_{n-1}
         \label{Dcheb}
     \end{equation}
 
@@ -1177,7 +1173,7 @@
     with other alongside our approach.
 
     \begin{equation*}
-        \frac{d \pmb{y} }{dt} =
+        \pmb{y}^{(1)}  =
         \tanh(
         \begin{bmatrix}
             a & 1 \\ -1 & -a
@@ -1241,9 +1237,9 @@
     \subsubsection{Lorenz Attractor}
     The Lorenz system is a system of ordinary differential equations known for its chaotic behaviour.
     \begin{align*}
-        \frac{dx}{dt} &= \sigma( y - x ) \\
-        \frac{dy}{dt} &=  x( \rho - z) - y \\
-        \frac{dz}{dt} &=  xy - \beta z\\
+        x^{(1)}&= \sigma( y - x ) \\
+        y^{(1)}&=  x( \rho - z) - y \\
+        z^{(1)}&=  xy - \beta z\\
     \end{align*}
 
     We again solve the equation using a variety of solvers and compare them with our method.
@@ -1302,10 +1298,12 @@
 
     \appendix
 
+
     \chapter{The backpropagation equations}
     In order to contrast and highlight the differences between classical neural networks, residual neural networks and
     neural ODEs we showcase how the gradients of the loss wrt the learnable parameters is calculated in each architecture.
     This quantity is necessary in order to minimise the loss of the network using any -gradient descent based- optimisation algorithm.
+
     \subsection{Vanilla Neural Networks}
     Classical artificial neural networks are comprised of linear transformations followed by non-linear activation functions.
     The equation that describes the input-output relationship of the $n$-th layer is:
@@ -1466,9 +1464,7 @@
     \end{equation*}
 
     \begin{equation*}
-        \frac
-        {d \pmb{a}(t)}
-        {dt}
+         \pmb{a}^{(1)}(t)
         =
         - \pmb{a}(t)^T
         \frac
@@ -1496,7 +1492,7 @@
     In this sense, neural ODEs are reversible (up to numerical tolerances).
 
     Algorithm~\ref{alg:adjoint} reformulates the integral equation for the gradient of the loss wrt.
-    weights as a differential equation: $ \frac{d}{dt} \pmb{a}_\theta(t) = -\pmb{a}(t)^T \frac{\partial f}{\partial \pmb{\theta}}$.
+    weights as a differential equation: $ \pmb{a}^{(1)}_\theta(t) = -\pmb{a}(t)^T \frac{\partial f}{\partial \pmb{\theta}}$.
     We know that $\pmb{a}_\theta(T) = 0$ and we search for $\pmb{a}_\theta(0) = \nabla_\theta L$.
 
     \begin{algorithm}
@@ -1588,6 +1584,7 @@
     \end{align}
     Setting $s=T$ we arrive at the desired formula.
 
+
     \chapter{Optimisation}
     In the field of numerical optimisation many methods have been developed for minimising a \textit{scalar} objective function $f$.
     One category of those, \textit{line search} methods, are iterative algorithms that seek to update the current iterate $x_k$ to a new value closer to the minimum.
@@ -1676,7 +1673,8 @@
 
     The algorithm calculates the elements of the diagonal $D$ and the unitriangular matrix $L$ column by column.
     It is a simpler version of the algorithm presented in Eq.~\cite{gill2019practical} that additionally introduces symmetric row-column interchanges resulting in lower $ \lVert H_k - \hat{H}_k \rVert$, $\hat{H}_k$ being the approximation.
-    \begin{algorithm} \label{alg:mod_chol}
+    \begin{algorithm}
+        \label{alg:mod_chol}
         \caption{Modified Cholesky}
         \begin{algorithmic}
             \For{ $i = j+1,\dots,n$ }
@@ -1725,13 +1723,13 @@
             \State Set $a_0 \gets 0$, choose $a_1 \in (0, a_{max})$
             \State $i \gets 1$
             \Repeat
-                \If {$\phi(a_i) > \phi(0) + c_1 a_i \phi'(0)$ or [$\phi(a_i) \geq \phi(a_{i-1})$ and $i>1$]}
+                \If {$\phi(a_i) > \phi(0) + c_1 a_i \phi^{(1)}(0)$ or [$\phi(a_i) \geq \phi(a_{i-1})$ and $i>1$]}
                     \State return \textbf{zoom}($a_{i-1}, a_i$)
                 \EndIf
-                \If {$\lvert \phi'(a_i) \rvert \leq -c_2 \phi'(0)$}
+                \If {$\lvert \phi^{(1)}(a_i) \rvert \leq -c_2 \phi^{(1)}(0)$}
                     \State return $a_i$
                 \EndIf
-                \If {$\phi'(a_i) \geq 0$}
+                \If {$\phi^{(1)}(a_i) \geq 0$}
                     \State return \textbf{zoom}($a_i, a_{i-1}$)
                 \EndIf
                 \State $a_{i+1} \gets \min({a_max, 2*a_i})$
@@ -1745,7 +1743,7 @@
     \begin{enumerate}
         \item $a_i$ violates the sufficient decreasee condition
         \item $\phi(a_i) \geq \phi(a_{i-1}) $
-        \item $\phi'(a_i) \geq 0$
+        \item $\phi^{(1)}(a_i) \geq 0$
     \end{enumerate}
     The last step of the algorithm performs extrapolation to find the next trial value $a_{i+1}$.
     We can use some more involved extrapolation technique like the ones mentioned previously in the section, or
@@ -1771,14 +1769,14 @@
             \Repeat
                 \State Interpolate to find a trial step length $a_j$ between $a_{lo}$ and $a_{hi}$
                 \State Evaluate $\phi(a_j)$
-                \If {$\phi(a_j) > \phi(0) + c_1 a_j \phi'(0)$ or $\phi(a_j) \geq \phi(a_{lo}$]}
+                \If {$\phi(a_j) > \phi(0) + c_1 a_j \phi^{(1)}(0)$ or $\phi(a_j) \geq \phi(a_{lo}$]}
                     \State $a_{hi} \gets a_j$
                 \Else
-                    \State Evaluate $\phi'(a_j)$
-                    \If {$ |\phi'(a_j)| \leq -c_2 \phi'(0)$}
+                    \State Evaluate $\phi^{(1)}(a_j)$
+                    \If {$ |\phi^{(1)}(a_j)| \leq -c_2 \phi^{(1)}(0)$}
                         \State Set $a^* \gets a_j$ and \textbf{stop}
                     \EndIf
-                    \If { $\phi'(a_j)(a_{hi} - a_{lo}) \geq 0 $ }
+                    \If { $\phi^{(1)}(a_j)(a_{hi} - a_{lo}) \geq 0 $ }
                         \State $a_{hi} \gets a_{lo}$
                     \EndIf
                     \State $a_{lo} \gets a_{hi}$
