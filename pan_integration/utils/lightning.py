@@ -85,7 +85,7 @@ class ProfilerCallback(Callback):
             on_trace_ready=self.ready,
             activities=[ProfilerActivity.CUDA, ProfilerActivity.CPU],
             # record_shapes=True,
-            # profile_memory=True,
+            profile_memory=True,
         )
 
     def ready(self, profiler):

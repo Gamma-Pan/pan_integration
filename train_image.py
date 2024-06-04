@@ -37,11 +37,11 @@ WANDB_LOG = False
 EPOCHS = 1
 MAX_STEPS = 20
 TEST = True
-DATASET = 'CIFAR10'
+DATASET = "CIFAR10"
 
 
 class Augmenter(nn.Module):
-    def __init__(self, channels ):
+    def __init__(self, channels):
         super().__init__()
         self.conv1 = nn.Conv2d(3, channels, 3, 1, 1)
 
@@ -56,9 +56,9 @@ class VF(nn.Module):
         self.conv1 = nn.Conv2d(channels, channels, 3, 1, 1)
         self.conv2 = nn.Conv2d(channels, channels, 3, 1, 1)
         self.conv3 = nn.Conv2d(channels, channels, 3, 1, 1)
-        self.norm1 = nn.InstanceNorm2d( channels)
-        self.norm2 = nn.InstanceNorm2d( channels)
-        self.norm3 = nn.InstanceNorm2d( channels)
+        self.norm1 = nn.InstanceNorm2d(channels)
+        self.norm2 = nn.InstanceNorm2d(channels)
+        self.norm3 = nn.InstanceNorm2d(channels)
         self.nfe = 0
 
     def forward(self, t, x, *args, **kwargs):
@@ -72,15 +72,18 @@ class VF(nn.Module):
 class Classifier(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(channels, 3, 3, 2, 1)
-        self.linear1 = nn.Linear( 16 * 16 * channels, 10)
+        self.pool1 = nn.AvgPool2d(2, 2 )
+        self.pool2 = nn.AvgPool2d(2, 2 )
+        self.linear1 = nn.Linear(8 * 8 * channels, 10)
         self.flatten = nn.Flatten()
         self.drop = nn.Dropout(0.01)
-        self.pool = nn.AvgPool2d(2,2,0,)
 
     def forward(self, x):
         x = self.drop(x)
-        x = self.pool(x)
+        x = self.pool1(x)
+        x = F.relu(x)
+        x = self.pool2(x)
+        x = F.relu(x)
         x = self.flatten(x)
         x = self.linear1(x)
         return x
@@ -101,7 +104,7 @@ def run(
     profile=False,
     test=TEST,
 ):
-    vf = VF(channels=CHANNELS ).to(device)
+    vf = VF(channels=CHANNELS).to(device)
     t_span = torch.linspace(0, 1, 10, device=device)
     if mode == "pan":
         sensitivity = "adjoint"
@@ -176,11 +179,13 @@ if __name__ == "__main__":
     parser.add_argument("--channels", default=1, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--epochs", default=32, type=int)
+    parser.add_argument("--max_steps", default=-1, type=int)
     args = vars(parser.parse_args())
     WANDB_LOG = args["log"]
-    CHANNELS= args["channels"]
-    BATCH_SIZE= args["batch_size"]
-    EPOCHS= args["epochs"]
+    CHANNELS = args["channels"]
+    BATCH_SIZE = args["batch_size"]
+    EPOCHS = args["epochs"]
+    MAX_STEPS = args["max_steps"]
 
     configs = (
         dict(
@@ -194,6 +199,7 @@ if __name__ == "__main__":
             },
             log=WANDB_LOG,
             epochs=EPOCHS,
+            profile=True,
         ),
         dict(
             name="tsit5",
@@ -201,6 +207,7 @@ if __name__ == "__main__":
             solver_config={"solver": "tsit5", "atol": 1e-3},
             log=WANDB_LOG,
             epochs=EPOCHS,
+            profile=True,
         ),
         dict(
             name="rk4-10",
@@ -211,5 +218,6 @@ if __name__ == "__main__":
         ),
     )
 
+    print(BATCH_SIZE)
     for config in configs:
         run(**config)
