@@ -30,10 +30,7 @@ import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-BATCH_SIZE = 32
 NUM_WORKERS = mp.cpu_count()
-CHANNELS = 42
-WANDB_LOG = False
 MAX_STEPS = -1
 DATASET = "CIFAR10"
 
@@ -41,7 +38,7 @@ DATASET = "CIFAR10"
 class Augmenter(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, channels, 3, 1, 1)
+        self.conv1 = nn.Conv2d(3, channels-3, 3, 1, 1)
 
     def forward(self, x):
         x = torch.cat([x, self.conv1(x)], dim=1)
@@ -70,18 +67,15 @@ class VF(nn.Module):
 class Classifier(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.pool1 = nn.AvgPool2d(2, 2)
-        self.pool2 = nn.AvgPool2d(2, 2)
-        self.linear1 = nn.Linear(8 * 8 * channels, 10)
+        self.conv1 = nn.Conv2d(channels, 1, 3, 1, 1)
+        self.linear1 = nn.Linear(32 * 32 * 1, 10)
         self.flatten = nn.Flatten()
         self.drop = nn.Dropout(0.01)
 
     def forward(self, x):
         x = self.drop(x)
-        x = self.pool1(x)
-        x = F.relu(x)
-        x = self.pool2(x)
-        x = F.relu(x)
+
+        x = F.relu(self.conv1(x))
         x = self.flatten(x)
         x = self.linear1(x)
         return x
@@ -191,13 +185,13 @@ if __name__ == "__main__":
 
     configs = (
         dict(
-            name="pan_20_20",
+            name="pan_32_32",
             mode="pan",
             solver_config={
                 "num_coeff_per_dim": 32,
                 "num_points": 32,
                 "deltas": (1e-4, -1),
-                "max_iters": (15, 0),
+                "max_iters": (30, 0),
             },
             log=WANDB_LOG,
             epochs=EPOCHS,
