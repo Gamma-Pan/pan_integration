@@ -182,12 +182,10 @@ class PanSolver(nn.Module):
             if self.callback is not None:
                 self.callback(t_lims, y_init, add_head(B))
 
-            B_prev = B
-            # pass time dimension as batches
-            fapprox = f(
-                t_true,
-                (add_head(B_prev) @ Phi).reshape(-1, *dims),
-            ).reshape(batch_sz, *dims, self.num_points)
+            B_prev =B
+            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
+               t_true, (add_head(B_prev) @ Phi)
+            )
 
             B = (fapprox @ Phi_c) - yf_init @ Phi_d
 

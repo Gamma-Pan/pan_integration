@@ -76,10 +76,10 @@ if __name__ == "__main__":
         #     ax.relim()
         #     ax.autoscale_view()
         #
-        # fig.canvas.flush_events()
-        # fig.canvas.draw()
+        fig1.canvas.flush_events()
+        fig1.canvas.draw()
         # plt.pause(0.001)
-        wait()
+        # wait()
 
 
     optim = {
