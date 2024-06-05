@@ -117,7 +117,7 @@ class PanSolver(nn.Module):
         t_cheb = -torch.cos(torch.pi * (torch.arange(num_points) / num_points)).to(
             device
         )
-        t_true = t_lims[0]+0.5*(t_lims[-1]-t_lims[0])*(t_cheb +1)
+        t_true = t_lims[0] + 0.5 * (t_lims[-1] - t_lims[0]) * (t_cheb + 1)
 
         Dt = torch.diff(torch.cat([t_cheb, tensor([1], device=device)]))
 
@@ -169,6 +169,7 @@ class PanSolver(nn.Module):
                 t_lims, self.num_coeff_per_dim, self.num_points, y_init.device
             )
 
+        batch_sz, *dims = y_init.shape
         yf_init = torch.stack([y_init, f_init], dim=-1)
 
         def add_head(B_tail):
@@ -181,10 +182,12 @@ class PanSolver(nn.Module):
             if self.callback is not None:
                 self.callback(t_lims, y_init, add_head(B))
 
-            B_prev =B
-            fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
-               t_true, (add_head(B_prev) @ Phi)
-            )
+            B_prev = B
+            # pass time dimension as batches
+            fapprox = f(
+                t_true,
+                (add_head(B_prev) @ Phi).reshape(-1, *dims),
+            ).reshape(batch_sz, *dims, self.num_points)
 
             B = (fapprox @ Phi_c) - yf_init @ Phi_d
 

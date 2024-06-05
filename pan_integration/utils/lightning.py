@@ -72,13 +72,15 @@ class NfeMetrics(Callback):
 
 
 class ProfilerCallback(Callback):
-    def __init__(self, schedule=None, epoch=1):
+    def __init__(self, schedule=None, epoch=1, fname='trace'):
         super().__init__()
         if schedule is None:
             schedule = torch.profiler.schedule(
                 skip_first=5, wait=5, warmup=3, active=2, repeat=1
             )
         self.epoch = epoch
+
+        self.fname = fname
 
         self.profiler = torch.profiler.profile(
             schedule=schedule,
@@ -89,7 +91,7 @@ class ProfilerCallback(Callback):
         )
 
     def ready(self, profiler):
-        profiler.export_chrome_trace("./trace.json")
+        profiler.export_chrome_trace(f"{self.fname}.json")
 
     def on_train_start(self, trainer, pl_module):
         if trainer.current_epoch == self.epoch:
@@ -179,12 +181,11 @@ class LitOdeClassifier(LightningModule):
             self.parameters(), lr=self.learning_rate, weight_decay=5 * 1e-4
         )
         lr_scheduler_config = {
-            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                opt, factor=0.9, patience=5, min_lr=1e-6, threshold=0.01, mode="max"
+            "scheduler": torch.optim.lr_scheduler.ExponentialLR(
+                opt, gamma=0.9, last_epoch=-1
             ),
-            "monitor": "val_acc",
             "interval": "epoch",
-            "frequency": 1,
+            "frequency": 5,
         }
         out = {"optimizer": opt, "lr_scheduler": lr_scheduler_config}
         return out

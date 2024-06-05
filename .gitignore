@@ -8,5 +8,4 @@
 __pycache__/
 /test.mp4
 /misc/lightning_logs/
-trace*.json
 /latex/out/

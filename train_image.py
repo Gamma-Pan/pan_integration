@@ -34,9 +34,7 @@ BATCH_SIZE = 32
 NUM_WORKERS = mp.cpu_count()
 CHANNELS = 42
 WANDB_LOG = False
-EPOCHS = 1
-MAX_STEPS = 20
-TEST = True
+MAX_STEPS = -1
 DATASET = "CIFAR10"
 
 
@@ -46,7 +44,7 @@ class Augmenter(nn.Module):
         self.conv1 = nn.Conv2d(3, channels, 3, 1, 1)
 
     def forward(self, x):
-        x = self.conv1(x)
+        x = torch.cat([x, self.conv1(x)], dim=1)
         return x
 
 
@@ -72,8 +70,8 @@ class VF(nn.Module):
 class Classifier(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.pool1 = nn.AvgPool2d(2, 2 )
-        self.pool2 = nn.AvgPool2d(2, 2 )
+        self.pool1 = nn.AvgPool2d(2, 2)
+        self.pool2 = nn.AvgPool2d(2, 2)
         self.linear1 = nn.Linear(8 * 8 * channels, 10)
         self.flatten = nn.Flatten()
         self.drop = nn.Dropout(0.01)
@@ -90,7 +88,6 @@ class Classifier(nn.Module):
 
 
 # dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
-dmodule = CIFAR10DataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
 
 def run(
@@ -102,7 +99,7 @@ def run(
     epochs=50,
     max_steps=MAX_STEPS,
     profile=False,
-    test=TEST,
+    test=False,
 ):
     vf = VF(channels=CHANNELS).to(device)
     t_span = torch.linspace(0, 1, 10, device=device)
@@ -144,7 +141,7 @@ def run(
         monitor="val_acc_epoch",
         mode="min",
     )
-    prof_callback = ProfilerCallback()
+    prof_callback = ProfilerCallback(fname=name)
 
     callbacks = [nfe_callback]
     if profile:
@@ -158,6 +155,7 @@ def run(
         callbacks=callbacks,
         max_steps=max_steps,
     )
+    dmodule = CIFAR10DataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
     trainer.fit(learner, datamodule=dmodule)
     if test:
@@ -165,7 +163,7 @@ def run(
 
     if log and profile:
         profile_artf = wandb.Artifact(f"trace_{name}", type="profile")
-        profile_artf.add_file(local_path="./trace.json")
+        profile_artf.add_file(local_path=f"{name}.json")
         logger.experiment.log_artifact(profile_artf)
     elif log and not profile:
         wandb.finish()
@@ -176,30 +174,35 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--log", default=False, type=bool)
+    parser.add_argument("--test", default=False, type=bool)
     parser.add_argument("--channels", default=1, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--epochs", default=32, type=int)
     parser.add_argument("--max_steps", default=-1, type=int)
+    parser.add_argument("--profile", default=False, type=bool)
     args = vars(parser.parse_args())
     WANDB_LOG = args["log"]
+    TEST = args["test"]
     CHANNELS = args["channels"]
     BATCH_SIZE = args["batch_size"]
     EPOCHS = args["epochs"]
     MAX_STEPS = args["max_steps"]
+    PROFILE = args["profile"]
 
     configs = (
         dict(
             name="pan_20_20",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 20,
-                "num_points": 20,
+                "num_coeff_per_dim": 32,
+                "num_points": 32,
                 "deltas": (1e-4, -1),
                 "max_iters": (15, 0),
             },
             log=WANDB_LOG,
             epochs=EPOCHS,
-            profile=True,
+            profile=PROFILE,
+            test=TEST,
         ),
         dict(
             name="tsit5",
@@ -207,15 +210,17 @@ if __name__ == "__main__":
             solver_config={"solver": "tsit5", "atol": 1e-3},
             log=WANDB_LOG,
             epochs=EPOCHS,
-            profile=True,
+            profile=PROFILE,
+            test=TEST,
         ),
-        dict(
-            name="rk4-10",
-            mode="shoot",
-            solver_config={"solver": "rk-4"},
-            log=WANDB_LOG,
-            epochs=EPOCHS,
-        ),
+        # dict(
+        #     name="rk4-10",
+        #     mode="shoot",
+        #     solver_config={"solver": "rk-4"},
+        #     log=WANDB_LOG,
+        #     epochs=EPOCHS,
+        #     test=TEST
+        # ),
     )
 
     print(BATCH_SIZE)
