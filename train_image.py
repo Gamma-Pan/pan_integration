@@ -13,11 +13,7 @@ from torchdyn.core import MultipleShootingLayer, NeuralODE
 
 from pan_integration.data import MNISTDataModule, CIFAR10DataModule
 from pan_integration.core.pan_ode import PanODE, PanSolver
-from pan_integration.utils.lightning import (
-    LitOdeClassifier,
-    NfeMetrics,
-    ProfilerCallback,
-)
+from pan_integration.utils.lightning import *
 
 import wandb
 
@@ -38,7 +34,7 @@ DATASET = "CIFAR10"
 class Augmenter(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, channels-3, 3, 1, 1)
+        self.conv1 = nn.Conv2d(3, channels - 3, 3, 1, 1)
 
     def forward(self, x):
         x = torch.cat([x, self.conv1(x)], dim=1)
@@ -60,7 +56,7 @@ class VF(nn.Module):
         self.nfe += 1
         x = F.relu(self.norm1(self.conv1(x)))
         x = F.relu(self.norm2(self.conv2(x)))
-        x = F.tanh(self.norm3(self.conv3(x)))
+        x = F.relu(self.norm3(self.conv3(x)))
         return x
 
 
@@ -73,7 +69,7 @@ class Classifier(nn.Module):
         self.drop = nn.Dropout(0.01)
 
     def forward(self, x):
-        x = self.drop(x)
+        # x = self.drop(x)
 
         x = F.relu(self.conv1(x))
         x = self.flatten(x)
@@ -114,6 +110,20 @@ def run(
     embedding = Augmenter(channels=CHANNELS).to(device)
     classifier = Classifier(channels=CHANNELS).to(device)
 
+    learner = LitOdeClassifier(t_span, embedding, ode_model, classifier)
+    nfe_callback = NfeMetrics()
+    # checkpoint_callback = ModelCheckpoint(
+    #     dirpath="./checkpoints",
+    #     save_top_k=1,
+    #     monitor="val_acc_epoch",
+    #     mode="min",
+    # )
+    prof_callback = ProfilerCallback(fname=name)
+
+    callbacks = [nfe_callback]
+    if profile:
+        callbacks.append(prof_callback)
+
     logger = ()
     if log:
         logger = WandbLogger(project="pan_integration", name=name, log_model=False)
@@ -126,20 +136,8 @@ def run(
                 "dataset": DATASET,
             }
         )
-
-    learner = LitOdeClassifier(t_span, embedding, ode_model, classifier)
-    nfe_callback = NfeMetrics()
-    checkpoint_callback = ModelCheckpoint(
-        dirpath="./checkpoints",
-        save_top_k=1,
-        monitor="val_acc_epoch",
-        mode="min",
-    )
-    prof_callback = ProfilerCallback(fname=name)
-
-    callbacks = [nfe_callback]
-    if profile:
-        callbacks.append(prof_callback)
+        traj_callback = PlotTrajectories(vf)
+        callbacks.append(traj_callback)
 
     trainer = Trainer(
         max_epochs=epochs,

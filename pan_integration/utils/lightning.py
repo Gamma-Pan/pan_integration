@@ -2,18 +2,16 @@ from typing import Any
 
 from lightning import LightningModule
 from lightning.pytorch.callbacks import Callback
+from lightning.pytorch.utilities.types import STEP_OUTPUT
+import matplotlib.pyplot as plt
 
 import torch
-from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import nn, Tensor
 from torch.profiler import profile, record_function, ProfilerActivity
 
+import wandb
 
-class PlotTrajectories(Callback):
-    def on_validation_end(self, trainer, pl_module) -> None:
-        samples = torch.utils.data.Subset(
-            trainer.val_dataloaders.dataset,
-        )
+import torchdyn
 
 
 class NfeMetrics(Callback):
@@ -72,7 +70,7 @@ class NfeMetrics(Callback):
 
 
 class ProfilerCallback(Callback):
-    def __init__(self, schedule=None, epoch=1, fname='trace'):
+    def __init__(self, schedule=None, epoch=1, fname="trace"):
         super().__init__()
         if schedule is None:
             schedule = torch.profiler.schedule(
@@ -103,6 +101,54 @@ class ProfilerCallback(Callback):
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         self.profiler.step()
+
+
+class PlotTrajectories(Callback):
+
+    def __init__(self, f):
+        super().__init__()
+        self.f = f
+
+    def on_train_start(self, trainer, pl_module) -> None:
+        run = trainer.logger.experiment
+        self.table = wandb.Table(
+            columns=["fwd_traj","epoch" ] #"batch_acc", "batch_loss", "nfes"]
+        )
+
+    def on_validation_epoch_end(self, trainer, pl_module) -> None:
+        x, y = next(iter(trainer.val_dataloaders))
+        x = x.cuda()
+        x_em = pl_module.embedding(x)
+        t_span = torch.linspace(pl_module.t_span[0], pl_module.t_span[-1], 100).cuda()
+        _, y_hat_pan = pl_module.ode_model(x_em, t_span=t_span)
+        _, y_hat_true = torchdyn.numerics.odeint(
+            self.f, t_span=t_span, x=x_em, solver="tsit5", atol=1e-9
+        )
+        fig, axes = plt.subplots(3, 3)
+        dims = y_hat_pan[0].shape
+        for idx, ax in enumerate(axes.reshape(-1)):
+            rand_idx = [torch.randint(0, d, (1,)).item() for d in dims]
+            ax.plot(
+                t_span.cpu(),
+                y_hat_pan[:, *rand_idx].cpu(),
+                "r-",
+                label="pan",
+            )
+            ax.plot(
+                t_span.cpu(),
+                y_hat_true[:, *rand_idx].cpu(),
+                "g--",
+                label="true",
+            )
+        # plt.show()
+        # self.table
+        wandb.log({'chart': fig})
+
+        # logits = pl_module.classifier(y_hat_pan[-1])
+        # loss = nn.CrossEntropyLoss()(logits, y)
+        #
+        # _, preds = torch.max(logits, dim=1)
+        # acc = torch.sum(preds == y) / y.shape[0]
 
 
 class LitOdeClassifier(LightningModule):

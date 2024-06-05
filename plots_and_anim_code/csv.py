@@ -1,7 +1,9 @@
 import pandas as pd
 import matplotlib
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, ticker
+
 matplotlib.use('TkAgg')
+matplotlib.style.use('seaborn-v0_8-colorblind')
 
 #%%
 
@@ -23,16 +25,20 @@ df = nfe_df.join(acc_df)
 df.loc[-1] = 6*[0]
 df.index = df.index + 1
 df.sort_index(inplace=True)
+
 #%%
-plt.yscale('log')
-# plt.xscale('log')
-plt.plot(df['tsit_nfe'], df['tsit_acc'], label='tsit5')
-plt.plot(df['rk4_nfe'], df['rk4_acc'], label='rk4')
-plt.plot(df['pan_nfe'], df['pan_acc'], label='pan')
+df[["tsit_acc_sma", "rk4_acc_sma", "pan_acc_sma"]] = df[["tsit_acc", "rk4_acc", "pan_acc"]].rolling(10).mean()
+
+#%%
+plt.plot(df['tsit_nfe'], df['tsit_acc_sma'], label='Tsitouras-5')
+plt.plot(df['rk4_nfe'], df['rk4_acc_sma'], label='Runge-Kutta-4')
+plt.plot(df['pan_nfe'], df['pan_acc_sma'], label='Proposed')
 plt.legend(loc='best')
-plt.xlabel("number of $f$ evalutation")
-plt.ylabel('validation accuracy')
-plt.ylim([0.98,1])
+plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter('{x:.3f}'))
+plt.grid(alpha=0.4, linewidth=1)
+plt.xlabel("NFEs")
+plt.ylabel('Validation Set Accuracy')
+plt.ylim([0.97,1])
 plt.show()
 
 

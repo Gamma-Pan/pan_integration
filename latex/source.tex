@@ -726,13 +726,13 @@
     Each iteration of a time stepping algorithm depends on the previous steps.
     Nevertheless, after the seminal work presented in~\cite{nievergelt1964parallel}, several methods have been proposed
     for parallel in time, numerical integration.
-    Recent advances include the parareal algorithm~\cite{maday2002parareal} and PFASST~\cite{emmett2012toward} algorithm.
+    Recent advances include the parareal algorithm~\cite{maday2002parareal} and it's offshoots.
     Massaroli et al. \cite{massaroli2021differentiable} used principles of multiple shooting layers,
-    a subcategory of parallel in time methods, and root finding algorithms, to accelerate neural ODES.
-    In the next subsection we introduce a new parallel in time algorithm which is based on the use of a polynomial
-    approximation of the solution of the IVP.
+    a subcategory of parallel in time methods, to accelerate neural ODES.
+    In the next subsections we present the working principle of parareal algorithm and introduce a new parallel in
+    time algorithm which is based on the use of a polynomial approximation of the solution of the IVP.
 
-    \subsection{Parareal}
+    \subsection{The Parareal algorithm}
     The parareal algorithm is a method for solving initial value problems of the form
     \begin{equation}
         \label{eq:pr_ivp}
@@ -777,11 +777,9 @@
     \end{equation}
     Combining Eqs.~\eqref{eq:pr_error} and~\eqref{eq:pr_iter} we arrive at the parareal iteration at step $k$:
     \begin{gather} \label{}
-        \pmb{y}^{k+1}_{n+1} = G(t_n, t_{n+1}, \pmb{y}_n^{k+1}) + F(t_n, t_{n+1}, \pmb{y}_n^{k}) + G(t_n, t_{n+1}, \pmb{y}_n^{k}) \\
+        \pmb{y}^{k+1}_{n+1} = G(t_n, t_{n+1}, \pmb{y}_n^{k+1}) + F(t_n, t_{n+1}, \pmb{y}_n^{k}) - G(t_n, t_{n+1}, \pmb{y}_n^{k}) \\
         \pmb{y}_0^k = \pmb{y}_0
     \end{gather}
-
-    \subsection{PFASST}
 
     \subsection{Polynomial approximation}
     Let us consider the following initial value problem that we wish to solve in some time interval
@@ -812,6 +810,9 @@
 
     Depending on the choice of basis functions, the derivative of $\pmb{\phi}(t)$ with respect to time can be trivial
     to obtain analytically.
+    Note that $\pmb{\phi}$ is a function of single variable hence it's derivative $\pmb{\phi}^{(1)}$ has the same
+    dimensionality: $\pmb{\phi}^{(1)} : [0,T] \to \mathbb{R}^N$
+
     We opt to use Chebyshev polynomials as the basis functions of our approximation which are known for their
     properties in approximation theory ~\cite{trefethen1996finite}.
     They form an orthonormal basis for functions in $[-1,1]$ but we can use them in our desired interval through a
@@ -956,7 +957,7 @@
         f \big( B_{k}^T \Phi \big) ( {\dot\Phi}^T \odot \Delta \pmb{t} \cdot \pmb{1}^T)
         ( \dot\Phi (\dot\Phi^T \odot \Delta \pmb{t} \cdot \pmb{1}^T ) )^{-1} \label{update}
     \end{align}
-    Eq.~\ref{update} outlines the iteration scheme for this zero order optimisation algorithm.
+    where $\odot$ is an element wise product, Eq.~\ref{update} outlines the iteration scheme for this zero order optimisation algorithm.
     Omitting the partitions' lengths terms $\Delta \pmb{t}$ temporarily for clarity:
     \begin{equation}
         \label{eq:biter}
@@ -1167,14 +1168,13 @@
     One major difference is simplicity which allows easier implementation.
     Polynomial Approximation Numerical integration only builds upon simple polynomial approximation and a numerical
     optimiser.
-    Other methods, like PFASST ~\cite{emmett2012toward}, rely on more complicated \textit{spectral deferred correction}
-    methods, a well established but more involved numerical method.
-    Moreover, other parallel in time techniques, like parareal, split the initial value problem into $N$ smaller boundary
-    value problems using a combination of coarse and fine solvers ~\cite{maday2002parareal}.
-
+    Moreover, other parallel in time techniques, like parareal and it's offshoots, split the initial value problem into
+    $N$ smaller boundary value problems using a combination of coarse and fine solvers ~\cite{maday2002parareal}.
+%    Other methods, like PFASST ~\cite{emmett2012toward}, rely on more complicated \textit{spectral deferred correction}
+%    methods, a well established but more involved numerical method.
     One advantage of the method presented here is that it evaluates $f$ on multiple inputs simultaneously,
     to minimise some error function.
-    This \textit{synchronised} parallelisation scheme resembles how multiples input samples are processed in batches
+    This \textit{synchronous} parallelisation scheme resembles how multiples input samples are processed in batches
     during training of a neural network.
     This means that one can exploit GPUs' architecture for mass parallelisation using existing frameworks.
 
