@@ -13,7 +13,7 @@ from torchdyn.core import MultipleShootingLayer, NeuralODE
 
 from pan_integration.data import MNISTDataModule, CIFAR10DataModule
 from pan_integration.core.pan_ode import PanODE, PanSolver
-from pan_integration.utils.lightning import *
+from pan_integration.utils.lightning import PlotTrajectories, NfeMetrics, ProfilerCallback, LitOdeClassifier
 
 import wandb
 
@@ -26,7 +26,7 @@ import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-NUM_WORKERS = mp.cpu_count()
+NUM_WORKERS = 0# p.cpu_count()
 MAX_STEPS = 20
 DATASET = "CIFAR10"
 
