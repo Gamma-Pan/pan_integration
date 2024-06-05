@@ -112,7 +112,7 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
                     retain_graph=False,
                 )
 
-            ipdb.set_trace()
+            # ipdb.set_trace()
             grads_vec = torch.cat(
                 [
                     p.contiguous().flatten() if p is not None else torch.zeros(1, device=device)
