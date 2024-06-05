@@ -108,9 +108,10 @@ class PlotTrajectories(Callback):
     def __init__(self, f):
         super().__init__()
         self.f = f
+        self.run = None
 
     def on_train_start(self, trainer, pl_module) -> None:
-        run = trainer.logger.experiment
+        self.run = trainer.logger.experiment
         self.table = wandb.Table(
             columns=["fwd_traj","epoch" ] #"batch_acc", "batch_loss", "nfes"]
         )
@@ -142,7 +143,8 @@ class PlotTrajectories(Callback):
             )
         # plt.show()
         # self.table
-        wandb.log({'chart': fig})
+        if self.run is not None:
+            self.run.log({'chart': fig})
 
         # logits = pl_module.classifier(y_hat_pan[-1])
         # loss = nn.CrossEntropyLoss()(logits, y)

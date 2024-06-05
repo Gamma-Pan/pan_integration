@@ -27,7 +27,7 @@ import multiprocessing as mp
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 NUM_WORKERS = mp.cpu_count()
-MAX_STEPS = -1
+MAX_STEPS = 20
 DATASET = "CIFAR10"
 
 
@@ -195,6 +195,7 @@ if __name__ == "__main__":
             epochs=EPOCHS,
             profile=PROFILE,
             test=TEST,
+            max_steps=MAX_STEPS
         ),
         dict(
             name="tsit5",
@@ -204,6 +205,7 @@ if __name__ == "__main__":
             epochs=EPOCHS,
             profile=PROFILE,
             test=TEST,
+            max_steps=MAX_STEPS
         ),
         # dict(
         #     name="rk4-10",
@@ -211,7 +213,8 @@ if __name__ == "__main__":
         #     solver_config={"solver": "rk-4"},
         #     log=WANDB_LOG,
         #     epochs=EPOCHS,
-        #     test=TEST
+        #     test=TEST,
+        #     max_steps=MAX_STEPS
         # ),
     )
 

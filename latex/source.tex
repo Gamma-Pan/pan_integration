@@ -1133,7 +1133,7 @@
     First of all, the parallelisation potential of such a method comes from the fact that $f$ can be evaluated for all
     input points $\hat y(t)$ simultaneously at a single iteration.
     More specifically, during the fist, zero-th order part of the algorithm, a vector of points is passed into $f$ to
-    update the coeffecients as can be seen in Eq.~\eqref{eq:Biter}.
+    update the coeffecients as can be seen in Eq.~\eqref{eq:biter}.
     In reality, $f$ is applied on each element of this vector but since the calculations are independent all elements are
     evaluated in parallel.
     Similarly, during the Newton iteration the Hessian can, up to some degree, be computed in parallel by exploiting
