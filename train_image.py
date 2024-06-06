@@ -28,8 +28,8 @@ import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-NUM_WORKERS = 0# p.cpu_count()
-MAX_STEPS = 20
+NUM_WORKERS =  p.cpu_count()
+MAX_STEPS = -1
 DATASET = "CIFAR10"
 
 
