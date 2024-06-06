@@ -112,9 +112,9 @@ class PlotTrajectories(Callback):
 
     def on_train_start(self, trainer, pl_module) -> None:
         self.run = trainer.logger.experiment
-        self.table = wandb.Table(
-            columns=["fwd_traj","epoch" ] #"batch_acc", "batch_loss", "nfes"]
-        )
+        # self.table = wandb.Table(
+        #     columns=["fwd_traj","epoch" ] #"batch_acc", "batch_loss", "nfes"]
+        # )
 
     def on_validation_epoch_end(self, trainer, pl_module) -> None:
         x, y = next(iter(trainer.val_dataloaders))
@@ -131,13 +131,13 @@ class PlotTrajectories(Callback):
             rand_idx = [torch.randint(0, d, (1,)).item() for d in dims]
             ax.plot(
                 t_span.cpu(),
-                y_hat_pan[:, *rand_idx].cpu(),
+                y_hat_pan[(..., *rand_idx)].cpu(), # python 3.10 :(
                 "r-",
                 label="pan",
             )
             ax.plot(
                 t_span.cpu(),
-                y_hat_true[:, *rand_idx].cpu(),
+                y_hat_true[(..., *rand_idx)].cpu(),
                 "g--",
                 label="true",
             )
