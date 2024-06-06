@@ -22,7 +22,9 @@ import argparse
 import glob
 from typing import Union
 
+from datetime import datetime
 import multiprocessing as mp
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -34,46 +36,51 @@ DATASET = "CIFAR10"
 class Augmenter(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, channels - 3, 3, 1, 1)
+        #self.conv1 = nn.Conv2d(3, channels - 3, 3, 1, 1)
 
     def forward(self, x):
-        x = torch.cat([x, self.conv1(x)], dim=1)
+        #x = torch.cat([x, self.conv1(x)], dim=1)
         return x
 
 
 class VF(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(channels, channels, 3, 1, 1)
-        self.conv2 = nn.Conv2d(channels, channels, 3, 1, 1)
-        self.conv3 = nn.Conv2d(channels, channels, 3, 1, 1)
-        self.norm1 = nn.InstanceNorm2d(channels)
-        self.norm2 = nn.InstanceNorm2d(channels)
-        self.norm3 = nn.InstanceNorm2d(channels)
         self.nfe = 0
+
+        self.norm1 = nn.GroupNorm(3,3)
+        self.conv1 = nn.Conv2d(3, channels, 3, 1, 1, bias=False)
+        self.conv2 = nn.Conv2d(channels, channels, 3, 1, 1, bias=False)
+        self.norm2 = nn.GroupNorm(62,62)
+        self.conv3 = nn.Conv2d(62, 3,1)
+
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-        x = F.relu(self.norm1(self.conv1(x)))
-        x = F.relu(self.norm2(self.conv2(x)))
-        x = F.relu(self.norm3(self.conv3(x)))
+        x = self.norm1(x)
+        x = self.conv1(x)
+        x = F.softplus(x)
+        x = self.conv2(x)
+        x = F.softplus(x)
+        x = self.norm2(x)
+        x = self.conv3(x)
         return x
 
 
 class Classifier(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(channels, 1, 3, 1, 1)
-        self.linear1 = nn.Linear(32 * 32 * 1, 10)
+        self.conv1 = nn.Conv2d(3,3,1)
+        self.pool = nn.AdaptiveAvgPool2d(4)
         self.flatten = nn.Flatten()
-        self.drop = nn.Dropout(0.01)
+        self.lin1= nn.Linear(3*16,10)
 
     def forward(self, x):
         # x = self.drop(x)
-
-        x = F.relu(self.conv1(x))
+        x = self.conv1(x)
+        x = self.pool(x)
         x = self.flatten(x)
-        x = self.linear1(x)
+        x = self.lin1(x)
         return x
 
 
@@ -112,15 +119,15 @@ def run(
 
     learner = LitOdeClassifier(t_span, embedding, ode_model, classifier)
     nfe_callback = NfeMetrics()
-    # checkpoint_callback = ModelCheckpoint(
-    #     dirpath="./checkpoints",
-    #     save_top_k=1,
-    #     monitor="val_acc_epoch",
-    #     mode="min",
-    # )
+    checkpoint_callback = ModelCheckpoint(
+        dirpath="./checkpoints",
+        filename=f'{name}_chkp_{datetime.now().strftime("%d_%m_%H_%M")}',
+        monitor="val_acc",
+        mode="min",
+    )
     prof_callback = ProfilerCallback(fname=name)
 
-    callbacks = [nfe_callback]
+    callbacks = [nfe_callback, checkpoint_callback]
     if profile:
         callbacks.append(prof_callback)
 
@@ -183,6 +190,16 @@ if __name__ == "__main__":
 
     configs = (
         dict(
+            name="dopri",
+            mode="shoot",
+            solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+            profile=PROFILE,
+            test=TEST,
+            max_steps=MAX_STEPS,
+        ),
+        dict(
             name="pan_32_32",
             mode="pan",
             solver_config={
@@ -191,16 +208,6 @@ if __name__ == "__main__":
                 "deltas": (1e-4, -1),
                 "max_iters": (30, 0),
             },
-            log=WANDB_LOG,
-            epochs=EPOCHS,
-            profile=PROFILE,
-            test=TEST,
-            max_steps=MAX_STEPS
-        ),
-        dict(
-            name="tsit5",
-            mode="shoot",
-            solver_config={"solver": "tsit5", "atol": 1e-3},
             log=WANDB_LOG,
             epochs=EPOCHS,
             profile=PROFILE,

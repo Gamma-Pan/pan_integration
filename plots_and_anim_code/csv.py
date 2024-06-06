@@ -7,8 +7,8 @@ matplotlib.style.use('seaborn-v0_8-colorblind')
 
 #%%
 
-nfe_df_all = pd.read_csv("~/Downloads/wandb/wandb_export_2024-05-31T17_08_54.804+03_00.csv")
-acc_df_all = pd.read_csv("~/Downloads/wandb/wandb_export_2024-05-31T17_08_44.093+03_00.csv")
+nfe_df_all = pd.read_csv("~/Downloads/wandb/nfe_cifar.csv")
+acc_df_all = pd.read_csv("~/Downloads/wandb/acc_cifar.csv")
 
 # %%
 all_cols = nfe_df_all.columns
@@ -25,6 +25,7 @@ df = nfe_df.join(acc_df)
 df.loc[-1] = 6*[0]
 df.index = df.index + 1
 df.sort_index(inplace=True)
+df = df.iloc[:40]
 
 #%%
 df[["tsit_acc_sma", "rk4_acc_sma", "pan_acc_sma"]] = df[["tsit_acc", "rk4_acc", "pan_acc"]].rolling(10).mean()
@@ -38,7 +39,7 @@ plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter('{x:.3f}'))
 plt.grid(alpha=0.4, linewidth=1)
 plt.xlabel("NFEs")
 plt.ylabel('Validation Set Accuracy')
-plt.ylim([0.97,1])
+plt.ylim([0,1])
 plt.show()
 
 
