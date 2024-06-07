@@ -199,21 +199,21 @@ if __name__ == "__main__":
             test=TEST,
             max_steps=MAX_STEPS,
         ),
-        dict(
-            name="pan_32_32",
-            mode="pan",
-            solver_config={
-                "num_coeff_per_dim": 64,
-                "num_points": 64,
-                "deltas": (1e-4, -1),
-                "max_iters": (100, 0),
-            },
-            log=WANDB_LOG,
-            epochs=EPOCHS,
-            profile=PROFILE,
-            test=TEST,
-            max_steps=MAX_STEPS
-        ),
+        # dict(
+        #     name="pan_32_32",
+        #     mode="pan",
+        #     solver_config={
+        #         "num_coeff_per_dim": 64,
+        #         "num_points": 64,
+        #         "deltas": (1e-4, -1),
+        #         "max_iters": (100, 0),
+        #     },
+        #     log=WANDB_LOG,
+        #     epochs=EPOCHS,
+        #     profile=PROFILE,
+        #     test=TEST,
+        #     max_steps=MAX_STEPS
+        # ),
         # dict(
         #     name="rk4-10",
         #     mode="shoot",
