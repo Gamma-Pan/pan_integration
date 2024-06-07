@@ -28,7 +28,7 @@ import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-NUM_WORKERS =  p.cpu_count()
+NUM_WORKERS =  mp.cpu_count()
 MAX_STEPS = -1
 DATASET = "CIFAR10"
 
@@ -36,10 +36,10 @@ DATASET = "CIFAR10"
 class Augmenter(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        #self.conv1 = nn.Conv2d(3, channels - 3, 3, 1, 1)
+        self.conv1 = nn.Conv2d(3, channels , 3, 1, 1, bias=False)
 
     def forward(self, x):
-        #x = torch.cat([x, self.conv1(x)], dim=1)
+        x = self.conv1(x)
         return x
 
 
@@ -48,11 +48,11 @@ class VF(nn.Module):
         super().__init__()
         self.nfe = 0
 
-        self.norm1 = nn.GroupNorm(3,3)
-        self.conv1 = nn.Conv2d(3, channels, 3, 1, 1, bias=False)
+        self.norm1 = nn.GroupNorm(channels,channels)
+        self.conv1 = nn.Conv2d(channels, channels, 3, 1, 1, bias=False)
         self.conv2 = nn.Conv2d(channels, channels, 3, 1, 1, bias=False)
-        self.norm2 = nn.GroupNorm(62,62)
-        self.conv3 = nn.Conv2d(62, 3,1)
+        self.norm2 = nn.GroupNorm(channels,channels)
+        self.conv3 = nn.Conv2d(channels, channels,1)
 
 
     def forward(self, t, x, *args, **kwargs):
@@ -70,10 +70,10 @@ class VF(nn.Module):
 class Classifier(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(3,3,1)
+        self.conv1 = nn.Conv2d(42,6,1)
         self.pool = nn.AdaptiveAvgPool2d(4)
         self.flatten = nn.Flatten()
-        self.lin1= nn.Linear(3*16,10)
+        self.lin1= nn.Linear(6*16,10)
 
     def forward(self, x):
         # x = self.drop(x)
@@ -203,10 +203,10 @@ if __name__ == "__main__":
             name="pan_32_32",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 32,
-                "num_points": 32,
+                "num_coeff_per_dim": 64,
+                "num_points": 64,
                 "deltas": (1e-4, -1),
-                "max_iters": (30, 0),
+                "max_iters": (100, 0),
             },
             log=WANDB_LOG,
             epochs=EPOCHS,

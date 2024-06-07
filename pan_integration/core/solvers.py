@@ -189,9 +189,9 @@ class PanSolver(nn.Module):
 
             B = (fapprox @ Phi_c) - yf_init @ Phi_d
 
-            # delta = torch.norm(B - B_prev)
-            # if delta.item() < self.delta_zero:
-            #     break
+            delta = torch.norm(B - B_prev)
+            if delta.item() < self.delta_zero:
+                break
 
         # B = add_head(B)
 

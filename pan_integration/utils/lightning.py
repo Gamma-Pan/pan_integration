@@ -146,6 +146,8 @@ class PlotTrajectories(Callback):
         if self.run is not None:
             self.run.log({'chart': fig})
 
+        pl_module.ode_model.vf.nfe = 0
+
         # logits = pl_module.classifier(y_hat_pan[-1])
         # loss = nn.CrossEntropyLoss()(logits, y)
         #
