@@ -235,7 +235,7 @@ class LitOdeClassifier(LightningModule):
                 opt, gamma=0.9, last_epoch=-1
             ),
             "interval": "epoch",
-            "frequency": 1,
+            "frequency": 5,
         }
         out = {"optimizer": opt, "lr_scheduler": lr_scheduler_config}
         return out

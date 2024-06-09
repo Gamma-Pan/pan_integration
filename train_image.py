@@ -13,7 +13,12 @@ from torchdyn.core import MultipleShootingLayer, NeuralODE
 
 from pan_integration.data import MNISTDataModule, CIFAR10DataModule
 from pan_integration.core.pan_ode import PanODE, PanSolver
-from pan_integration.utils.lightning import PlotTrajectories, NfeMetrics, ProfilerCallback, LitOdeClassifier
+from pan_integration.utils.lightning import (
+    PlotTrajectories,
+    NfeMetrics,
+    ProfilerCallback,
+    LitOdeClassifier,
+)
 
 import wandb
 
@@ -28,7 +33,7 @@ import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-NUM_WORKERS =  mp.cpu_count()
+NUM_WORKERS = mp.cpu_count()
 MAX_STEPS = -1
 DATASET = "CIFAR10"
 
@@ -36,7 +41,7 @@ DATASET = "CIFAR10"
 class Augmenter(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, channels , 3, 1, 1, bias=False)
+        self.conv1 = nn.Conv2d(3, channels, 3, 1, 1, bias=False)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -48,12 +53,11 @@ class VF(nn.Module):
         super().__init__()
         self.nfe = 0
 
-        self.norm1 = nn.GroupNorm(channels,channels)
+        self.norm1 = nn.GroupNorm(channels, channels)
         self.conv1 = nn.Conv2d(channels, channels, 3, 1, 1, bias=False)
         self.conv2 = nn.Conv2d(channels, channels, 3, 1, 1, bias=False)
-        self.norm2 = nn.GroupNorm(channels,channels)
-        self.conv3 = nn.Conv2d(channels, channels,1)
-
+        self.norm2 = nn.GroupNorm(channels, channels)
+        self.conv3 = nn.Conv2d(channels, channels, 1)
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
@@ -70,10 +74,10 @@ class VF(nn.Module):
 class Classifier(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(42,6,1)
+        self.conv1 = nn.Conv2d(42, 6, 1)
         self.pool = nn.AdaptiveAvgPool2d(4)
         self.flatten = nn.Flatten()
-        self.lin1= nn.Linear(6*16,10)
+        self.lin1 = nn.Linear(6 * 16, 10)
 
     def forward(self, x):
         # x = self.drop(x)
@@ -189,31 +193,35 @@ if __name__ == "__main__":
     PROFILE = args["profile"]
 
     configs = (
+        # dict(
+        #     name="dopri",
+        #     mode="shoot",
+        #     solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
+        #     log=WANDB_LOG,
+        #     epochs=EPOCHS,
+        #     profile=PROFILE,
+        #     test=TEST,
+        #     max_steps=MAX_STEPS,
+        # ),
         dict(
-            name="dopri",
-            mode="shoot",
-            solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
+            name="pan_32_32",
+            mode="pan",
+            solver_config={
+                "num_coeff_per_dim": 64,
+                "num_points": 64,
+                "deltas": (-1, -1),
+                "max_iters": (50, 50),
+                "optim": {
+                    "optimizer_class": torch.optim.SGD,
+                    "params": {"lr": 1e-9, "momentum": 0.99, "nesterov": True},
+                },
+            },
             log=WANDB_LOG,
             epochs=EPOCHS,
             profile=PROFILE,
             test=TEST,
             max_steps=MAX_STEPS,
         ),
-        # dict(
-        #     name="pan_32_32",
-        #     mode="pan",
-        #     solver_config={
-        #         "num_coeff_per_dim": 64,
-        #         "num_points": 64,
-        #         "deltas": (1e-4, -1),
-        #         "max_iters": (100, 0),
-        #     },
-        #     log=WANDB_LOG,
-        #     epochs=EPOCHS,
-        #     profile=PROFILE,
-        #     test=TEST,
-        #     max_steps=MAX_STEPS
-        # ),
         # dict(
         #     name="rk4-10",
         #     mode="shoot",
@@ -225,6 +233,5 @@ if __name__ == "__main__":
         # ),
     )
 
-    print(BATCH_SIZE)
     for config in configs:
         run(**config)

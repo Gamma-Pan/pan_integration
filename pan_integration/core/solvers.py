@@ -189,13 +189,9 @@ class PanSolver(nn.Module):
 
             B = (fapprox @ Phi_c) - yf_init @ Phi_d
 
-            delta = torch.norm(B - B_prev)
-            if delta.item() < self.delta_zero:
-                break
-
-        # B = add_head(B)
-
-        return add_head(B)
+            # delta = torch.norm(B - B_prev)
+            # if delta.item() < self.delta_zero:
+            #     break
 
         ##### first order
         if self.max_iters_one < 1:
@@ -205,10 +201,10 @@ class PanSolver(nn.Module):
         optimizer = self.optim["optimizer_class"]([B], **self.optim["params"])
 
         def loss_fn(B_tail):
-            B = add_head(B_tail)
-            Dapprox = B @ DPhi
+            Bl = add_head(B_tail)
+            Dapprox = Bl @ DPhi
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(
-                t_true, (add_head(B_prev) @ Phi)
+                t_true, Bl @ Phi
             )
             loss = torch.sum((Dapprox - fapprox) ** 2 * Dt)
 
@@ -222,17 +218,10 @@ class PanSolver(nn.Module):
                 loss = loss_fn(B)
                 loss.backward(retain_graph=True)
 
-            if loss < self.delta_one:
-                nonlocal breakflag
-                breakflag = True
-                return loss
-
             return loss
 
         for i in range(1, self.max_iters_one + 1):
             optimizer.step(closure)
-            if breakflag:
-                break
 
             if self.callback is not None:
                 self.callback(t_lims, y_init.cpu(), add_head(B).clone().detach().cpu())
