@@ -117,6 +117,7 @@ class PlotTrajectories(Callback):
         #     columns=["fwd_traj","epoch" ] #"batch_acc", "batch_loss", "nfes"]
         # )
 
+    @torch.no_grad()
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx) -> None:
         if batch_idx % self.freq != 0 : return
         x, y = next(iter(trainer.val_dataloaders))

@@ -33,7 +33,7 @@ import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-NUM_WORKERS = 0 # mp.cpu_count()-1
+NUM_WORKERS =  mp.cpu_count()-1
 MAX_STEPS = -1
 DATASET = "CIFAR10"
 
@@ -205,13 +205,13 @@ if __name__ == "__main__":
         #     max_steps=MAX_STEPS,
         # ),
         dict(
-            name="pan_32_32",
+            name="pan_64_64",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 32,
-                "num_points": 32,
+                "num_coeff_per_dim": 64,
+                "num_points": 64,
                 "deltas": (-1, -1),
-                "max_iters": (50, 50),
+                "max_iters": (50, 0),
                 "optim": {
                     "optimizer_class": torch.optim.SGD,
                     "params": {"lr": 1e-9, "momentum": 0.99, "nesterov": True},
