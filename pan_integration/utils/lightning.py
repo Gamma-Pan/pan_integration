@@ -133,13 +133,13 @@ class PlotTrajectories(Callback):
             rand_idx = [torch.randint(0, d, (1,)).item() for d in dims]
             ax.plot(
                 t_span.cpu(),
-                y_hat_pan[:, *rand_idx].cpu(),
+                y_hat_pan[(..., *rand_idx)].cpu(),
                 "r-",
                 label="pan",
             )
             ax.plot(
                 t_span.cpu(),
-                y_hat_true[:, *rand_idx].cpu(),
+                y_hat_true[(..., *rand_idx)].cpu(),
                 "g--",
                 label="true",
             )
