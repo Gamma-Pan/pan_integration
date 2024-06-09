@@ -33,7 +33,7 @@ import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-NUM_WORKERS = mp.cpu_count()
+NUM_WORKERS = 0 # mp.cpu_count()-1
 MAX_STEPS = -1
 DATASET = "CIFAR10"
 
@@ -74,7 +74,7 @@ class VF(nn.Module):
 class Classifier(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(42, 6, 1)
+        self.conv1 = nn.Conv2d(channels, 6, 1)
         self.pool = nn.AdaptiveAvgPool2d(4)
         self.flatten = nn.Flatten()
         self.lin1 = nn.Linear(6 * 16, 10)
@@ -148,7 +148,7 @@ def run(
             }
         )
         if mode == 'pan':
-            traj_callback = PlotTrajectories(vf)
+            traj_callback = PlotTrajectories(vf, 10)
             callbacks.append(traj_callback)
 
     trainer = Trainer(
