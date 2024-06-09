@@ -124,14 +124,14 @@ class PlotTrajectories(Callback):
         x = x.cuda()
         x_em = pl_module.embedding(x)
         y_hat_pan = outputs['y_hat']
-        dims = y_hat_pan[0].shape
+        dims = y_hat_pan.shape
         t_span = torch.linspace(pl_module.t_span[0], pl_module.t_span[-1], dims[0]).cuda()
         _, y_hat_true = torchdyn.numerics.odeint(
             self.f, t_span=t_span, x=x_em, solver="tsit5", atol=1e-4, rtol=1e-4
         )
         fig, axes = plt.subplots(3, 3)
         for idx, ax in enumerate(axes.reshape(-1)):
-            rand_idx = [torch.randint(0, d, (1,)).item() for d in dims]
+            rand_idx = [torch.randint(0, d, (1,)).item() for d in dims[1:]]
             ax.plot(
                 t_span.cpu(),
                 y_hat_pan[(..., *rand_idx)].cpu(), # python 3.10 :(
