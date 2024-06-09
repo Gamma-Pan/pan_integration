@@ -105,10 +105,11 @@ class ProfilerCallback(Callback):
 
 class PlotTrajectories(Callback):
 
-    def __init__(self, f):
+    def __init__(self, f, freq = 50):
         super().__init__()
         self.f = f
         self.run = None
+        self.freq = freq
 
     def on_train_start(self, trainer, pl_module) -> None:
         self.run = trainer.logger.experiment
@@ -116,14 +117,15 @@ class PlotTrajectories(Callback):
         #     columns=["fwd_traj","epoch" ] #"batch_acc", "batch_loss", "nfes"]
         # )
 
-    def on_validation_epoch_end(self, trainer, pl_module) -> None:
+    def train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx) -> None:
+        if batch % self.freq != 0 : return
         x, y = next(iter(trainer.val_dataloaders))
         x = x.cuda()
         x_em = pl_module.embedding(x)
         t_span = torch.linspace(pl_module.t_span[0], pl_module.t_span[-1], 100).cuda()
-        _, y_hat_pan = pl_module.ode_model(x_em, t_span=t_span)
+        loss, y_hat_pan = outputs
         _, y_hat_true = torchdyn.numerics.odeint(
-            self.f, t_span=t_span, x=x_em, solver="tsit5", atol=1e-9
+            self.f, t_span=t_span, x=x_em, solver="tsit5", atol=1e-4, rtol=1e-4
         )
         fig, axes = plt.subplots(3, 3)
         dims = y_hat_pan[0].shape
@@ -141,19 +143,10 @@ class PlotTrajectories(Callback):
                 "g--",
                 label="true",
             )
-        # plt.show()
-        # self.table
         if self.run is not None:
             self.run.log({'chart': fig})
 
         pl_module.ode_model.vf.nfe = 0
-
-        # logits = pl_module.classifier(y_hat_pan[-1])
-        # loss = nn.CrossEntropyLoss()(logits, y)
-        #
-        # _, preds = torch.max(logits, dim=1)
-        # acc = torch.sum(preds == y) / y.shape[0]
-
 
 class LitOdeClassifier(LightningModule):
     def __init__(
@@ -184,23 +177,23 @@ class LitOdeClassifier(LightningModule):
         _, preds = torch.max(logits, dim=1)
         acc = torch.sum(preds == y) / y.shape[0]
 
-        return loss, preds, acc
+        return loss, preds, acc, y_hat
 
     def training_step(self, batch, batch_idx):
-        loss, preds, acc = self._common_step(batch, batch_idx)
+        loss, preds, acc, y_hat = self._common_step(batch, batch_idx)
 
         self.log("loss", loss, prog_bar=True)
         self.log("train_acc", acc, prog_bar=True)
         self.log("lr", self.lr_schedulers().get_last_lr()[0], prog_bar=True)
 
-        return loss
+        return {"loss": loss, "y_hat" : y_hat}
 
     def on_validation_epoch_start(self):
         self.val_acc = 0
         self.val_batches = 0
 
     def validation_step(self, batch, batch_idx):
-        loss, preds, acc = self._common_step(batch, batch_idx)
+        loss, preds, acc, _ = self._common_step(batch, batch_idx)
         self.val_acc += acc
         self.val_batches += 1
         return loss
@@ -214,7 +207,7 @@ class LitOdeClassifier(LightningModule):
         self.test_batches = 0
 
     def test_step(self, batch, batch_idx):
-        loss, preds, acc = self._common_step(batch, batch_idx)
+        loss, preds, acc, _ = self._common_step(batch, batch_idx)
         self.test_batches += 1
         self.test_acc += acc
 

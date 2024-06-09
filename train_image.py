@@ -147,8 +147,9 @@ def run(
                 "dataset": DATASET,
             }
         )
-        traj_callback = PlotTrajectories(vf)
-        callbacks.append(traj_callback)
+        if mode == 'pan':
+            traj_callback = PlotTrajectories(vf)
+            callbacks.append(traj_callback)
 
     trainer = Trainer(
         max_epochs=epochs,
@@ -207,8 +208,8 @@ if __name__ == "__main__":
             name="pan_32_32",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 64,
-                "num_points": 64,
+                "num_coeff_per_dim": 32,
+                "num_points": 32,
                 "deltas": (-1, -1),
                 "max_iters": (50, 50),
                 "optim": {
