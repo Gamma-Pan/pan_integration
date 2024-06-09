@@ -124,7 +124,7 @@ class PlotTrajectories(Callback):
         x = x.cuda()
         x_em = pl_module.embedding(x)
         t_span = torch.linspace(pl_module.t_span[0], pl_module.t_span[-1], 100).cuda()
-        loss, y_hat_pan = outputs
+        y_hat_pan = outputs['y_hat']
         _, y_hat_true = torchdyn.numerics.odeint(
             self.f, t_span=t_span, x=x_em, solver="tsit5", atol=1e-4, rtol=1e-4
         )
