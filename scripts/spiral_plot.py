@@ -45,13 +45,14 @@ if __name__ == "__main__":
         ivp_kwargs=dict(solver="tsit5", atol=1e-4, rtol=1e-4),
         plot_kwargs=dict(color="orange", linestyle="--"),
     )
-
+    plotter.wait()
     print(f"tsit | nfe: {f.nfe} | err: {torch.norm(sol_true-sol)} ")
 
     def callback(t_lims, y_init, B):
         approx = plotter.approx(
             B,
             t_lims,
+            y_init,
             show_arrows=False,
             marker=None,
             markersize=1.5,
@@ -59,24 +60,17 @@ if __name__ == "__main__":
             color="green",
         )
         # plotter.ax.plot(approx[-1,0,0], approx[-1,0,1], 'o', color='lime',alpha=0.3, markersize=5)
-        plotter.wait()
-        # plotter.fig.canvas.flush_events()
-        # plotter.fig.canvas.draw()
+        # plotter.wait()
+        plotter.fig.canvas.flush_events()
+        plotter.fig.canvas.draw()
         # plt.pause(0.1)
 
-    plotter.wait()
     f.nfe = 0
 
-    optim = {
-        "optimizer_class": torch.optim.SGD,
-        "params": {
-            "lr": 1e-9,
-        },
-    }
-    solver = PanSolver2(32, 32, max_iters=(30, 0), deltas=(-1, -1), callback=callback)
+    solver = PanSolver2(32, 100, delta=1e-4 ,callback=callback)
 
-    approx, B = solver.solve(f, t_span, y_init)
-    plotter.approx(B, t_lims )
+    approx, B = solver.solve(f, t_span, y_init, B_init=None)
+    plotter.approx(B, t_lims, y_init, show_arrows=False )
 
     print(f"pan | nfe: {f.nfe} | err: {torch.norm(approx-sol_true)} ")
 

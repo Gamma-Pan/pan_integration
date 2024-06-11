@@ -8,9 +8,8 @@ from pan_integration.utils.plotting import wait
 
 # torch.manual_seed(634)
 
-DIM = 50
-
-factor = .4
+DIM = 9
+factor = 3
 
 class NN(nn.Module):
     def __init__(
@@ -27,8 +26,8 @@ class NN(nn.Module):
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-        x = F.softplus(factor * self.w1(x))
-        x = F.softplus(factor * self.w2(x))
+        x = F.tanh(factor * self.w1(x))
+        x = F.tanh(factor * self.w2(x))
         x = F.tanh(factor * self.w3(x))
         return x
 
@@ -42,7 +41,7 @@ if __name__ == "__main__":
     vf = NN()
 
     y_init = torch.rand(1, DIM)
-    POINTS = 128
+    POINTS = 100
     t_span = torch.linspace(0, 1, POINTS)
 
     ode_model = NeuralODE(
@@ -67,7 +66,7 @@ if __name__ == "__main__":
         t_in = torch.linspace(*t, POINTS)
         t_out = -1 + 2 * (t_in - t_in[0]) / (t_in[-1] - t_in[0])
         Phi = T_grid(t_out, num_coeff)
-        approx = (B @ Phi)[0, :, :]
+        approx = y[0,...,None] + (B @ Phi)[0, :, :]
 
         for line, data in zip(lines, approx):
             line.set_data(t_in, data)
@@ -83,18 +82,21 @@ if __name__ == "__main__":
 
 
     solver_conf = dict(
-        num_coeff_per_dim=64,
-        max_iters=50
+        num_coeff_per_dim=32,
+        max_iters=50,
+        delta = 1e-4,
     )
     solver_conf_adjoint = dict(
-        num_coeff_per_dim=64,
-        max_iters=50
+        num_coeff_per_dim=32,
+        max_iters=50,
+        delta =1e-4
     )
     solver = PanSolver2(**solver_conf, callback=callback)
     solver_adjoint = PanSolver2(**solver_conf_adjoint, callback=callback)
-    pan_ode_model = PanODE(vf, t_span, solver, solver_adjoint, sensitivity="autograd")
+    pan_ode_model = PanODE(vf, t_span, solver, solver_adjoint, sensitivity="adjoint")
     _, traj_pan = pan_ode_model(y_init, t_span)
 
+    print('-+=+-')
     L_pan = torch.sum((traj_pan[-1] - 2 * torch.ones_like(y_init)) ** 2)
     L_pan.backward()
     grads_pan = [w.grad for w in vf.parameters()]
@@ -111,4 +113,3 @@ if __name__ == "__main__":
     print(torch.norm(grads[3] - grads_pan[3]).item(), "\n")
     print(torch.norm(grads[4] - grads_pan[4]).item(), "\n")
     print(torch.norm(grads[5] - grads_pan[5]).item(), "\n")
-    plt.show()

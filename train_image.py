@@ -208,7 +208,7 @@ if __name__ == "__main__":
             name="pan_64_64",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 32,
+                "num_coeff_per_dim": 16,
                 "delta": 1e-3,
                 "max_iters": 30,
             },

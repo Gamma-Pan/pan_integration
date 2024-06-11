@@ -142,12 +142,14 @@ class VfPlotter:
         self,
         B,
         t_lims,
+        y_init,
         show_arrows=False,
         num_arrows: int = 10,
         **kwargs,
     ):
         t_init = t_lims[0]
         approx, Dapprox = self._approx_from_B(B, t_lims)
+        approx = approx + y_init
         if self.t_init != t_init:
             self.t_init = t_init
             self.lines = self.ax.plot(*approx.unbind(-1), **kwargs)

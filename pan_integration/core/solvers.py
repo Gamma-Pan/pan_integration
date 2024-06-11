@@ -300,8 +300,9 @@ class PanSolver2(nn.Module):
         S = torch.empty((*dims, self.num_coeff_per_dim), device=device)
         S[..., 0] = 0
 
-        for i in range(self.max_iters):
-            approx = B @ Phi_f
+        B_prev = torch.inf
+        for j in range(self.max_iters):
+            approx = y_init[..., None] + B @ Phi_f
             fapprox = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_true, approx)
 
             # calculate integrals using simpsons rule
@@ -316,10 +317,15 @@ class PanSolver2(nn.Module):
 
                 S[..., i + 1] = S[..., i] + s
 
-            B = torch.linalg.solve(Phi, S + y_init[..., None], left=False)
+            B = torch.linalg.solve(Phi, S, left=False)
 
             if self.callback:
                 self.callback(t_lims, y_init, B.detach().cpu())
+
+            if j >= 30 and j % 10 == 0:
+                if torch.norm(B - B_prev) < self.delta:
+                    break
+                B_prev = B
 
         return B
 
@@ -333,6 +339,6 @@ class PanSolver2(nn.Module):
 
         t_out = -1 + 2 * (t_span - t_span[0]) / (t_span[-1] - t_span[0])
         Phi_out = T_grid(t_out, self.num_coeff_per_dim)
-        approx = B @ Phi_out
+        approx = y_init[..., None] + B @ Phi_out
 
         return approx.permute(-1, *range(0, len(dims))), B

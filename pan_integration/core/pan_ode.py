@@ -77,7 +77,7 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
             #     ax.plot(t_eval_adjoint, data,'g--')
             #
             # plotting.wait()
-            ################
+            # ################
 
             A_traj, _ = solver_adjoint.solve(
                 adjoint_dynamics, t_eval_adjoint, a_y_T, B_init="prev"
