@@ -5,7 +5,7 @@ from torch import Tensor, tensor, nn
 from torch.autograd import Function
 import ipdb
 
-from .solvers import PanSolver, T_grid
+from .solvers import PanSolver, T_grid, PanSolver2
 
 
 def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
@@ -55,7 +55,7 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
                 return Da_y
 
             t_eval_adjoint = torch.linspace(
-                t_eval[-1], t_eval[0], solver_adjoint.num_points
+                t_eval[-1], t_eval[0], solver_adjoint.num_coeff_per_dim
             ).to(device)
 
             #########
@@ -80,7 +80,7 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
             ################
 
             A_traj, _ = solver_adjoint.solve(
-                adjoint_dynamics, t_eval_adjoint, a_y_T, f_init=Da_y_T, B_init="prev"
+                adjoint_dynamics, t_eval_adjoint, a_y_T, B_init="prev"
             )
 
             a_y_back = A_traj.reshape(-1, *dims)
@@ -119,7 +119,7 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
                     for p in grads
                 ]
             )
-            DL_theta = ((t_eval[-1] - t_eval[0]) / (solver.num_points - 1)) * grads_vec
+            DL_theta = ((t_eval[-1] - t_eval[0]) / (solver.num_coeff_per_dim- 1)) * grads_vec
 
             return DL_theta, None, None
 
@@ -134,8 +134,8 @@ class PanODE(nn.Module):
         self,
         vf,
         t_span,
-        solver: PanSolver | dict,
-        solver_adjoint: PanSolver | dict,
+        solver: PanSolver2 | dict,
+        solver_adjoint: PanSolver2 | dict,
         sensitivity="adjoint",
     ):
         super().__init__()
@@ -144,10 +144,10 @@ class PanODE(nn.Module):
         self.t_span = t_span
 
         if isinstance(solver, dict):
-            solver = PanSolver(**solver, device=t_span.device)
+            solver = PanSolver2(**solver, device=t_span.device)
 
         if isinstance(solver_adjoint, dict):
-            solver_adjoint = PanSolver(**solver_adjoint, device=t_span.device)
+            solver_adjoint = PanSolver2(**solver_adjoint, device=t_span.device)
 
         solver.t_lims = [t_span[0], t_span[-1]]
         solver_adjoint.t_lims = [t_span[-1], t_span[0]]

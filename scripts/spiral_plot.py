@@ -1,12 +1,12 @@
 import torch
 from torch import tensor, nn
-from pan_integration.core.functional import pan_int
 from pan_integration.core.pan_ode import PanSolver, T_grid
 from pan_integration.utils.plotting import VfPlotter
 import matplotlib.pyplot as plt
 from torchdyn.numerics.solvers.ode import SolverTemplate
 from torchdyn.core.neuralde import odeint
 from pan_integration.core.pan_ode import PanSolver
+from pan_integration.core.solvers import PanSolver2
 
 
 class Spiral(nn.Module):
@@ -17,7 +17,7 @@ class Spiral(nn.Module):
 
     def forward(self, t, y):
         self.nfe += 1
-        return torch.tanh(self.A @ y[..., None])[..., 0]
+        return nn.functional.tanh(self.A @ y[..., None])[..., 0]
 
 
 if __name__ == "__main__":
@@ -31,15 +31,25 @@ if __name__ == "__main__":
     t_span = torch.linspace(*t_lims, 100)
 
     plotter = VfPlotter(f=f)
-    sol = plotter.solve_ivp(
+    sol_true = plotter.solve_ivp(
         t_span,
         y_init,
         set_lims=True,
-        ivp_kwargs=dict(solver="tsit5", atol=1e-9),
+        ivp_kwargs=dict(solver="tsit5", atol=1e-9, rtol=1e-9),
+    )
+    f.nfe = 0
+    sol = plotter.solve_ivp(
+        t_span,
+        y_init,
+        set_lims=False,
+        ivp_kwargs=dict(solver="tsit5", atol=1e-4, rtol=1e-4),
+        plot_kwargs=dict(color="orange", linestyle="--"),
     )
 
+    print(f"tsit | nfe: {f.nfe} | err: {torch.norm(sol_true-sol)} ")
+
     def callback(t_lims, y_init, B):
-        plotter.approx(
+        approx = plotter.approx(
             B,
             t_lims,
             show_arrows=False,
@@ -48,26 +58,27 @@ if __name__ == "__main__":
             alpha=0.9,
             color="green",
         )
-        # plotter.wait()
-        plotter.fig.canvas.flush_events()
-        plotter.fig.canvas.draw()
+        # plotter.ax.plot(approx[-1,0,0], approx[-1,0,1], 'o', color='lime',alpha=0.3, markersize=5)
+        plotter.wait()
+        # plotter.fig.canvas.flush_events()
+        # plotter.fig.canvas.draw()
+        # plt.pause(0.1)
 
     plotter.wait()
     f.nfe = 0
 
     optim = {
         "optimizer_class": torch.optim.SGD,
-        "params": {"lr": 1e-9,}
+        "params": {
+            "lr": 1e-9,
+        },
     }
-    solver = PanSolver(
-        32,
-        32,
-        (1e-2,1e-9),
-        (20,10),
-        device=device,
-        callback=callback,
-        optim=optim,
-    )
-    approx = solver.solve(f, t_span, y_init)
-    print(f.nfe)
+    solver = PanSolver2(32, 32, max_iters=(30, 0), deltas=(-1, -1), callback=callback)
+
+    approx, B = solver.solve(f, t_span, y_init)
+    plotter.approx(B, t_lims )
+
+    print(f"pan | nfe: {f.nfe} | err: {torch.norm(approx-sol_true)} ")
+
+
     plt.show()

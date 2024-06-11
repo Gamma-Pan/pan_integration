@@ -1,15 +1,16 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from pan_integration.core.pan_ode import PanODE, PanSolver
+from pan_integration.core.pan_ode import PanODE, PanSolver, PanSolver
+from pan_integration.core.solvers import PanSolver2
 from torchdyn.models import NeuralODE
 from pan_integration.utils.plotting import wait
 
 # torch.manual_seed(634)
 
-DIM = 9
+DIM = 50
 
-factor = 2
+factor = .4
 
 class NN(nn.Module):
     def __init__(
@@ -26,8 +27,8 @@ class NN(nn.Module):
 
     def forward(self, t, x, *args, **kwargs):
         self.nfe += 1
-        x = F.tanh(factor * self.w1(x))
-        x = F.tanh(factor * self.w2(x))
+        x = F.softplus(factor * self.w1(x))
+        x = F.softplus(factor * self.w2(x))
         x = F.tanh(factor * self.w3(x))
         return x
 
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     L.backward()
     grads = [w.grad for w in vf.parameters()]
 
-    fig1, axes = plt.subplots(ceil(sqrt(DIM)), ceil(sqrt(DIM)))
+    fig1, axes = plt.subplots(3, 3)
     for ax, data in zip(fig1.axes, traj[:, 0, :].mT):
         ax.plot(t_span, data.detach(), "g")
 
@@ -81,43 +82,19 @@ if __name__ == "__main__":
         # wait()
 
 
-    optim_fwd = {
-        "optimizer_class": torch.optim.SGD,
-        "params": {
-            "lr": 1e-10,
-            'momentum': 0.99,
-            'nesterov': True,
-        },
-    }
     solver_conf = dict(
-        num_points=64,
         num_coeff_per_dim=64,
-        optim=optim_fwd,
-        deltas=(1e-3, 1e-3),
-        max_iters=(50, 50),
+        max_iters=50
     )
-    optim_back = {
-        "optimizer_class": torch.optim.SGD,
-        "params": {
-            "lr": 1e-10,
-            'momentum': 0.99,
-            'nesterov': True,
-        },
-    }
     solver_conf_adjoint = dict(
-        num_points=64,
         num_coeff_per_dim=64,
-        optim=optim_back,
-        deltas=(1e-3, 1e-3),
-        max_iters=(50, 50)
+        max_iters=50
     )
-    solver = PanSolver(**solver_conf, callback=callback)
-    solver_adjoint = PanSolver(**solver_conf_adjoint, callback=callback)
-
-    pan_ode_model = PanODE(vf, t_span, solver, solver_adjoint, sensitivity="adjoint")
+    solver = PanSolver2(**solver_conf, callback=callback)
+    solver_adjoint = PanSolver2(**solver_conf_adjoint, callback=callback)
+    pan_ode_model = PanODE(vf, t_span, solver, solver_adjoint, sensitivity="autograd")
     _, traj_pan = pan_ode_model(y_init, t_span)
 
-    wait()
     L_pan = torch.sum((traj_pan[-1] - 2 * torch.ones_like(y_init)) ** 2)
     L_pan.backward()
     grads_pan = [w.grad for w in vf.parameters()]
@@ -131,3 +108,7 @@ if __name__ == "__main__":
     print(torch.norm(grads[0] - grads_pan[0]).item(), "\n")
     print(torch.norm(grads[1] - grads_pan[1]).item(), "\n")
     print(torch.norm(grads[2] - grads_pan[2]).item(), "\n")
+    print(torch.norm(grads[3] - grads_pan[3]).item(), "\n")
+    print(torch.norm(grads[4] - grads_pan[4]).item(), "\n")
+    print(torch.norm(grads[5] - grads_pan[5]).item(), "\n")
+    plt.show()

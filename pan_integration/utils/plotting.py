@@ -172,6 +172,8 @@ class VfPlotter:
                 self.farrows.set_offsets(approx[:, 0, ...])
                 self.farrows.set_UVC(*self.f(0, approx).unbind(-1))
 
+        return approx
+
     def grab_frame(self):
         self.fig.canvas.draw()
         self.writer.grab_frame()

@@ -208,14 +208,9 @@ if __name__ == "__main__":
             name="pan_64_64",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 64,
-                "num_points": 64,
-                "deltas": (-1, -1),
-                "max_iters": (50, 0),
-                "optim": {
-                    "optimizer_class": torch.optim.SGD,
-                    "params": {"lr": 1e-9, "momentum": 0.99, "nesterov": True},
-                },
+                "num_coeff_per_dim": 32,
+                "delta": 1e-3,
+                "max_iters": 30,
             },
             log=WANDB_LOG,
             epochs=EPOCHS,
