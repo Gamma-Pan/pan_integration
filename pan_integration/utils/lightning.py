@@ -119,7 +119,7 @@ class PlotTrajectories(Callback):
 
     @torch.no_grad()
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx) -> None:
-        if batch_idx & self.freq != 0 : return
+        if batch_idx % self.freq != 0 : return
         x, y = next(iter(trainer.val_dataloaders))
         x = x.cuda()
         x_em = pl_module.embedding(x)

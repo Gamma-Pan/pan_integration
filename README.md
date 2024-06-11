@@ -8,12 +8,16 @@ continuous time ML models. Renewed interest in these models was re-ignited by [[
 For an implementation of Neural DEs in PyTorch see [[2](https://github.com/DiffEqML/torchdyn)]
 
 ### In this repo:
-- Functional interface for the `pan_solver`
+- API for the PAN solver
+  - With adjoint support
 - A batched Newton implementation with line search
 - A PyTorch implementation of the modified Cholesky Factorization from Gill, Murray, Wright - Practical Optimization
 - Experiments comparing PAN with other commonly used solvers
-- Latex code for (hopefully) future publication
-- Matplotlib plots source 
+- Thesis Latex code and pdf
+- Matplotlib plots source
+
+### wandb
+experiment tracking here: https://wandb.ai/gamma_pan/pan_integration?nw=nwusergamma_pan
 
 ### Lorenz attractor, system solved using PAN Integration.
 
