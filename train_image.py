@@ -103,19 +103,20 @@ def run(
     test=False,
 ):
     vf = VF(channels=CHANNELS).to(device)
-    t_span = torch.linspace(0, 1, 10, device=device)
+    t_span = torch.linspace(0, 1, 2, device=device)
     if mode == "pan":
-        sensitivity = "adjoint"
+        sensitivity = "autograd"
         ode_model = PanODE(
             vf,
             t_span,
             solver=solver_config,
             solver_adjoint=solver_config,
             sensitivity=sensitivity,
-        ).to(device)
+            device=device,
+        )
 
     if mode == "shoot":
-        sensitivity = "adjoint"
+        sensitivity = "autograd"
         ode_model = NeuralODE(vf, **solver_config, sensitivity=sensitivity).to(device)
 
     embedding = Augmenter(channels=CHANNELS).to(device)
@@ -148,7 +149,7 @@ def run(
             }
         )
         if mode == 'pan':
-            traj_callback = PlotTrajectories(vf, 10)
+            traj_callback = PlotTrajectories(vf, 50)
             callbacks.append(traj_callback)
 
     trainer = Trainer(
@@ -194,30 +195,30 @@ if __name__ == "__main__":
     PROFILE = args["profile"]
 
     configs = (
-        # dict(
-        #     name="dopri",
-        #     mode="shoot",
-        #     solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
-        #     log=WANDB_LOG,
-        #     epochs=EPOCHS,
-        #     profile=PROFILE,
-        #     test=TEST,
-        #     max_steps=MAX_STEPS,
-        # ),
         dict(
-            name="pan_64_64",
-            mode="pan",
-            solver_config={
-                "num_coeff_per_dim": 16,
-                "delta": 1e-3,
-                "max_iters": 30,
-            },
+            name="dopri",
+            mode="shoot",
+            solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
             log=WANDB_LOG,
             epochs=EPOCHS,
             profile=PROFILE,
             test=TEST,
             max_steps=MAX_STEPS,
         ),
+        # dict(
+        #     name="pan_64_64",
+        #     mode="pan",
+        #     solver_config={
+        #         "num_coeff_per_dim": 16,
+        #         "delta": 1e-3,
+        #         "max_iters": 30,
+        #     },
+        #     log=WANDB_LOG,
+        #     epochs=EPOCHS,
+        #     profile=PROFILE,
+        #     test=TEST,
+        #     max_steps=MAX_STEPS,
+        # ),
         # dict(
         #     name="rk4-10",
         #     mode="shoot",

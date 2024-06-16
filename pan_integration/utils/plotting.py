@@ -15,9 +15,9 @@ mpl.use("TkAgg")
 
 quiver_args = {
     "headwidth": 0.5,
-    "headlength": 1,
+    "headlength": 2,
     "headaxislength": 1.5,
-    "linewidth": 0.1,
+    "linewidth": 0.3,
     "angles": "xy",
 }
 
@@ -117,6 +117,12 @@ class VfPlotter:
         t_eval, trajectories = odeint(self.f, y_init, t_span, **ivp_kwargs)
 
         self.ax.plot(*trajectories.unbind(dim=-1), **plot_kwargs)
+        self.ax.plot(
+            *trajectories[-1, ...].unbind(dim=-1),
+            "o",
+            alpha=1,
+            color=plot_kwargs["color"],
+        )
 
         if set_lims:
             self._plot_vector_field(trajectories)
@@ -149,7 +155,7 @@ class VfPlotter:
     ):
         t_init = t_lims[0]
         approx, Dapprox = self._approx_from_B(B, t_lims)
-        approx = approx + y_init
+        # approx = approx + y_init
         if self.t_init != t_init:
             self.t_init = t_init
             self.lines = self.ax.plot(*approx.unbind(-1), **kwargs)
@@ -168,11 +174,11 @@ class VfPlotter:
                 line.set_data(*data.unbind(-1))
 
             if show_arrows:
-                self.arrows.set_offsets(approx[:, 0, ...])
                 self.arrows.set_UVC(*Dapprox.unbind(-1))
-
-                self.farrows.set_offsets(approx[:, 0, ...])
                 self.farrows.set_UVC(*self.f(0, approx).unbind(-1))
+
+                self.arrows.set_offsets(approx.reshape(-1, 2))
+                self.farrows.set_offsets(approx.reshape(-1, 2))
 
         return approx
 
@@ -275,9 +281,6 @@ class LsPlotter:
         plt.close(self.fig)
 
 
-
-
-
 # class DimPlotter():
 #
 #     def callback(B, t_lims, y_init):
@@ -305,5 +308,3 @@ class LsPlotter:
 #
 #         fig.canvas.flush_events()
 #         fig.canvas.draw()
-
-

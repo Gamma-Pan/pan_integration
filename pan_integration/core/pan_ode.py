@@ -1,43 +1,37 @@
-import contextlib
-
 import torch
 from torch import Tensor, tensor, nn
 from torch.autograd import Function
+from torch.func import vmap
 import ipdb
 
-from .solvers import PanSolver, T_grid, PanSolver2
+from .solvers import PanSolver, T_grid
 
 
-def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
+def make_pan_adjoint(
+    f, thetas, solver: PanSolver, solver_adjoint: PanSolver, device=torch.device("cpu")
+):
+
     class _PanInt(Function):
         @staticmethod
         def forward(ctx, thetas, y_init, t_span):
-            traj, B = solver.solve(f, t_span, y_init, B_init="prev")
-            ctx.save_for_backward(t_span, traj, B)
+            traj, B_all = solver.solve(f, t_span, y_init)
+            ctx.save_for_backward(t_span, B_all)
 
             return t_span, traj
 
         @staticmethod
         def backward(ctx, *grad_output):
-            t_eval, y_fwd, B_fwd = ctx.saved_tensors
-            device = y_fwd.device
+            t_fwd, Bs_fwd = ctx.saved_tensors
 
-            points, batch_sz, *dims = y_fwd.shape
-
-            # dL/dz(T) -> (1xBxD)
             a_y_T = grad_output[1][-1]
-            with torch.set_grad_enabled(True):
-                yT = y_fwd[-1].requires_grad_(True)
-                fT = f(t_eval[-1], yT)
-                Da_y_T = -torch.autograd.grad(
-                    fT, yT, a_y_T, allow_unused=True, retain_graph=False
-                )[0]
 
-            # a_theta_sz = torch.numel(thetas)
-            # a_theta_T = torch.zeros(a_theta_sz, device=device)
-            # a_t_T = vmap(lambda x, y: torch.sum(x * y))(a_y_T, fT.detach()).unsqueeze(
-            #     -1
-            # )
+            def choose_B(t):
+                # ugly way to make vmap work
+                dims = Bs_fwd.shape
+                slot = ((t < t_fwd[1:]) * (t >= t_fwd[:-1])).to(torch.float)
+                mask = slot.reshape(-1, *(len(dims) - 1) * [1])
+                B_fwd = torch.sum(Bs_fwd * mask, dim=0)
+                return B_fwd
 
             def adjoint_dynamics(t, a_y):
                 T_n = torch.cos(
@@ -45,7 +39,9 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
                     * torch.arccos(t)
                 )
 
+                B_fwd = choose_B(t)
                 y_back = B_fwd @ T_n
+
                 _, vjp_fun = torch.func.vjp(
                     lambda x: f(t, x),
                     y_back,
@@ -54,55 +50,68 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
 
                 return Da_y
 
-            t_eval_adjoint = torch.linspace(
-                t_eval[-1], t_eval[0], solver_adjoint.num_coeff_per_dim
-            ).to(device)
-
-            #########
+            # ###############
             # import torchdyn
             # import matplotlib.pyplot as plt
-            # from pan_integration.utils import plotting
+            # from ..utils.plotting import wait
             #
-            # _a_y_T = torch.clone(a_y_T)
-            #
-            # _, test = torchdyn.numerics.odeint(
-            #     adjoint_dynamics,
-            #     _a_y_T,
-            #     t_eval_adjoint,
-            #     solver="tsit5",
-            #     atol=1e-6,
-            # )
             # fig = plt.gcf()
-            # for ax, data in zip(fig.axes, test[:, 0, :].T):
-            #     ax.plot(t_eval_adjoint, data,'g--')
+            # teval, test = torchdyn.numerics.odeint(
+            #     adjoint_dynamics,
+            #     a_y_T,
+            #     torch.linspace(1, 0, 100),
+            #     solver="tsit5",
+            #     atol=1e-4,
+            # )
+            # for idx, ax in enumerate(fig.axes):
+            #     ax.plot(
+            #         torch.linspace(1, 0, 100), test[:, 0, idx].detach().numpy(), "b--"
+            #     )
+            #     ax.set_ylim(torch.min(test) * 1.1, torch.max(test) * 1.1)
+            #     ax.autoscale(enable=False)
             #
-            # plotting.wait()
+            # wait()
             # ################
 
-            A_traj, _ = solver_adjoint.solve(
-                adjoint_dynamics, t_eval_adjoint, a_y_T, B_init="prev"
+            traj_pan, Bs_back = solver_adjoint.solve(
+                adjoint_dynamics, t_fwd.flip(0), a_y_T
+            )
+            # get N/intervals points for every interval
+            num_inters = Bs_back.shape[0]
+            N = (100 // num_inters) * num_inters
+
+            Phi = (
+                T := T_grid(
+                    torch.linspace(
+                        -1, 1 - (2 / N), N // num_inters, device=a_y_T.device
+                    ),
+                    solver.num_coeff_per_dim,
+                )
+            ).expand(num_inters, *T.shape)
+
+            y_back = vmap(torch.matmul, in_dims=(0, 0), out_dims=(0))(Bs_fwd, Phi)
+
+            Phi = (
+                T := T_grid(
+                    torch.linspace(-1, 1 - (2 / N), N // num_inters, device=a_y_T.device),
+                    solver_adjoint.num_coeff_per_dim,
+                )
+            ).expand(num_inters, *T.shape)
+
+            a_y_back = vmap(torch.matmul, in_dims=(0, 0), out_dims=(0))(Bs_back, Phi)
+
+            y_back = y_back.permute(-1, *range(len(y_back.shape) - 1)).reshape(
+                -1, *a_y_T.shape[1:]
+            )
+            a_y_back = a_y_back.permute(-1, *range(len(a_y_back.shape) - 1)).reshape(
+                -1, *a_y_T.shape[1:]
             )
 
-            a_y_back = A_traj.reshape(-1, *dims)
-
+            # all good up to here
             with torch.set_grad_enabled(True):
-                y_back = (
-                    (
-                        B_fwd
-                        @ T_grid(
-                            -1
-                            + 2
-                            * (t_eval_adjoint - t_eval[-1])
-                            / (t_eval[0] - t_eval[-1]),
-                            solver.num_coeff_per_dim,
-                        )
-                    )
-                    .permute(-1, *torch.arange(len(dims) + 1).tolist())
-                    .reshape(-1, *dims)
-                )
 
                 y_back.requires_grad_(True)
-                f_back = f(t_eval_adjoint, y_back)
+                f_back = f(torch.linspace(t_fwd[0], t_fwd[-1], N), y_back)
 
                 grads = torch.autograd.grad(
                     f_back,
@@ -115,11 +124,15 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, solver_adjoint: PanSolver):
             # ipdb.set_trace()
             grads_vec = torch.cat(
                 [
-                    p.contiguous().flatten() if p is not None else torch.zeros(1, device=device)
+                    (
+                        p.contiguous().flatten()
+                        if p is not None
+                        else torch.zeros(1, device=device)
+                    )
                     for p in grads
                 ]
             )
-            DL_theta = ((t_eval[-1] - t_eval[0]) / (solver.num_coeff_per_dim- 1)) * grads_vec
+            DL_theta = ((t_fwd[-1] - t_fwd[0]) / (N - 1)) * grads_vec
 
             return DL_theta, None, None
 
@@ -133,38 +146,27 @@ class PanODE(nn.Module):
     def __init__(
         self,
         vf,
-        t_span,
-        solver: PanSolver2 | dict,
-        solver_adjoint: PanSolver2 | dict,
+        solver: PanSolver | dict,
+        solver_adjoint: PanSolver | dict,
         sensitivity="adjoint",
+        device=torch.device("cpu"),
     ):
         super().__init__()
         self.vf = vf
         self.thetas = torch.cat([p.contiguous().flatten() for p in vf.parameters()])
-        self.t_span = t_span
 
         if isinstance(solver, dict):
-            solver = PanSolver2(**solver, device=t_span.device)
+            solver = PanSolver(**solver, device=device)
 
         if isinstance(solver_adjoint, dict):
-            solver_adjoint = PanSolver2(**solver_adjoint, device=t_span.device)
-
-        solver.t_lims = [t_span[0], t_span[-1]]
-        solver_adjoint.t_lims = [t_span[-1], t_span[0]]
+            solver_adjoint = PanSolver(**solver_adjoint, device=device)
 
         if sensitivity == "adjoint":
             self.pan_int = make_pan_adjoint(
-                self.vf,
-                self.thetas,
-                solver,
-                solver_adjoint,
+                self.vf, self.thetas, solver, solver_adjoint, device=device
             )
         elif sensitivity == "autograd":
-            self.pan_int = lambda t, y_init: (
-                t,
-                solver.solve(self.vf, t, y_init, B_init="prev")[0],
-            )
+            self.pan_int = lambda t, y_init: (t, solver.solve(self.vf, t, y_init)[0])
 
     def forward(self, y_init, t_span, *args, **kwargs):
-        _, traj = self.pan_int(t_span, y_init)
-        return self.t_span, traj
+        return self.pan_int(t_span, y_init)
