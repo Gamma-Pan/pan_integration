@@ -71,8 +71,8 @@ vf = VF().to(device)
 
 model_pan = PanODE(
     vf,
-    solver={"num_coeff_per_dim": 16, "max_iters": 40},
-    solver_adjoint={"num_coeff_per_dim": 16, "max_iters": 40},
+    solver={"num_coeff_per_dim": 64, "max_iters": 30, "delta": 1e-3},
+    solver_adjoint={"num_coeff_per_dim": 64, "max_iters": 30, "delta": 1e-3},
     sensitivity="adjoint",
     device=device,
 )

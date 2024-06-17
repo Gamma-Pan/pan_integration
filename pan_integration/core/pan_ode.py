@@ -93,7 +93,7 @@ class PanODE(nn.Module):
                 self.vf, self.thetas, solver, solver_adjoint, device=device
             )
         elif sensitivity == "autograd":
-            self.pan_int = lambda t, y_init: (t, solver.solve(self.vf, t, y_init)[0])
+            self.pan_int = lambda t, y_init: (t, solver.solve(self.vf, t, y_init))
 
     def forward(self, y_init, t_span, *args, **kwargs):
         return self.pan_int(t_span, y_init)

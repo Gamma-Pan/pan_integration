@@ -33,7 +33,7 @@ import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-NUM_WORKERS =  mp.cpu_count()-1
+NUM_WORKERS = mp.cpu_count() - 1
 MAX_STEPS = -1
 DATASET = "CIFAR10"
 
@@ -147,7 +147,7 @@ def run(
                 "dataset": DATASET,
             }
         )
-        if mode == 'pan':
+        if mode == "pan":
             traj_callback = PlotTrajectories(vf, 50)
             callbacks.append(traj_callback)
 
@@ -194,30 +194,31 @@ if __name__ == "__main__":
     PROFILE = args["profile"]
 
     configs = (
-        dict(
-            name="dopri",
-            mode="shoot",
-            solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
-            log=WANDB_LOG,
-            epochs=EPOCHS,
-            profile=PROFILE,
-            test=TEST,
-            max_steps=MAX_STEPS,
-        ),
         # dict(
-        #     name="pan_64_64",
-        #     mode="pan",
-        #     solver_config={
-        #         "num_coeff_per_dim": 16,
-        #         "delta": 1e-3,
-        #         "max_iters": 30,
-        #     },
+        #     name="dopri",
+        #     mode="shoot",
+        #     solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
         #     log=WANDB_LOG,
         #     epochs=EPOCHS,
         #     profile=PROFILE,
         #     test=TEST,
         #     max_steps=MAX_STEPS,
         # ),
+        dict(
+            name="pan_64_64",
+            mode="pan",
+            solver_config={
+                "num_coeff_per_dim": 16,
+                "delta": 1e-3,
+                "max_iters": 50,
+            },
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+            profile=PROFILE,
+            test=TEST,
+            max_steps=MAX_STEPS,
+            points=6,
+        ),
         # dict(
         #     name="rk4-10",
         #     mode="shoot",

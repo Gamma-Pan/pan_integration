@@ -93,10 +93,10 @@ class VfPlotter:
         Us, Vs = derivatives.unbind(dim=-1)
 
         self.ax.streamplot(
-            Xs.numpy().astype(float),
-            Ys.numpy().astype(float),
-            Us.numpy().astype(float),
-            Vs.numpy().astype(float),
+            Xs.cpu().numpy().astype(float),
+            Ys.cpu().numpy().astype(float),
+            Us.cpu().numpy().astype(float),
+            Vs.cpu().numpy().astype(float),
             **stream_kwargs,
         )
 
@@ -115,14 +115,15 @@ class VfPlotter:
 
         self.device = y_init.device
         t_eval, trajectories = odeint(self.f, y_init, t_span, **ivp_kwargs)
+        trajectories = trajectories.cpu()
 
         self.ax.plot(*trajectories.unbind(dim=-1), **plot_kwargs)
-        self.ax.plot(
-            *trajectories[-1, ...].unbind(dim=-1),
-            "o",
-            alpha=1,
-            color=plot_kwargs["color"],
-        )
+        # self.ax.plot(
+        #     *trajectories[-1, ...].unbind(dim=-1),
+        #     "o",
+        #     alpha=1,
+        #     color=plot_kwargs["color"],
+        # )
 
         if set_lims:
             self._plot_vector_field(trajectories)
@@ -136,7 +137,7 @@ class VfPlotter:
         num_coeff = B.shape[-1]
         t = torch.linspace(-1, 1, num_points)
         Phi = T_grid(t, num_coeff)
-        DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff)
+        DPhi = 2 / (t_lims[1].cpu() - t_lims[0].cpu()) * DT_grid(t, num_coeff)
         approx = B @ Phi
         Dapprox = B @ DPhi
         return (

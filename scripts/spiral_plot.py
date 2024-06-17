@@ -10,6 +10,7 @@ from torchdyn.core.neuralde import odeint
 torch.manual_seed(23)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 class NN(nn.Module):
     def __init__(self, std=2.0):
         super().__init__()
@@ -19,7 +20,7 @@ class NN(nn.Module):
         # torch.nn.init.normal_(self.w2.weight, std=std)
         # self.w3 = torch.nn.Linear(2, 2)
         # torch.nn.init.normal_(self.w3.weight, std=std)
-        self.A = torch.tensor([[-0.9, -2.], [1.5, -1]])
+        self.A = torch.tensor([[-0.9, -2.0], [1.5, -1]], device=device)
         self.nfe = 0
 
     def forward(self, t, y):
@@ -27,7 +28,7 @@ class NN(nn.Module):
         # y = torch.cos(0.5*self.w1(y))
         # y = F.softplus(0.5*self.w2(y))
         # y = F.tanh(self.w3(y))
-        return F.tanh(self.A @ y[...,None]).squeeze(-1)
+        return F.tanh(self.A @ y[..., None]).squeeze(-1)
 
 
 if __name__ == "__main__":
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = (2 * torch.randn(2, 2, device=device))
+    y_init = 2 * torch.randn(2, 2, device=device)
     t_lims = [0, 5]
 
     plotter = VfPlotter(f=f, grid_definition=(100, 100))
@@ -47,6 +48,7 @@ if __name__ == "__main__":
         ivp_kwargs=dict(solver="tsit5", atol=1e-9, rtol=1e-9),
         plot_kwargs=dict(alpha=0.5),
     )
+    sol_true = sol_true.to(device)
     f.nfe = 0
     _, sol = odeint(
         f,
@@ -57,16 +59,16 @@ if __name__ == "__main__":
         rtol=1e-3,
         return_all_eval=True,
     )
-    plotter.ax.plot(sol[:, :, 0], sol[:, :, 1], "--", color="cyan")
+    plotter.ax.plot(sol[:, :, 0].cpu(), sol[:, :, 1].cpu(), "--", color="cyan")
     plotter.wait()
     print(f"tsit | nfe: {f.nfe} | err: {torch.norm(sol_true[-1]-sol[-1])} ")
     max_iter = f.nfe
 
     def callback(t_lims, y_init, B):
         approx = plotter.approx(
-            B,
+            B.cpu(),
             t_lims,
-            y_init,
+            y_init.cpu(),
             show_arrows=False,
             marker=None,
             markersize=1.5,
@@ -95,9 +97,10 @@ if __name__ == "__main__":
         max_iters=int(max_iter * 1),
         delta=1e-4,
         callback=callback,
+        device=device,
     )
 
-    approx = solver.solve(f, torch.linspace(*t_lims, 5), y_init, B_init=None)
+    approx = solver.solve(f, torch.linspace(*t_lims, 5, device=device), y_init)
 
     print(f"pan | nfe: {f.nfe} | err: {torch.norm(approx[-1]-sol_true[-1])} ")
 
