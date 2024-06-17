@@ -13,6 +13,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 d = ToyDataset()
 X, y = d.generate(n_samples=10_000, dataset_type="moons", noise=0.2)
 
+torch.manual_seed(14)
 
 from torch.utils.data import Dataset
 
@@ -70,24 +71,25 @@ vf = VF().to(device)
 
 model_pan = PanODE(
     vf,
-    solver={"num_coeff_per_dim": 16},
-    solver_adjoint={"num_coeff_per_dim": 16},
-    sensitivity="autograd",
+    solver={"num_coeff_per_dim": 16, "max_iters": 40},
+    solver_adjoint={"num_coeff_per_dim": 16, "max_iters": 40},
+    sensitivity="adjoint",
     device=device,
 )
 
 model_tsit = NeuralODE(
     vf,
     solver="tsit5",
-    sensitivity="autograd",
+    sensitivity="adjoint",
 )
 
+# model = model_tsit
 model = model_pan
 
-t_span = torch.linspace(0, 1, 3).to(device)
+t_span = torch.linspace(0, 1, 2).to(device)
 lit_learner = LitLearner(model, t_span)
 
-trainer = lit.Trainer(max_epochs=3, logger=None)
+trainer = lit.Trainer(max_epochs=3, logger=False)
 trainer.fit(lit_learner)
 
 with torch.no_grad():
@@ -102,13 +104,13 @@ with torch.no_grad():
         torch.linspace(0, 1, 100),
         X[indices][y[indices].to(torch.bool)],
         set_lims=True,
-        plot_kwargs=dict(color="orange", alpha=0.1)
+        plot_kwargs=dict(color="orange", alpha=0.1),
     )
 
     plotter.solve_ivp(
         torch.linspace(0, 1, 100),
         X[indices][torch.logical_not(y[indices].to(torch.bool))],
         set_lims=True,
-        plot_kwargs=dict(color="purple", alpha=0.1)
+        plot_kwargs=dict(color="purple", alpha=0.1),
     )
     plt.show()

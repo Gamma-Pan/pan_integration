@@ -3,6 +3,7 @@ from torch import Tensor, tensor, nn
 from torch.autograd import Function
 from torch.func import vmap
 import ipdb
+import lightning
 
 from .solvers import PanSolver, T_grid
 
@@ -14,127 +15,53 @@ def make_pan_adjoint(
     class _PanInt(Function):
         @staticmethod
         def forward(ctx, thetas, y_init, t_span):
-            traj, B_all = solver.solve(f, t_span, y_init)
-            ctx.save_for_backward(t_span, B_all)
+            traj = solver.solve(f, t_span, y_init)
+            ctx.save_for_backward(t_span, traj)
 
             return t_span, traj
 
         @staticmethod
         def backward(ctx, *grad_output):
-            t_fwd, Bs_fwd = ctx.saved_tensors
+            # code based on torchdyn
+            t_span, traj = ctx.saved_tensors
+            y_T = traj[-1]
+            a_y_T = grad_output[-1][-1]
 
-            a_y_T = grad_output[1][-1]
-
-            def choose_B(t):
-                # ugly way to make vmap work
-                dims = Bs_fwd.shape
-                slot = ((t < t_fwd[1:]) * (t >= t_fwd[:-1])).to(torch.float)
-                mask = slot.reshape(-1, *(len(dims) - 1) * [1])
-                B_fwd = torch.sum(Bs_fwd * mask, dim=0)
-                return B_fwd
-
-            def adjoint_dynamics(t, a_y):
-                T_n = torch.cos(
-                    torch.arange(solver.num_coeff_per_dim, device=t.device)
-                    * torch.arccos(t)
-                )
-
-                B_fwd = choose_B(t)
-                y_back = B_fwd @ T_n
-
-                _, vjp_fun = torch.func.vjp(
-                    lambda x: f(t, x),
-                    y_back,
-                )
-                Da_y = -vjp_fun(a_y)[0]
-
-                return Da_y
-
-            # ###############
-            # import torchdyn
-            # import matplotlib.pyplot as plt
-            # from ..utils.plotting import wait
-            #
-            # fig = plt.gcf()
-            # teval, test = torchdyn.numerics.odeint(
-            #     adjoint_dynamics,
-            #     a_y_T,
-            #     torch.linspace(1, 0, 100),
-            #     solver="tsit5",
-            #     atol=1e-4,
-            # )
-            # for idx, ax in enumerate(fig.axes):
-            #     ax.plot(
-            #         torch.linspace(1, 0, 100), test[:, 0, idx].detach().numpy(), "b--"
-            #     )
-            #     ax.set_ylim(torch.min(test) * 1.1, torch.max(test) * 1.1)
-            #     ax.autoscale(enable=False)
-            #
-            # wait()
-            # ################
-
-            traj_pan, Bs_back = solver_adjoint.solve(
-                adjoint_dynamics, t_fwd.flip(0), a_y_T
+            vf_params = torch.cat(
+                [v.contiguous().view(-1) for k, v in dict(f.named_parameters()).items()]
             )
-            # get N/intervals points for every interval
-            num_inters = Bs_back.shape[0]
-            N = (100 // num_inters) * num_inters
+            a_theta_T = torch.zeros_like(vf_params)
 
-            Phi = (
-                T := T_grid(
-                    torch.linspace(
-                        -1, 1 - (2 / N), N // num_inters, device=a_y_T.device
-                    ),
-                    solver.num_coeff_per_dim,
+            y_sz, a_y_sz, a_theta_sz = y_T.numel(), a_y_T.numel(), a_theta_T.numel()
+            y_shape, a_y_shape, a_theta_shape = y_T.shape, a_y_T.shape, a_theta_T.shape
+
+            A = torch.cat([y_T.flatten(), a_y_T.flatten(), a_theta_T.flatten()])
+
+            def adjoint_dynamics(t, A):
+                y, a_y, a_theta = (
+                    A[:y_sz].reshape(y_shape),
+                    A[y_sz : y_sz + a_y_sz].reshape(a_y_shape),
+                    A[-a_theta_sz :].reshape(a_theta_shape),
                 )
-            ).expand(num_inters, *T.shape)
+                dy = f(t, y)
 
-            y_back = vmap(torch.matmul, in_dims=(0, 0), out_dims=(0))(Bs_fwd, Phi)
+                def func_f(theta, y):
+                    return torch.func.functional_call(f, theta, (t, y))
 
-            Phi = (
-                T := T_grid(
-                    torch.linspace(-1, 1 - (2 / N), N // num_inters, device=a_y_T.device),
-                    solver_adjoint.num_coeff_per_dim,
-                )
-            ).expand(num_inters, *T.shape)
-
-            a_y_back = vmap(torch.matmul, in_dims=(0, 0), out_dims=(0))(Bs_back, Phi)
-
-            y_back = y_back.permute(-1, *range(len(y_back.shape) - 1)).reshape(
-                -1, *a_y_T.shape[1:]
-            )
-            a_y_back = a_y_back.permute(-1, *range(len(a_y_back.shape) - 1)).reshape(
-                -1, *a_y_T.shape[1:]
-            )
-
-            # all good up to here
-            with torch.set_grad_enabled(True):
-
-                y_back.requires_grad_(True)
-                f_back = f(torch.linspace(t_fwd[0], t_fwd[-1], N), y_back)
-
-                grads = torch.autograd.grad(
-                    f_back,
-                    tuple(f.parameters()),
-                    a_y_back,
-                    allow_unused=True,
-                    retain_graph=False,
+                _, vjp_func = torch.func.vjp(func_f, dict(f.named_parameters()), y)
+                *da_thetas, da_y = vjp_func(-a_y)
+                # re-combine
+                da_theta = torch.cat(
+                    [v.flatten() for k, v in da_thetas[0].items()], dim=-1
                 )
 
-            # ipdb.set_trace()
-            grads_vec = torch.cat(
-                [
-                    (
-                        p.contiguous().flatten()
-                        if p is not None
-                        else torch.zeros(1, device=device)
-                    )
-                    for p in grads
-                ]
-            )
-            DL_theta = ((t_fwd[-1] - t_fwd[0]) / (N - 1)) * grads_vec
+                return torch.cat([dy.flatten(), da_y.flatten(), da_theta.flatten()])
 
-            return DL_theta, None, None
+            A_traj_t0 = solver_adjoint.solve(adjoint_dynamics, t_span.flip(0), A)[-1]
+
+            dL_y0 = A_traj_t0[y_sz : y_sz + a_y_sz].reshape(a_y_shape)
+            dL_theta = A_traj_t0[-a_theta_sz:].reshape(a_theta_shape)
+            return dL_theta, dL_y0, None
 
     def _pan_int_adjoint(t_span, y_init):
         return _PanInt.apply(thetas, y_init, t_span)

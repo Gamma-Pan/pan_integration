@@ -5,8 +5,6 @@ from torch import linalg
 from typing import Tuple, Callable
 from abc import ABC
 
-# torch.set_default_dtype(torch.float64)
-
 
 def T_grid(t, num_coeff_per_dim):
     num_points = len(t)
@@ -59,6 +57,7 @@ class PanSolver:
         max_iters=20,
         device=None,
         callback=None,
+        t_span=None
     ):
         super().__init__()
 
@@ -67,11 +66,14 @@ class PanSolver:
         self.num_points = num_coeff_per_dim - 2
         self.delta = delta
         self.max_iters = max_iters
+        self.t_span = t_span
 
         if device is None:
             self.device = torch.device("cpu")
         else:
             self.device = device
+
+        self.B_R = None
 
         self.t_cheb, self.PHI, self.DPHI = self._calc_independent(
             self.num_coeff_per_dim, self.num_points, device=self.device
@@ -120,11 +122,11 @@ class PanSolver:
             #     ((1 / dt) * fapprox - f_init[..., None]).mT,
             # ).solution.mT
 
-            self.B_R = linalg.solve(
+            self.B_R = linalg.solve_ex(
                 self.DPHI[2:, 1:] - self.DPHI[2:, [0]],
                 (1 / dt) * (f_approx - f_init[..., None]),
                 left=False,
-            )
+            )[0]
 
             B = self._add_head(self.B_R, dt, y_init, f_init)
 
@@ -137,24 +139,25 @@ class PanSolver:
             if torch.norm(y_approx[..., -1] - prev_sol) < self.delta:
                 break
 
-        return y_approx[..., -1], f_approx[...,-1], B
+        return y_approx[..., -1], f_approx[...,-1]
 
     def solve(self, f, t_span, y_init, f_init=None):
         dims = y_init.shape
 
+        if self.t_span is not None:
+            t_span = self.tspan
+
         if f_init is None:
             f_init = f(t_span[0], y_init)
 
-        self.B_R = torch.zeros((*dims, self.num_coeff_per_dim - 2), device=self.device)
+        if self.B_R is None or y_init.shape != self.B_R.shape:
+            self.B_R = torch.randn((*dims, self.num_coeff_per_dim - 2), device=self.device)
 
         solution = [y_init]
-        B_list = []
         for t_lims in zip(t_span, t_span[1:]):
-            yk, fk, Bk = self._fixed_point(f, t_lims, y_init, f_init)
+            yk, fk = self._fixed_point(f, t_lims, y_init, f_init)
             y_init = yk
             f_init = fk
             solution.append(yk)
-            # keep Bs for backward pass, possibly only one will be needed since forward pass in not as stiff
-            B_list.append(Bk)
 
-        return torch.stack(solution, dim=0), torch.stack(B_list, dim=0)
+        return torch.stack(solution, dim=0)

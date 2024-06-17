@@ -108,7 +108,6 @@ def run(
         sensitivity = "autograd"
         ode_model = PanODE(
             vf,
-            t_span,
             solver=solver_config,
             solver_adjoint=solver_config,
             sensitivity=sensitivity,
