@@ -96,14 +96,14 @@ def run(
     mode=Union["pan", "shoot"],
     solver_config=None,
     log=False,
-    points=10,
+    points=2,
     epochs=50,
     max_steps=MAX_STEPS,
     profile=False,
     test=False,
 ):
     vf = VF(channels=CHANNELS).to(device)
-    t_span = torch.linspace(0, 1, 2, device=device)
+    t_span = torch.linspace(0, 1, points, device=device)
     if mode == "pan":
         sensitivity = "autograd"
         ode_model = PanODE(
