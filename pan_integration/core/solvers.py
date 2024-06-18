@@ -50,14 +50,7 @@ def DT_grid(t, num_coeff_per_dim):
 
 class PanSolver:
     def __init__(
-        self,
-        num_coeff_per_dim,
-        # num_points,
-        delta=1e-2,
-        max_iters=20,
-        device=None,
-        callback=None,
-        t_span=None
+        self, num_coeff_per_dim, device=None, callback=None, delta=0.1, max_iters=30
     ):
         super().__init__()
 
@@ -66,7 +59,6 @@ class PanSolver:
         self.num_points = num_coeff_per_dim - 2
         self.delta = delta
         self.max_iters = max_iters
-        self.t_span = t_span
 
         if device is None:
             self.device = torch.device("cpu")
@@ -75,12 +67,12 @@ class PanSolver:
 
         self.B_R = None
 
-        self.t_cheb, self.PHI, self.DPHI = self._calc_independent(
+        self.t_cheb, self.PHI, self.DPHI = self.calc_independent(
             self.num_coeff_per_dim, self.num_points, device=self.device
         )
 
     @staticmethod
-    def _calc_independent(num_coeff_per_dim, num_points, device):
+    def calc_independent(num_coeff_per_dim, num_points, device):
         N = num_points
         # chebyshev nodes of the second kind
         k = arange(0, N + 1)
@@ -108,66 +100,97 @@ class PanSolver:
         # treat time as batch dim
         batch_sz, *dims, time_sz = y.shape
 
-        t_b = t.reshape(time_sz, 1,*[1 for _ in dims]).expand(time_sz, batch_sz, *dims).reshape(-1, *dims)
+        t_b = (
+            t.reshape(time_sz, 1, *[1 for _ in dims])
+            .expand(time_sz, batch_sz, *dims)
+            .reshape(-1, *dims)
+        )
 
-        y_b = y.permute(-1, *range(len(dims)+1)).reshape(-1,*dims)
+        y_b = y.permute(-1, *range(len(dims) + 1)).reshape(-1, *dims)
         f_b = f(t_b, y_b)
         # revert back to time last
-        f_bb = f_b.reshape(time_sz,batch_sz, *dims).permute(*range(1,len(dims)+2), 0)
+        f_bb = f_b.reshape(time_sz, batch_sz, *dims).permute(
+            *range(1, len(dims) + 2), 0
+        )
         return f_bb
 
     def _fixed_point(self, f, t_lims, y_init, f_init):
+        dims = y_init.shape
         dt = 2 / (t_lims[-1] - t_lims[0])
         t_true = t_lims[0] + 0.5 * (t_lims[-1] - t_lims[0]) * (self.t_cheb[1:] + 1)
 
-        B = self._add_head(self.B_R, dt, y_init, f_init)
+        B_R = torch.rand((*dims, self.num_coeff_per_dim - 2), device=self.device)
 
-        y_approx = B @ self.PHI[..., 1:]  # don't care about -1
-        f_approx = self.batched_call(f, t_true, y_approx)
-        # f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_true, y_approx)
+        B = self._add_head(B_R, dt, y_init, f_init)
+        y_approx = B @ self.PHI
+        f_approx = self.batched_call(
+            f, t_true, y_approx[..., 1:]
+        )  # -1 is constrained by b_head
 
         for i in range(self.max_iters):
-            prev_sol = y_approx[..., -1]
-
-            self.B_R = linalg.solve_ex(
+            prev_B_R = B_R
+            B_R = linalg.solve_ex(
                 self.DPHI[2:, 1:] - self.DPHI[2:, [0]],
                 (1 / dt) * (f_approx - f_init[..., None]),
                 left=False,
             )[0]
+            B = self._add_head(B_R, dt, y_init, f_init)
 
-            B = self._add_head(self.B_R, dt, y_init, f_init)
+            y_approx = B @ self.PHI
+            f_approx = self.batched_call(
+                f, t_true, y_approx[..., 1:]
+            )  # -1 is constrained by b_head
 
             if self.callback is not None:
-                self.callback(t_lims, y_init.detach(), B.detach())
+                # PASS EVERYTHING
+                self.callback(
+                    t_lims,
+                    y_init.detach(),
+                    f_init.detach(),
+                    y_approx.detach(),
+                    f_approx.detach(),
+                    B.detach(),
+                    self.PHI,
+                    self.DPHI,
+                )
 
-            y_approx = B @ self.PHI[..., 1:]  # don't care about 0
-            f_approx = self.batched_call(f, t_true, y_approx)
-            # f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_true, y_approx)
+            d_approx = dt * B @ self.DPHI[..., 1:]
 
-            if torch.norm(y_approx[..., -1] - prev_sol) < self.delta:
+            mask = (
+                linalg.vector_norm(B_R - prev_B_R, dim=(*range(1, y_init.dim() + 1),))
+                > self.delta
+            )
+
+            if torch.all(torch.logical_not(mask)):
                 break
 
-        return y_approx[..., -1], f_approx[...,-1], B
+        # ULTRA CHAD MOVE: recursively calculate samples that didn't converge in halved intervals
+        # god knows how many syncs this needs and if autograd works
+        if torch.any(mask):
+            y1, f1 = self._fixed_point(
+                f, [t_lims[0], (t_lims[0] + t_lims[1]) / 2], y_init[mask], f_init[mask]
+            )
+
+            y2, f2 = self._fixed_point(
+                f, [(t_lims[0] + t_lims[1]) / 2, t_lims[1]], y1, f1
+            )
+
+            y_approx[..., -1][mask] = y2
+            f_approx[..., -1][mask] = f2
+
+        return y_approx[..., -1], f_approx[..., -1]
 
     def solve(self, f, t_span, y_init, f_init=None):
-        dims = y_init.shape
 
-        if self.t_span is not None:
-            t_span = self.t_span
+        y_eval = [y_init]
 
         if f_init is None:
             f_init = f(t_span[0], y_init)
 
-        if self.B_R is None or y_init.shape != self.B_R.shape:
-            self.B_R = torch.randn((*dims, self.num_coeff_per_dim - 2), device=self.device)
-
-        solution = [y_init]
-        Ball = []
         for t_lims in zip(t_span, t_span[1:]):
-            yk, fk, Bk = self._fixed_point(f, t_lims, y_init, f_init)
+            yk, fk = self._fixed_point(f, t_lims, y_init, f_init)
             y_init = yk
             f_init = fk
-            Ball.append(Bk)
-            solution.append(yk)
+            y_eval.append(yk)
 
-        return torch.stack(solution, dim=0), Ball
+        return torch.stack(y_eval, dim=0)

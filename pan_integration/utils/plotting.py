@@ -136,8 +136,8 @@ class VfPlotter:
         dims = len(B.shape) - 1
         num_coeff = B.shape[-1]
         t = torch.linspace(-1, 1, num_points)
-        Phi = T_grid(t, num_coeff)
-        DPhi = 2 / (t_lims[1].cpu() - t_lims[0].cpu()) * DT_grid(t, num_coeff)
+        Phi = T_grid(t, num_coeff).to(B.device)
+        DPhi = 2 / (t_lims[1].cpu() - t_lims[0].cpu()) * DT_grid(t, num_coeff).to(B.device)
         approx = B @ Phi
         Dapprox = B @ DPhi
         return (
@@ -147,39 +147,44 @@ class VfPlotter:
 
     def approx(
         self,
-        B,
+        B_or_approx,
         t_lims,
         y_init,
         show_arrows=False,
         num_arrows: int = 10,
+        is_B = True,
         **kwargs,
     ):
         t_init = t_lims[0]
-        approx, Dapprox = self._approx_from_B(B, t_lims)
+        if is_B:
+            approx, Dapprox = self._approx_from_B(B_or_approx, t_lims)
+        else:
+            approx = B_or_approx
+
         # approx = approx + y_init
         if self.t_init != t_init:
             self.t_init = t_init
-            self.lines = self.ax.plot(*approx.unbind(-1), **kwargs)
+            self.lines = self.ax.plot(*approx.cpu().unbind(-1), **kwargs)
             if show_arrows:
                 self.arrows = self.ax.quiver(
-                    *approx.unbind(-1), *Dapprox.unbind(-1), **quiver_args
+                    *approx.cpu().unbind(-1), *Dapprox.cpu().unbind(-1), **quiver_args
                 )
                 self.farrows = self.ax.quiver(
-                    *approx.unbind(-1),
-                    *self.f(0, approx).unbind(-1),
+                    *approx.cpu().unbind(-1),
+                    *self.f(0, approx).cpu().unbind(-1),
                     **quiver_args,
                     color="red",
                 )
         else:
-            for line, data in zip(self.lines, approx.unbind(-2)):
+            for line, data in zip(self.lines, approx.cpu().unbind(-2)):
                 line.set_data(*data.unbind(-1))
 
             if show_arrows:
-                self.arrows.set_UVC(*Dapprox.unbind(-1))
-                self.farrows.set_UVC(*self.f(0, approx).unbind(-1))
+                self.arrows.set_UVC(*Dapprox.cpu().unbind(-1))
+                self.farrows.set_UVC(*self.f(0, approx).cpu().unbind(-1))
 
-                self.arrows.set_offsets(approx.reshape(-1, 2))
-                self.farrows.set_offsets(approx.reshape(-1, 2))
+                self.arrows.set_offsets(approx.cpu().reshape(-1, 2))
+                self.farrows.set_offsets(approx.cpu().reshape(-1, 2))
 
         return approx
 

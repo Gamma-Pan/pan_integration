@@ -21,7 +21,7 @@ X = torch.Tensor(X).to(device)
 y = torch.Tensor(y).to(device)
 train_dataset = torch.utils.data.TensorDataset(X, y)
 train_loader = torch.utils.data.DataLoader(
-    dataset=train_dataset, batch_size=64, shuffle=True
+    dataset=train_dataset, batch_size=16, shuffle=True
 )
 
 
@@ -71,8 +71,7 @@ vf = VF().to(device)
 
 model_pan = PanODE(
     vf,
-    solver={"num_coeff_per_dim": 64, "max_iters": 30, "delta": 1e-3},
-    solver_adjoint={"num_coeff_per_dim": 64, "max_iters": 30, "delta": 1e-3},
+    solver={"num_coeff_per_dim": 8, "max_iters": 30, "delta": 1e-3},
     sensitivity="adjoint",
     device=device,
 )
@@ -85,10 +84,9 @@ model_tsit = NeuralODE(
 
 # model = model_tsit
 model = model_pan
+t_span = torch.linspace(0, 1, 5).to(device)
 
-t_span = torch.linspace(0, 1, 2).to(device)
 lit_learner = LitLearner(model, t_span)
-
 trainer = lit.Trainer(max_epochs=3, logger=False)
 trainer.fit(lit_learner)
 
