@@ -14,33 +14,33 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class NN(nn.Module):
     def __init__(self, std=2.0):
         super().__init__()
-        # self.w1 = torch.nn.Linear(2, 2)
-        # torch.nn.init.normal_(self.w1.weight, std=std)
-        # self.w2 = torch.nn.Linear(2, 2)
-        # torch.nn.init.normal_(self.w2.weight, std=std)
-        # self.w3 = torch.nn.Linear(2, 2)
-        # torch.nn.init.normal_(self.w3.weight, std=std)
+        self.w1 = torch.nn.Linear(2, 5)
+        torch.nn.init.normal_(self.w1.weight, std=std)
+        self.w2 = torch.nn.Linear(5, 5)
+        torch.nn.init.normal_(self.w2.weight, std=std)
+        self.w3 = torch.nn.Linear(5, 2)
+        torch.nn.init.normal_(self.w3.weight, std=std)
         self.A = torch.tensor([[-0.9, -2.0], [1.5, -1]], device=device)
         self.nfe = 0
 
     def forward(self, t, y):
         self.nfe += 1
-        # y = torch.cos(0.5*self.w1(y))
-        # y = F.softplus(0.5*self.w2(y))
-        # y = F.tanh(self.w3(y))
+        y = torch.cos(0.5*self.w1(y))
+        y = F.softplus(0.5*self.w2(y))
+        y = F.tanh(self.w3(y))
         return F.tanh(self.A @ y[..., None]).squeeze(-1)
 
 
 if __name__ == "__main__":
 
-    f = NN(std=3.4).to(device)
+    f = NN(std=2.4).to(device)
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = 2 * torch.randn(2, 2, device=device)
-    t_lims = [0, 5]
+    y_init = 2 * torch.randn(1, 2, device=device)
+    t_lims = [0, 10]
 
-    plotter = VfPlotter(f=f, grid_definition=(100, 100))
+    plotter = VfPlotter(f)
     sol_true = plotter.solve_ivp(
         torch.linspace(*t_lims, 100),
         y_init,
@@ -84,10 +84,10 @@ if __name__ == "__main__":
             alpha=0.3,
             markersize=5,
         )
-        # plotter.wait()
+        plotter.wait()
         # plotter.fig.canvas.flush_events()
         # plotter.fig.canvas.draw()
-        plt.pause(0.3)
+        # plt.pause(0.3)
 
     f.nfe = 0
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         device=device,
     )
 
-    approx = solver.solve(f, torch.linspace(*t_lims, 5, device=device), y_init)
+    approx = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)
 
     print(f"pan | nfe: {f.nfe} | err: {torch.norm(approx[-1]-sol_true[-1])} ")
 
