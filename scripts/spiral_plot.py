@@ -33,7 +33,7 @@ class NN(nn.Module):
 
 if __name__ == "__main__":
 
-    f = NN(std=2.4).to(device)
+    f = NN(std=1.7).to(device)
     for param in f.parameters():
         param.requires_grad_(False)
 
@@ -86,11 +86,11 @@ if __name__ == "__main__":
     f.nfe = 0
 
     solver = PanSolver(
-        num_coeff_per_dim=64,
+        num_coeff_per_dim=32,
         callback=callback,
         device=device,
         delta=1e-3,
-        max_iters=30,
+        patience=5,
     )
 
     approx = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)
