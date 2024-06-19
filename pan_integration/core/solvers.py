@@ -67,7 +67,7 @@ class PanSolver:
 
         self.B_R = None
 
-        self.t_cheb, self.PHI, self.DPHI = self.calc_independent(
+        self.t_cheb, self.PHI, self.DPHI, self.PHIs = self.calc_independent(
             self.num_coeff_per_dim, self.num_points, device=self.device
         )
 
@@ -81,7 +81,11 @@ class PanSolver:
         PHI = T_grid(t_cheb, num_coeff_per_dim)
         DPHI = DT_grid(t_cheb, num_coeff_per_dim)
 
-        return t_cheb, PHI, DPHI
+        ks = arange(0, 2 * (N + 2))
+        t_chebs = -cos(pi * ks / (2 * (N + 2) - 1)).to(device)
+        PHIs = T_grid(t_chebs, num_coeff_per_dim)
+
+        return t_cheb, PHI, DPHI, PHIs
 
     def _add_head(self, B_R, dt, y_init, f_init):
         Phi_R0 = self.PHI[2:, [0]]
@@ -114,6 +118,21 @@ class PanSolver:
         )
         return f_bb
 
+    def _divide_B(self, B):
+        y_approx = B @ self.PHIs
+        B_R_hat_01 = linalg.solve_ex(
+            self.PHI[1:,],
+            torch.stack(
+                [
+                    y_approx[..., 1 : self.num_coeff_per_dim],
+                    y_approx[..., self.num_coeff_per_dim + 1 :],
+                ],
+                dim=0,
+            ),
+            left=False,
+        )[0]
+        return B_R_hat_01.unbind(dim=0)
+
     def _fixed_point(self, f, t_lims, y_init, f_init):
         dims = y_init.shape
         dt = 2 / (t_lims[-1] - t_lims[0])
@@ -126,6 +145,8 @@ class PanSolver:
         f_approx = self.batched_call(
             f, t_true, y_approx[..., 1:]
         )  # -1 is constrained by b_head
+
+        self._divide_B(B)
 
         for i in range(self.max_iters):
             prev_B_R = B_R
