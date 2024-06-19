@@ -14,13 +14,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class NN(nn.Module):
     def __init__(self, std=2.0):
         super().__init__()
-        self.w1 = torch.nn.Linear(2, 10)
+        self.w1 = torch.nn.Linear(2, 5)
         torch.nn.init.normal_(self.w1.weight, std=std)
-        self.w2 = torch.nn.Linear(10, 10)
+        self.w2 = torch.nn.Linear(5, 5)
         torch.nn.init.normal_(self.w2.weight, std=std)
-        self.w3 = torch.nn.Linear(10, 2)
+        self.w3 = torch.nn.Linear(5, 2)
         torch.nn.init.normal_(self.w3.weight, std=std)
-        # self.A = torch.tensor([[-0.9, -2.0], [1.5, -1]], device=device)
+        self.A = torch.tensor([[-0.9, -2.0], [1.5, -1]], device=device)
         self.nfe = 0
 
     def forward(self, t, y):
@@ -28,19 +28,18 @@ class NN(nn.Module):
         y = torch.cos(0.5 * self.w1(y))
         y = F.softplus(0.5 * self.w2(y))
         y = F.tanh(self.w3(y))
-        return y
-        # return F.tanh(self.A @ y[..., None]).squeeze(-1)
+        return F.tanh(self.A @ y[..., None]).squeeze(-1)
 
 
 if __name__ == "__main__":
 
-    f = NN(std=1).to(device)
+    f = NN(std=2.4).to(device)
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = 20 * torch.randn(10, 2, device=device)
+    y_init = 20 * torch.randn(1, 2, device=device)
 
-    t_lims = [0, 50]
+    t_lims = [0, 10]
 
     plotter = VfPlotter(f)
     sol_true = plotter.solve_ivp(
