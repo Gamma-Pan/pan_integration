@@ -121,7 +121,7 @@ class PanSolver:
     def _divide_B(self, B):
         y_approx = B @ self.PHIs
         B_R_hat_01 = linalg.solve_ex(
-            self.PHI[1:,],
+            self.PHI[1:1,],
             torch.stack(
                 [
                     y_approx[..., 1 : self.num_coeff_per_dim],
@@ -146,7 +146,6 @@ class PanSolver:
             f, t_true, y_approx[..., 1:]
         )  # -1 is constrained by b_head
 
-        self._divide_B(B)
 
         for i in range(self.max_iters):
             prev_B_R = B_R
@@ -162,6 +161,7 @@ class PanSolver:
                 f, t_true, y_approx[..., 1:]
             )  # -1 is constrained by b_head
 
+
             if self.callback is not None:
                 # PASS EVERYTHING
                 self.callback(
@@ -175,29 +175,8 @@ class PanSolver:
                     self.DPHI,
                 )
 
-            d_approx = dt * B @ self.DPHI[..., 1:]
+            B_R_hat_0, B_R_hat_1= self._divide_B(B)
 
-            mask = (
-                linalg.vector_norm(B_R - prev_B_R, dim=(*range(1, y_init.dim() + 1),))
-                > self.delta
-            )
-
-            if torch.all(torch.logical_not(mask)):
-                break
-
-        # ULTRA CHAD MOVE: recursively calculate samples that didn't converge in halved intervals
-        # god knows how many syncs this needs and if autograd works
-        if torch.any(mask):
-            y1, f1 = self._fixed_point(
-                f, [t_lims[0], (t_lims[0] + t_lims[1]) / 2], y_init[mask], f_init[mask]
-            )
-
-            y2, f2 = self._fixed_point(
-                f, [(t_lims[0] + t_lims[1]) / 2, t_lims[1]], y1, f1
-            )
-
-            y_approx[..., -1][mask] = y2
-            f_approx[..., -1][mask] = f2
 
         return y_approx[..., -1], f_approx[..., -1]
 
