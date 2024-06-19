@@ -37,7 +37,7 @@ if __name__ == "__main__":
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = 2 * torch.randn(1, 2, device=device)
+    y_init = 10 * torch.randn(1, 2, device=device)
     t_lims = [0, 10]
 
     plotter = VfPlotter(f)
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         device=device,
     )
 
-    approx = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)
+    approx,_  = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)
 
     print(f"pan | nfe: {f.nfe} | err: {torch.norm(approx[-1]-sol_true[-1])} ")
 
