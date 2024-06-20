@@ -1,5 +1,5 @@
 import torch
-from torch import Tensor, tensor, nn, cos, pi, arange, hstack, cat, arccos
+from torch import Tensor, tensor, nn, cos, pi, arange, hstack, cat, arccos, linspace
 from torch.func import vmap
 from torch import linalg
 from typing import Tuple, Callable
@@ -172,18 +172,15 @@ class PanSolver:
             prev_pointer = torch.max(pointer, prev_pointer)
             idx += 1
 
-        if pointer > 0:
-            new_lims = (t_true[pointer - 1], t_lims[1])
-            y_init = y_approx[..., pointer[0]]
-            f_init = f_approx[..., pointer[0]]
-            return self._fixed_point(f, new_lims, y_init, f_init, B_R)
-        else:
-            print("ufck")
-            # if it can even converge at the first point go deep
-            new_lims = (t_lims[0], t_true[0])
-            y0, f0 = self._fixed_point(f, new_lims, y_init, f_init, B_R)
-            new_lims = (t_true[0], t_lims[1])
-            return self._fixed_point(f, new_lims, y0, f0, B_R)
+        tp = torch.cat([tensor([0.0], device=self.device), t_true])[pointer[0]]
+        new_lims1 = (tp, 0.5 * (tp + t_lims[1]))
+        new_lims2 = (0.5 * (tp + t_lims[1]), t_lims[1])
+
+        y0 = y_approx[..., pointer[0]]
+        f0 = f_approx[..., pointer[0]]
+
+        y1, f1 = self._fixed_point(f, new_lims1, y0, f0, B_R)
+        return self._fixed_point(f, new_lims2, y1, f1, B_R)
 
     def solve(self, f, t_span, y_init, f_init=None):
 

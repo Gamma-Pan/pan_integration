@@ -56,8 +56,8 @@ if __name__ == "__main__":
         y_init,
         t_span=torch.linspace(*t_lims, 2),
         solver="tsit5",
-        atol=1e-4,
-        rtol=1e-4,
+        atol=1e-5,
+        rtol=1e-5,
         return_all_eval=True,
     )
     plotter.ax.plot(sol[:, :, 0].cpu(), sol[:, :, 1].cpu(), "--", color="cyan")
@@ -89,12 +89,12 @@ if __name__ == "__main__":
         num_coeff_per_dim=32,
         callback=callback,
         device=device,
-        delta=1e-3,
-        patience=5,
+        delta=1e-2,
+        patience=10,
     )
 
     approx = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)
 
-    print(f"pan | nfe: {f.nfe} | err: {torch.norm(approx[-1]-sol_true[-1])} ")
+    print(f" pan | nfe: {f.nfe} | err: {torch.norm(approx[-1]-sol_true[-1])} ")
 
     plotter.wait()
