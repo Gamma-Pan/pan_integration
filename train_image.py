@@ -195,16 +195,6 @@ if __name__ == "__main__":
 
     configs = (
         dict(
-            name="dopri",
-            mode="shoot",
-            solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
-            log=WANDB_LOG,
-            epochs=EPOCHS,
-            profile=PROFILE,
-            test=TEST,
-            max_steps=MAX_STEPS,
-        ),
-        dict(
             name="pan_32_32",
             mode="pan",
             solver_config={
@@ -219,6 +209,16 @@ if __name__ == "__main__":
             test=TEST,
             max_steps=MAX_STEPS,
             points=2,
+        ),
+        dict(
+            name="dopri",
+            mode="shoot",
+            solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+            profile=PROFILE,
+            test=TEST,
+            max_steps=MAX_STEPS,
         ),
         # dict(
         #     name="rk4-10",
