@@ -68,12 +68,15 @@ class PanSolver:
         self.patience = patience
         self.max_iters = max_iters
 
+
         if device is None:
             self.device = torch.device("cpu")
         else:
             self.device = device
 
-        self.B_R = None
+        self.t_cheb, self.PHI, self.DPHI, self.DPHI_inv = self.calc_independent(
+            self.num_coeff_per_dim, self._num_coeff_per_dim- 2, device=self.device
+        )
 
     @property
     def num_coeff_per_dim(self):
