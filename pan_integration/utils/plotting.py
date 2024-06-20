@@ -147,19 +147,26 @@ class VfPlotter:
 
     def approx(
         self,
-        B_or_approx,
+        y_approx,
+        d_approx,
+        f_pproox,
         t_lims,
         y_init,
+        B=None,
         show_arrows=False,
-        num_arrows: int = 10,
-        is_B = True,
+        every_num_arrows: int = 10,
+        from_B = True,
         **kwargs,
     ):
         t_init = t_lims[0]
-        if is_B:
-            approx, Dapprox = self._approx_from_B(B_or_approx, t_lims)
+        if from_B:
+            approx, Dapprox = self._approx_from_B(B, t_lims)
         else:
-            approx = B_or_approx
+            approx = y_approx
+            Dapprox = d_approx
+
+        approx = approx[::every_num_arrows]
+        Dapprox = Dapprox[::every_num_arrows]
 
         # approx = approx + y_init
         if self.t_init != t_init:

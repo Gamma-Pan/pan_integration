@@ -71,23 +71,23 @@ vf = VF().to(device)
 
 model_pan = PanODE(
     vf,
-    solver={"num_coeff_per_dim": 8, "max_iters": 30, "delta": 1e-3},
-    sensitivity="adjoint",
+    solver={"num_coeff_per_dim": 16, "patience": 20, "delta": 1e-3},
+    sensitivity="autograd",
     device=device,
 )
 
 model_tsit = NeuralODE(
     vf,
     solver="tsit5",
-    sensitivity="adjoint",
+    sensitivity="autograd",
 )
 
-# model = model_tsit
-model = model_pan
-t_span = torch.linspace(0, 1, 5).to(device)
+model = model_tsit
+# model = model_pan
+t_span = torch.linspace(0, 1, 2).to(device)
 
 lit_learner = LitLearner(model, t_span)
-trainer = lit.Trainer(max_epochs=3, logger=False)
+trainer = lit.Trainer(max_epochs=1, logger=False)
 trainer.fit(lit_learner)
 
 with torch.no_grad():

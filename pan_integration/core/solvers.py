@@ -3,7 +3,8 @@ from torch import Tensor, tensor, nn, cos, pi, arange, hstack, cat, arccos, lins
 from torch.func import vmap
 from torch import linalg
 from typing import Tuple, Callable
-from abc import ABC
+
+stackcounter = 0
 
 
 def T_grid(t, num_coeff_per_dim):
@@ -55,10 +56,11 @@ class PanSolver:
         super().__init__()
 
         self.callback = callback
-        self.num_coeff_per_dim = num_coeff_per_dim
+        self._num_coeff_per_dim = num_coeff_per_dim
         self.num_points = num_coeff_per_dim - 2
         self.delta = delta
         self.patience = patience
+        self.max_iters = 100
 
         if device is None:
             self.device = torch.device("cpu")
@@ -70,6 +72,18 @@ class PanSolver:
         self.t_cheb, self.PHI, self.DPHI = self.calc_independent(
             self.num_coeff_per_dim, self.num_points, device=self.device
         )
+
+    @property
+    def num_coeff_per_dim(self):
+        return self._num_coeff_per_dim
+
+    @num_coeff_per_dim.setter
+    def num_coeff_per_dim(self, value):
+        self.num_points = value - 2
+        self.t_cheb, self.PHI, self.DPHI = self.calc_independent(
+            value, value - 2, device=self.device
+        )
+        self._num_coeff_per_dim = value
 
     @staticmethod
     def calc_independent(num_coeff_per_dim, num_points, device):
@@ -114,10 +128,13 @@ class PanSolver:
         )
         return f_bb
 
-    def _fixed_point(self, f, t_lims, y_init, f_init, B_init):
+    def _fixed_point(self, f, t_lims, y_init, f_init, B_init=None):
         dims = y_init.shape
-        dt = 2 / (t_lims[-1] - t_lims[0])
-        t_true = t_lims[0] + 0.5 * (t_lims[-1] - t_lims[0]) * (self.t_cheb[1:] + 1)
+        dt = 2 / (t_lims[1] - t_lims[0])
+        t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb[1:] + 1)
+
+        if B_init is None or B_init.shape[-1] != self.num_coeff_per_dim - 2:
+            B_init = torch.rand(*y_init.shape, self.num_coeff_per_dim - 2, device=self.device)
 
         B = self._add_head(B_init, dt, y_init, f_init)
         y_approx = B @ self.PHI
@@ -125,9 +142,10 @@ class PanSolver:
             f, t_true, y_approx[..., 1:]
         )  # -1 is constrained by b_head
 
+        patience = 0
         idx = 0
         prev_pointer = torch.tensor([0], device=self.device)
-        while idx <= self.patience:
+        while patience <= self.patience and idx < self.max_iters:
             B_R = linalg.solve_ex(
                 self.DPHI[2:, 1:] - self.DPHI[2:, [0]],
                 (1 / dt) * (f_approx - f_init[..., None]),
@@ -140,6 +158,8 @@ class PanSolver:
                 f, t_true, y_approx[..., 1:]
             )  # -1 is constrained by b_head
 
+            d_approx = B @ self.DPHI[..., 1:]
+
             if self.callback is not None:
                 # PASS EVERYTHING
                 self.callback(
@@ -147,13 +167,12 @@ class PanSolver:
                     y_init.detach(),
                     f_init.detach(),
                     y_approx.detach(),
+                    (B @ self.DPHI).detach(),
                     f_approx.detach(),
                     B.detach(),
                     self.PHI,
                     self.DPHI,
                 )
-
-            d_approx = B @ self.DPHI[..., 1:]
             mask = (
                 linalg.vector_norm(
                     f_approx - dt * d_approx, dim=(*range(0, f_approx.dim() - 1),)
@@ -162,7 +181,7 @@ class PanSolver:
             )
             # if solution converges in this y_init
             if torch.all(mask):
-                return y_approx[..., -1], f_approx[..., -1]
+                return y_approx[..., -1], f_approx[..., -1], B_R
 
             pointer = mask.logical_not().nonzero()[0]
             if pointer > prev_pointer:
@@ -170,33 +189,36 @@ class PanSolver:
                 prev_pointer = torch.max(pointer, prev_pointer)
                 continue
             prev_pointer = torch.max(pointer, prev_pointer)
+            patience += 1
             idx += 1
 
-        tp = torch.cat([tensor([0.0], device=self.device), t_true])[pointer[0]]
-        new_lims1 = (tp, 0.5 * (tp + t_lims[1]))
-        new_lims2 = (0.5 * (tp + t_lims[1]), t_lims[1])
+        tp = torch.cat([t_lims[0][None], t_true])[pointer[0]]
+        y0 = y_init if pointer == 0 else y_approx[..., pointer[0]]
+        f0 = f_init if pointer == 0 else f_approx[..., pointer[0]]
 
-        y0 = y_approx[..., pointer[0]]
-        f0 = f_approx[..., pointer[0]]
+        if pointer == 0:
+            midpoint = tp + 0.1 * (t_lims[1] - tp)
+            t_span = torch.tensor([tp, midpoint, t_lims[1]], device=self.device)
+            yk, fk = self.solve(f, t_span, y_init, f_init, B_R)
+            return yk[-1], fk[-1], None
+        else:
+            t_lims = [tp, t_lims[1]]
+            return self._fixed_point(f, t_lims, y0, f0, B_R)
 
-        y1, f1 = self._fixed_point(f, new_lims1, y0, f0, B_R)
-        return self._fixed_point(f, new_lims2, y1, f1, B_R)
-
-    def solve(self, f, t_span, y_init, f_init=None):
-
-        y_eval = [y_init]
+    def solve(self, f, t_span, y_init, f_init=None, B_init=None):
 
         if f_init is None:
             f_init = f(t_span[0], y_init)
 
-        B_init = torch.rand(
-            (*y_init.shape, self.num_coeff_per_dim - 2), device=self.device
-        )
+        y_eval = [y_init]
+        f_eval = [f_init]
 
         for t_lims in zip(t_span, t_span[1:]):
-            yk, fk = self._fixed_point(f, t_lims, y_init, f_init, B_init)
+            yk, fk, Bk = self._fixed_point(f, t_lims, y_init, f_init, B_init)
             y_init = yk
             f_init = fk
+            B_init = Bk
             y_eval.append(yk)
+            f_eval.append(fk)
 
-        return torch.stack(y_eval, dim=0)
+        return torch.stack(y_eval, dim=0), torch.stack(f_eval, dim=0)
