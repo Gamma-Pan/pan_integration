@@ -205,19 +205,20 @@ if __name__ == "__main__":
         #     max_steps=MAX_STEPS,
         # ),
         dict(
-            name="pan_64_64",
+            name="pan_32_32",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 16,
+                "num_coeff_per_dim": 32,
                 "delta": 1e-3,
-                "max_iters": 50,
+                "max_iters": 100,
+                "patience" : 20
             },
             log=WANDB_LOG,
             epochs=EPOCHS,
             profile=PROFILE,
             test=TEST,
             max_steps=MAX_STEPS,
-            points=6,
+            points=2,
         ),
         # dict(
         #     name="rk4-10",
