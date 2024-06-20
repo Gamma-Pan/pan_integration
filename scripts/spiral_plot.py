@@ -1,15 +1,14 @@
 import torch
-from torch import tensor, nn
+from torch import tensor, nn, linalg
 from torch.nn import functional as F
 from pan_integration.core.pan_ode import PanSolver, T_grid
-from pan_integration.utils.plotting import VfPlotter
+from pan_integration.utils.plotting import VfPlotter, wait
 import matplotlib.pyplot as plt
 from torchdyn.numerics.solvers.ode import SolverTemplate
 from torchdyn.core.neuralde import odeint
 
 torch.manual_seed(23)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 class NN(nn.Module):
     def __init__(self, std=2.0):
@@ -25,19 +24,20 @@ class NN(nn.Module):
 
     def forward(self, t, y):
         self.nfe += 1
-        y = torch.cos(0.5*self.w1(y))
-        y = F.softplus(0.5*self.w2(y))
+        y = torch.cos(0.5 * self.w1(y))
+        y = F.softplus(0.5 * self.w2(y))
         y = F.tanh(self.w3(y))
         return F.tanh(self.A @ y[..., None]).squeeze(-1)
 
 
 if __name__ == "__main__":
 
-    f = NN(std=2.4).to(device)
+    f = NN(std=1.2).to(device)
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = 10 * torch.randn(1, 2, device=device)
+    y_init = 20 * torch.randn(5, 2, device=device)
+
     t_lims = [0, 10]
 
     plotter = VfPlotter(f)
@@ -64,46 +64,40 @@ if __name__ == "__main__":
     print(f"tsit | nfe: {f.nfe} | err: {torch.norm(sol_true[-1]-sol[-1])} ")
     max_iter = f.nfe
 
-    def callback(t_lims, y_init, B):
-        approx = plotter.approx(
-            B.cpu(),
-            t_lims,
-            y_init.cpu(),
-            show_arrows=False,
+    def callback(t_lims, y_init, f_init, y_approx, d_approx, f_approx, B, PHI, DPHI):
+        plotter.approx(
+            y_approx.permute(-1, 0, 1),
+            d_approx.permute(-1,0,1),
+            f_approx.permute(-1, 0, 1),
+            [torch.tensor(0.0), torch.tensor(10.0)],  # t_lims,
+            y_init,
+            B = B,
+            from_B=False,
+            show_arrows=True,
+            every_num_arrows=5,
             marker=None,
-            markersize=1.5,
-            alpha=0.9,
+            markersize=2.5,
+            alpha=0.70,
             color="green",
         )
 
-        plotter.ax.plot(
-            approx[0, :, 0],
-            approx[0, :, 1],
-            "o",
-            color="darkgreen",
-            alpha=0.3,
-            markersize=5,
-        )
-        plotter.wait()
-        # plotter.fig.canvas.flush_events()
-        # plotter.fig.canvas.draw()
-        # plt.pause(0.3)
+        plotter.fig.canvas.flush_events()
+        plotter.fig.canvas.draw()
+        # plt.pause(0.5)
+        # plotter.wait()
 
     f.nfe = 0
 
     solver = PanSolver(
-        16,
-        # num_points=64 - 2,
-        max_iters=int(max_iter * 1),
-        delta=1e-4,
+        num_coeff_per_dim=32,
         callback=callback,
         device=device,
+        delta=1e-3,
+        patience = 20
     )
 
-    approx,_  = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)
+    approx, _ = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)
 
-    print(f"pan | nfe: {f.nfe} | err: {torch.norm(approx[-1]-sol_true[-1])} ")
-
-    print(f"true {sol_true[-1]} \n", f"tsit {sol[-1]} \n", f"pan {approx} \n")
+    print(f" pan | nfe: {f.nfe} | err: {torch.norm(approx[-1]-sol_true[-1])} ")
 
     plotter.wait()
