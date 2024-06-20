@@ -105,17 +105,17 @@ def run(
     vf = VF(channels=CHANNELS).to(device)
     t_span = torch.linspace(0, 1, points, device=device)
     if mode == "pan":
-        sensitivity = "autograd"
+        sensitivity = "adjoint"
         ode_model = PanODE(
             vf,
             solver=solver_config,
-            solver_adjoint=solver_config,
+            # solver_adjoint=solver_config,
             sensitivity=sensitivity,
             device=device,
         )
 
     if mode == "shoot":
-        sensitivity = "autograd"
+        sensitivity = "adjoint"
         ode_model = NeuralODE(vf, **solver_config, sensitivity=sensitivity).to(device)
 
     embedding = Augmenter(channels=CHANNELS).to(device)
@@ -194,16 +194,16 @@ if __name__ == "__main__":
     PROFILE = args["profile"]
 
     configs = (
-        # dict(
-        #     name="dopri",
-        #     mode="shoot",
-        #     solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
-        #     log=WANDB_LOG,
-        #     epochs=EPOCHS,
-        #     profile=PROFILE,
-        #     test=TEST,
-        #     max_steps=MAX_STEPS,
-        # ),
+        dict(
+            name="dopri",
+            mode="shoot",
+            solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+            profile=PROFILE,
+            test=TEST,
+            max_steps=MAX_STEPS,
+        ),
         dict(
             name="pan_32_32",
             mode="pan",

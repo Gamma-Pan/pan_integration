@@ -51,7 +51,13 @@ def DT_grid(t, num_coeff_per_dim):
 
 class PanSolver:
     def __init__(
-        self, num_coeff_per_dim, device=None, callback=None, delta=0.1, patience=30
+        self,
+        num_coeff_per_dim,
+        device=None,
+        callback=None,
+        delta=0.1,
+        patience=30,
+        max_iters=100,
     ):
         super().__init__()
 
@@ -60,7 +66,7 @@ class PanSolver:
         self.num_points = num_coeff_per_dim - 2
         self.delta = delta
         self.patience = patience
-        self.max_iters = 100
+        self.max_iters = max_iters
 
         if device is None:
             self.device = torch.device("cpu")
@@ -134,13 +140,13 @@ class PanSolver:
         t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb[1:] + 1)
 
         if B_init is None or B_init.shape[-1] != self.num_coeff_per_dim - 2:
-            B_init = torch.rand(*y_init.shape, self.num_coeff_per_dim - 2, device=self.device)
+            B_init = torch.rand(
+                *y_init.shape, self.num_coeff_per_dim - 2, device=self.device
+            )
 
         B = self._add_head(B_init, dt, y_init, f_init)
         y_approx = B @ self.PHI
-        f_approx = self.batched_call(
-            f, t_true, y_approx[..., 1:]
-        )  # -1 is constrained by b_head
+        f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1))( t_true, y_approx[..., 1:])  # -1 is constrained by b_head
 
         patience = 0
         idx = 0
@@ -154,9 +160,7 @@ class PanSolver:
             B = self._add_head(B_R, dt, y_init, f_init)
 
             y_approx = B @ self.PHI
-            f_approx = self.batched_call(
-                f, t_true, y_approx[..., 1:]
-            )  # -1 is constrained by b_head
+            f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1))( t_true, y_approx[..., 1:])  # -1 is constrained by b_head
 
             d_approx = B @ self.DPHI[..., 1:]
 
