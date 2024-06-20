@@ -197,7 +197,7 @@ class PanSolver:
         f0 = f_init if pointer == 0 else f_approx[..., pointer[0]]
 
         if pointer == 0:
-            midpoint = tp + 0.1 * (t_lims[1] - tp)
+            midpoint = tp + 0.2 * (t_lims[1] - tp)
             t_span = torch.tensor([tp, midpoint, t_lims[1]], device=self.device)
             yk, fk = self.solve(f, t_span, y_init, f_init, B_R)
             return yk[-1], fk[-1], None
