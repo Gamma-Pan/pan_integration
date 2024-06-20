@@ -27,11 +27,11 @@ def make_pan_adjoint(f, thetas, solver: PanSolver, device=torch.device("cpu")):
             a_y_T = grad_output[-1][-1]
 
             def adjoint_dynamics(t, a_y):
-                if t.dim()<1: return torch.zeros_like(a_y)
+                # if t.dim()<1: return torch.zeros_like(a_y)
 
                 # get corresponding trajectory interval
-                t_l = t[*(t.dim() * [-1])]
-                idx = range(len(t_span))[t_l == t_span]
+                # t_l = t[*(t.dim() * [-1])]
+                # idx = range(len(t_span))[t_l == t_span]
 
                 vjp_func = torch.func.vjp
                 return torch.zeros_like(a_y)
