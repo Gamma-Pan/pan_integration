@@ -75,10 +75,6 @@ class PanSolver:
 
         self.B_R = None
 
-        self.t_cheb, self.PHI, self.DPHI = self.calc_independent(
-            self.num_coeff_per_dim, self.num_points, device=self.device
-        )
-
     @property
     def num_coeff_per_dim(self):
         return self._num_coeff_per_dim
@@ -86,7 +82,7 @@ class PanSolver:
     @num_coeff_per_dim.setter
     def num_coeff_per_dim(self, value):
         self.num_points = value - 2
-        self.t_cheb, self.PHI, self.DPHI = self.calc_independent(
+        self.t_cheb, self.PHI, self.DPHI, self.DPHI_inv = self.calc_independent(
             value, value - 2, device=self.device
         )
         self._num_coeff_per_dim = value
@@ -100,8 +96,9 @@ class PanSolver:
 
         PHI = T_grid(t_cheb, num_coeff_per_dim)
         DPHI = DT_grid(t_cheb, num_coeff_per_dim)
+        DPHI_inv = linalg.inv(DPHI[2:, 1:] - DPHI[2:, [0]])
 
-        return t_cheb, PHI, DPHI
+        return t_cheb, PHI, DPHI, DPHI_inv
 
     def _add_head(self, B_R, dt, y_init, f_init):
         Phi_R0 = self.PHI[2:, [0]]
@@ -146,21 +143,21 @@ class PanSolver:
 
         B = self._add_head(B_init, dt, y_init, f_init)
         y_approx = B @ self.PHI
-        f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1))( t_true, y_approx[..., 1:])  # -1 is constrained by b_head
+        f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1))(
+            t_true, y_approx[..., 1:]
+        )  # -1 is constrained by b_head
 
         patience = 0
         idx = 0
         prev_pointer = torch.tensor([0], device=self.device)
         while patience <= self.patience and idx < self.max_iters:
-            B_R = linalg.solve_ex(
-                self.DPHI[2:, 1:] - self.DPHI[2:, [0]],
-                (1 / dt) * (f_approx - f_init[..., None]),
-                left=False,
-            )[0]
+            B_R = ((1 / dt) * (f_approx - f_init[..., None])) @ self.DPHI_inv
             B = self._add_head(B_R, dt, y_init, f_init)
 
             y_approx = B @ self.PHI
-            f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1))( t_true, y_approx[..., 1:])  # -1 is constrained by b_head
+            f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1))(
+                t_true, y_approx[..., 1:]
+            )  # -1 is constrained by b_head
 
             d_approx = B @ self.DPHI[..., 1:]
 
