@@ -9,6 +9,8 @@ from torchdyn.core.neuralde import odeint
 
 torch.manual_seed(23)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
+
 
 class NN(nn.Module):
     def __init__(self, std=2.0):
@@ -32,11 +34,11 @@ class NN(nn.Module):
 
 if __name__ == "__main__":
 
-    f = NN(std=1.2).to(device)
+    f = NN(std=1.3).to(device)
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = 20 * torch.randn(5, 2, device=device)
+    y_init = 20 * torch.randn(1, 2, device=device)
 
     t_lims = [0, 10]
 
@@ -55,8 +57,8 @@ if __name__ == "__main__":
         y_init,
         t_span=torch.linspace(*t_lims, 2),
         solver="tsit5",
-        atol=1e-3,
-        rtol=1e-3,
+        atol=1e-6,
+        rtol=1e-6,
         return_all_eval=True,
     )
     plotter.ax.plot(sol[:, :, 0].cpu(), sol[:, :, 1].cpu(), "--", color="cyan")
@@ -67,12 +69,12 @@ if __name__ == "__main__":
     def callback(t_lims, y_init, f_init, y_approx, d_approx, f_approx, B, PHI, DPHI):
         plotter.approx(
             y_approx.permute(-1, 0, 1),
-            d_approx.permute(-1,0,1),
+            d_approx.permute(-1, 0, 1),
             f_approx.permute(-1, 0, 1),
             [torch.tensor(0.0), torch.tensor(10.0)],  # t_lims,
             y_init,
-            B = B,
-            from_B=False,
+            B=B,
+            from_B=True,
             show_arrows=True,
             every_num_arrows=5,
             marker=None,
@@ -84,7 +86,7 @@ if __name__ == "__main__":
         plotter.fig.canvas.flush_events()
         plotter.fig.canvas.draw()
         # plt.pause(0.5)
-        # plotter.wait()
+        plotter.wait()
 
     f.nfe = 0
 
@@ -93,7 +95,7 @@ if __name__ == "__main__":
         callback=callback,
         device=device,
         delta=1e-3,
-        patience = 20
+        patience=30,
     )
 
     approx, _ = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)

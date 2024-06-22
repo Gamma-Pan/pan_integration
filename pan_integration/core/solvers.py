@@ -68,14 +68,13 @@ class PanSolver:
         self.patience = patience
         self.max_iters = max_iters
 
-
         if device is None:
             self.device = torch.device("cpu")
         else:
             self.device = device
 
         self.t_cheb, self.PHI, self.DPHI, self.DPHI_inv = self.calc_independent(
-            self.num_coeff_per_dim, self._num_coeff_per_dim- 2, device=self.device
+            self.num_coeff_per_dim, self._num_coeff_per_dim - 2, device=self.device
         )
 
     @property
@@ -153,8 +152,13 @@ class PanSolver:
         patience = 0
         idx = 0
         prev_pointer = torch.tensor([0], device=self.device)
+        B_prev = B
         while patience <= self.patience and idx < self.max_iters:
-            B_R = ((1 / dt) * (f_approx - f_init[..., None])) @ self.DPHI_inv
+            B_R = (
+                ((1 / dt) * (f_approx - f_init[..., None]))
+                @ self.DPHI_inv
+                # / linalg.eigvals(self.DPHI_inv)
+            )
             B = self._add_head(B_R, dt, y_init, f_init)
 
             y_approx = B @ self.PHI
@@ -177,37 +181,51 @@ class PanSolver:
                     self.PHI,
                     self.DPHI,
                 )
-            mask = (
-                linalg.vector_norm(
-                    f_approx - dt * d_approx, dim=(*range(0, f_approx.dim() - 1),)
+
+            print(
+                torch.sum(
+                    (f_approx / f_approx.norm(dim=1))
+                    * (d_approx / d_approx.norm(dim=1)),
+                    dim=1,
                 )
-                < self.delta
             )
-            # if solution converges in this y_init
-            if torch.all(mask):
-                return y_approx[..., -1], f_approx[..., -1], B_R
 
-            pointer = mask.logical_not().nonzero()[0]
-            if pointer > prev_pointer:
-                idx = 0
-                prev_pointer = torch.max(pointer, prev_pointer)
-                continue
-            prev_pointer = torch.max(pointer, prev_pointer)
-            patience += 1
-            idx += 1
+            # if torch.norm(B - B_prev) < self.delta:
+            #     break
 
-        tp = torch.cat([t_lims[0][None], t_true])[pointer[0]]
-        y0 = y_init if pointer == 0 else y_approx[..., pointer[0]]
-        f0 = f_init if pointer == 0 else f_approx[..., pointer[0]]
+            # mask = (
+            #     linalg.vector_norm(
+            #         f_approx - dt * d_approx, dim=(*range(0, f_approx.dim() - 1),)
+            #     )
+            #     < self.delta
+            # )
+            # # if solution converges in this y_init
+            # if torch.all(mask):
+            #     return y_approx[..., -1], f_approx[..., -1], B_R
+            #
+            # pointer = mask.logical_not().nonzero()[0]
+            # if pointer > prev_pointer:
+            #     idx = 0
+            #     prev_pointer = torch.max(pointer, prev_pointer)
+            #     continue
+            # prev_pointer = torch.max(pointer, prev_pointer)
+            # patience += 1
+            # idx += 1
 
-        if pointer == 0:
-            midpoint = tp + 0.2 * (t_lims[1] - tp)
-            t_span = torch.tensor([tp, midpoint, t_lims[1]], device=self.device)
-            yk, fk = self.solve(f, t_span, y_init, f_init, B_R)
-            return yk[-1], fk[-1], None
-        else:
-            t_lims = [tp, t_lims[1]]
-            return self._fixed_point(f, t_lims, y0, f0, B_R)
+        # tp = torch.cat([t_lims[0][None], t_true])[pointer[0]]
+        # y0 = y_init if pointer == 0 else y_approx[..., pointer[0]]
+        # f0 = f_init if pointer == 0 else f_approx[..., pointer[0]]
+        #
+        # if pointer == 0:
+        #     midpoint = tp + 0.2 * (t_lims[1] - tp)
+        #     t_span = torch.tensor([tp, midpoint, t_lims[1]], device=self.device)
+        #     yk, fk = self.solve(f, t_span, y_init, f_init, B_R)
+        #     return yk[-1], fk[-1], None
+        # else:
+        #     t_lims = [tp, t_lims[1]]
+        #     return self._fixed_point(f, t_lims, y0, f0, B_R)
+
+        return y_approx[..., -1], f_approx[..., -1], B_R
 
     def solve(self, f, t_span, y_init, f_init=None, B_init=None):
 
