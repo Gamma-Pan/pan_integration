@@ -70,7 +70,7 @@ if __name__ == "__main__":
         plotter.approx(
             [torch.tensor(0.0), torch.tensor(10.0)],  # t_lims,
             B,
-            show_arrows=True,
+            show_arrows=False,
             num_arrows=20,
             num_points=32,
             marker=None,
@@ -87,11 +87,11 @@ if __name__ == "__main__":
     f.nfe = 0
 
     solver = PanSolver(
-        num_coeff_per_dim=50,
+        num_coeff_per_dim=32,
         callback=callback,
         device=device,
         delta=1e-3,
-        patience=10,
+        patience=30,
         max_iters=1000
     )
 

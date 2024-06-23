@@ -114,24 +114,27 @@ class PanSolver:
 
         return torch.cat([b_01, B_R], dim=-1)
 
-    def _fixed_point(self, f, t_lims_init: Tuple, y_init: Tensor, f_init:Tensor ):
+    def _fixed_point(self, f, t_lims_init: Tuple, y_init: Tensor, f_init: Tensor):
         dims = y_init.shape
         y_init = y_init.view(-1)
-        all_t_lims = [t_lims_init]
+        t_lims_all = [t_lims_init]
 
         patience = 0
         idx = 0
         prev_pointer = torch.tensor([0], device=self.device)
         solve_flag = False
 
-        for t_lims in all_t_lims:
+        B_R = torch.rand(y_init.numel(), self.num_coeff_per_dim - 2, device=self.device)
+
+        while len(t_lims_all):
+            t_lims = t_lims_all[0]
+            print(t_lims_all)
             dt = 2 / (t_lims[1] - t_lims[0])
             t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb[1:] + 1)
 
-            while idx < self.max_iters:
+            while True:
                 idx += 1
 
-                B_R = ((1 / dt) * (f_approx - f_init[..., None])) @ self.DPHI_inv
                 B = self._add_head(B_R, dt, y_init, f_init)
 
                 y_approx = B @ self.PHI
@@ -140,11 +143,11 @@ class PanSolver:
                     y_approx[..., 1:].reshape(*dims, -1),  # t=-1 is constrained by b0
                 ).reshape(-1, self.num_points)
 
+                B_R = ((1 / dt) * (f_approx - f_init[..., None])) @ self.DPHI_inv
                 d_approx = dt * B @ self.DPHI[..., 1:]
 
                 if not solve_flag:
                     patience += 1
-                    pointer = -1
 
                     cos_sim = torch.sum(
                         (f_approx / f_approx.norm(dim=0))
@@ -160,22 +163,41 @@ class PanSolver:
                             B.detach().reshape(*dims, self.num_coeff_per_dim),
                         )
 
-                    if (cos_sim >= 0.8).all() or patience > self.patience:
+                    if (cos_sim >= 0.8).all():
                         solve_flag = True
                         patience = 0
                         prev_pointer = tensor([0], device=self.device)
-                        t_lims.append( [t_lims[0], t_true[pointer-1]])
-
-                        continue
-
-                    print(
-                        f"total: {idx} | prev_pointer: {prev_pointer.item()} -> pointer: {pointer.item()} | patience: {patience} / {self.patience} , tlims={t_lims}"
-                    )
+                        break
 
                     if (pointer := (cos_sim < 0.8).nonzero()[0]) > prev_pointer:
                         prev_pointer = pointer
                         patience = 0
                         continue
+
+                    # print(
+                    #     f"total: {idx} | prev_pointer: {prev_pointer.item()} -> pointer: {pointer.item()} |"
+                    #     f" patience: {patience} / {self.patience} , tlims={t_lims}"
+                    # )
+
+                    if patience > self.patience:
+                        solve_flag = True
+                        patience = 0
+                        t_lims_all.pop(0)
+                        t_lims_all.insert(0, [t_lims[0], t_true[prev_pointer - 1]])
+                        if prev_pointer > self.num_points / 3:
+                            t_lims_all.insert(1, [t_true[prev_pointer - 1], t_lims[1]])
+                        else:
+                            t_lims_all.insert(
+                                2,
+                                [
+                                    t_true[prev_pointer - 1],
+                                    ppointer := 2 * t_true[prev_pointer - 1]
+                                    - t_lims[0],
+                                ],
+                            )
+                            t_lims_all.insert(3, [ppointer, t_lims[1]])
+                        prev_pointer = tensor([0], device=self.device)
+                        break
 
                 if solve_flag:
                     if self.callback is not None:
@@ -186,41 +208,41 @@ class PanSolver:
                             B.detach().reshape(*dims, self.num_coeff_per_dim),
                         )
 
-                    print(
-                        f"total: {idx} |  patience: {patience} / {self.patience} "
-                        f"| delta {(d_approx - f_approx).norm()}| tlims={t_lims}"
-                    )
+                    # print(
+                    #     f"total: {idx} |  patience: {patience} / {self.patience} "
+                    #     f"| delta {(d_approx - f_approx).norm()}| tlims={t_lims}"
+                    # )
 
                     patience += 1
-
-                    # solve in specified interval
 
                     if (d_approx - f_approx).norm() < self.delta:
                         patience = 0
                         y_init = y_approx[:, -1].squeeze()
                         f_init = f_approx[:, -1].squeeze()
+                        t_lims_all.pop(0)
 
                         solve_flag = False
-                        t_lims = [t_split, t_lims_init[1]]
-                        dt = 2 / (t_lims[1] - t_lims[0])
-                        t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (
-                            self.t_cheb[1:] + 1
+                        break
+
+                    if patience > self.patience:
+                        patience = 0
+                        t_lims_all.pop(0)
+                        t_lims_all.insert(
+                            0, [t_lims[0], (midpoint := 0.5 * (t_lims[0] + t_lims[1]))]
                         )
+                        t_lims_all.insert(1, [midpoint, t_lims[1]])
+                        break
+
+        return y_approx[:, -1].reshape(*dims), f_approx[:, -1].reshape(*dims)
 
     def solve(self, f, t_span, y_init, f_init=None, B_init=None):
 
         if f_init is None:
             f_init = f(t_span[0], y_init).reshape(-1)
 
-        y_eval = [y_init]
-        f_eval = [f_init]
-
         for t_lims in zip(t_span, t_span[1:]):
-            yk, fk, Bk = self._fixed_point(f, t_lims, y_init, f_init, B_init)
+            yk, fk = self._fixed_point(f, t_lims, y_init, f_init)
             y_init = yk
             f_init = fk
-            B_init = Bk
-            y_eval.append(yk)
-            f_eval.append(fk)
 
-        return torch.stack(y_eval, dim=0), torch.stack(f_eval, dim=0)
+        return yk, fk
