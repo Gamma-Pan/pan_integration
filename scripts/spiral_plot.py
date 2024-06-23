@@ -34,15 +34,15 @@ class NN(nn.Module):
 
 if __name__ == "__main__":
 
-    f = NN(std=1.3).to(device)
+    f = NN(std=2.8).to(device)
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = 20 * torch.randn(1, 2, device=device)
+    y_init = 5 * torch.randn(1, 2, device=device)
 
     t_lims = [0, 10]
 
-    plotter = VfPlotter(f)
+    plotter = VfPlotter(f, grid_definition=16)
     sol_true = plotter.solve_ivp(
         torch.linspace(*t_lims, 100),
         y_init,
@@ -66,17 +66,13 @@ if __name__ == "__main__":
     print(f"tsit | nfe: {f.nfe} | err: {torch.norm(sol_true[-1]-sol[-1])} ")
     max_iter = f.nfe
 
-    def callback(t_lims, y_init, f_init, y_approx, d_approx, f_approx, B, PHI, DPHI):
+    def callback(t_lims, y_init, f_init, B ):
         plotter.approx(
-            y_approx.permute(-1, 0, 1),
-            d_approx.permute(-1, 0, 1),
-            f_approx.permute(-1, 0, 1),
             [torch.tensor(0.0), torch.tensor(10.0)],  # t_lims,
-            y_init,
-            B=B,
-            from_B=True,
+            B,
             show_arrows=True,
-            every_num_arrows=5,
+            num_arrows=20,
+            num_points=32,
             marker=None,
             markersize=2.5,
             alpha=0.70,
@@ -86,16 +82,17 @@ if __name__ == "__main__":
         plotter.fig.canvas.flush_events()
         plotter.fig.canvas.draw()
         # plt.pause(0.5)
-        plotter.wait()
+        # plotter.wait()
 
     f.nfe = 0
 
     solver = PanSolver(
-        num_coeff_per_dim=32,
+        num_coeff_per_dim=50,
         callback=callback,
         device=device,
         delta=1e-3,
-        patience=30,
+        patience=10,
+        max_iters=1000
     )
 
     approx, _ = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)

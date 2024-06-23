@@ -5,7 +5,7 @@ from itertools import cycle
 
 from matplotlib.animation import PillowWriter
 import torch
-from torch import max, min, tensor, abs
+from torch import tensor, abs
 from ..core.solvers import T_grid, DT_grid
 
 from torchdyn.numerics import odeint
@@ -14,10 +14,10 @@ from torchdyn.numerics import odeint
 mpl.use("TkAgg")
 
 quiver_args = {
-    "headwidth": 0.5,
+    "headwidth": 2,
     "headlength": 2,
     "headaxislength": 1.5,
-    "linewidth": 0.3,
+    "linewidth": 0.1,
     "angles": "xy",
 }
 
@@ -39,7 +39,7 @@ class VfPlotter:
     def __init__(
         self,
         f: Callable,
-        grid_definition: tuple = (40, 40),
+        grid_definition: int = 40,
         existing_axes: plt.Axes = None,
         ax_kwargs: dict = None,
         animation=False,
@@ -55,7 +55,7 @@ class VfPlotter:
         self.f_quiver = None
 
         self.t_init = None
-        self.grid_definition = grid_definition
+        self.grid_definition: int = grid_definition
         self.f = f
 
         if animation:
@@ -68,27 +68,34 @@ class VfPlotter:
         self, trajectories, xmin=None, xmax=None, ymin=None, ymax=None
     ):
         if trajectories is not None:
-            padding = 0.2
-            xmax = torch.max(trajectories) + padding
-            xmin = torch.min(trajectories) - padding
-            ymax = torch.max(trajectories) + padding
-            ymin = torch.min(trajectories) - padding
+            padding = 0.1
+            xmax = float(torch.max(trajectories[..., 0]) + padding)
+            xmin = float(torch.min(trajectories[..., 0]) - padding)
+            ymax = float(torch.max(trajectories[..., 1]) + padding)
+            ymin = float(torch.min(trajectories[..., 1]) - padding)
 
-        self.ax.set_xlim(xmin, xmax)
-        self.ax.set_ylim(ymin, ymax)
 
-        xs = torch.linspace(float(xmin), float(xmax), self.grid_definition[0]).to(
-            self.device
-        )
-        ys = torch.linspace(float(ymin), float(ymax), self.grid_definition[1]).to(
-            self.device
-        )
+        win_sz = max(xmax - xmin, ymax - ymin) / 2
+
+        xs = torch.linspace(
+            (xcenter := (xmin + xmax) / 2) - win_sz,
+            xcenter + win_sz,
+            self.grid_definition,
+        ).to(self.device)
+        ys = torch.linspace(
+            (ycenter := (ymin + ymax) / 2) - win_sz,
+            ycenter + win_sz,
+            self.grid_definition,
+        ).to(self.device)
+
+        self.ax.set_xlim(xcenter - win_sz, xcenter+win_sz)
+        self.ax.set_ylim(ycenter - win_sz, ycenter+win_sz)
 
         Xs, Ys = torch.meshgrid(xs, ys, indexing="xy")
 
         batch = torch.stack((Xs, Ys), dim=-1).reshape(-1, 2)
         derivatives = self.f(0, batch).reshape(
-            self.grid_definition[0], self.grid_definition[1], 2
+            self.grid_definition, self.grid_definition, 2
         )
         Us, Vs = derivatives.unbind(dim=-1)
 
@@ -118,12 +125,6 @@ class VfPlotter:
         trajectories = trajectories.cpu()
 
         self.ax.plot(*trajectories.unbind(dim=-1), **plot_kwargs)
-        # self.ax.plot(
-        #     *trajectories[-1, ...].unbind(dim=-1),
-        #     "o",
-        #     alpha=1,
-        #     color=plot_kwargs["color"],
-        # )
 
         if set_lims:
             self._plot_vector_field(trajectories)
@@ -137,7 +138,9 @@ class VfPlotter:
         num_coeff = B.shape[-1]
         t = torch.linspace(-1, 1, num_points)
         Phi = T_grid(t, num_coeff).to(B.device)
-        DPhi = 2 / (t_lims[1].cpu() - t_lims[0].cpu()) * DT_grid(t, num_coeff).to(B.device)
+        DPhi = (
+            2 / (t_lims[1].cpu() - t_lims[0].cpu()) * DT_grid(t, num_coeff).to(B.device)
+        )
         approx = B @ Phi
         Dapprox = B @ DPhi
         return (
@@ -147,26 +150,17 @@ class VfPlotter:
 
     def approx(
         self,
-        y_approx,
-        d_approx,
-        f_pproox,
         t_lims,
-        y_init,
         B=None,
         show_arrows=False,
-        every_num_arrows: int = 10,
-        from_B = True,
+        num_arrows: int = 10,
+        num_points=100,
         **kwargs,
     ):
         t_init = t_lims[0]
-        if from_B:
-            approx, Dapprox = self._approx_from_B(B, t_lims)
-        else:
-            approx = y_approx
-            Dapprox = d_approx
+        approx, Dapprox = self._approx_from_B(B, t_lims, num_points)
 
-        approx = approx[::every_num_arrows]
-        Dapprox = Dapprox[::every_num_arrows]
+        every_num_points = num_points // num_arrows
 
         # approx = approx + y_init
         if self.t_init != t_init:
@@ -174,11 +168,11 @@ class VfPlotter:
             self.lines = self.ax.plot(*approx.cpu().unbind(-1), **kwargs)
             if show_arrows:
                 self.arrows = self.ax.quiver(
-                    *approx.cpu().unbind(-1), *Dapprox.cpu().unbind(-1), **quiver_args
+                    *approx[::every_num_points].cpu().unbind(-1), *Dapprox[::every_num_points].cpu().unbind(-1), **quiver_args
                 )
                 self.farrows = self.ax.quiver(
-                    *approx.cpu().unbind(-1),
-                    *self.f(0, approx).cpu().unbind(-1),
+                    *approx[::every_num_points].cpu().unbind(-1),
+                    *self.f(0, approx)[::every_num_points].cpu().unbind(-1),
                     **quiver_args,
                     color="red",
                 )
@@ -187,11 +181,11 @@ class VfPlotter:
                 line.set_data(*data.unbind(-1))
 
             if show_arrows:
-                self.arrows.set_UVC(*Dapprox.cpu().unbind(-1))
-                self.farrows.set_UVC(*self.f(0, approx).cpu().unbind(-1))
+                self.arrows.set_UVC(*Dapprox[::every_num_points].cpu().unbind(-1))
+                self.farrows.set_UVC(*self.f(0, approx[::every_num_points]).cpu().unbind(-1))
 
-                self.arrows.set_offsets(approx.cpu().reshape(-1, 2))
-                self.farrows.set_offsets(approx.cpu().reshape(-1, 2))
+                self.arrows.set_offsets(approx[::every_num_points].cpu().reshape(-1, 2))
+                self.farrows.set_offsets(approx[::every_num_points].cpu().reshape(-1, 2))
 
         return approx
 
