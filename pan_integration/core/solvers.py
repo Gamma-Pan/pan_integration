@@ -114,26 +114,31 @@ class PanSolver:
 
         return torch.cat([b_01, B_R], dim=-1)
 
+    # def _B_rest(self, B_R, N ):
+    #     k = arange(2,  N + 1)
+    #     t_cheb = -cos(pi * k / N).to(self.device)
+    #     DPhi_r = DT_grid(t_cheb, N)
+    #     return B_R @ (DPhi_r @ self.DPHI_inv)
+
     def _fixed_point(self, f, t_lims_init: Tuple, y_init: Tensor, f_init: Tensor):
         dims = y_init.shape
         y_init = y_init.view(-1)
-        t_lims_all = [t_lims_init]
+        t_lims = t_lims_init
 
-        patience = 0
+        dt = 2 / (t_lims[1] - t_lims[0])
+        t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb[1:] + 1)
+
         idx = 0
-        prev_pointer = torch.tensor([0], device=self.device)
-        solve_flag = False
-
         B_R = torch.rand(y_init.numel(), self.num_coeff_per_dim - 2, device=self.device)
+        step = 0
 
-        while len(t_lims_all):
-            t_lims = t_lims_all[0]
-            print(t_lims_all)
-            dt = 2 / (t_lims[1] - t_lims[0])
-            t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb[1:] + 1)
+        while t_lims[0] < t_lims_init[1]:
+            prev_pointer = 0
+            patience = 0
 
-            while True:
+            while idx < self.max_iters:
                 idx += 1
+                patience += 1
 
                 B = self._add_head(B_R, dt, y_init, f_init)
 
@@ -146,92 +151,58 @@ class PanSolver:
                 B_R = ((1 / dt) * (f_approx - f_init[..., None])) @ self.DPHI_inv
                 d_approx = dt * B @ self.DPHI[..., 1:]
 
-                if not solve_flag:
-                    patience += 1
-
-                    cos_sim = torch.sum(
-                        (f_approx / f_approx.norm(dim=0))
-                        * (d_approx / d_approx.norm(dim=0)),
-                        dim=0,
+                if self.callback is not None:
+                    self.callback(
+                        t_lims,
+                        y_init.detach().reshape(*dims),
+                        f_init.detach().reshape(*dims),
+                        B.detach().reshape(*dims, self.num_coeff_per_dim),
                     )
 
-                    if self.callback is not None:
-                        self.callback(
-                            t_lims,
-                            y_init.detach().reshape(*dims),
-                            f_init.detach().reshape(*dims),
-                            B.detach().reshape(*dims, self.num_coeff_per_dim),
-                        )
+                # similar = torch.sum(
+                #     (f_approx / f_approx.norm(dim=0))
+                #     * (d_approx / d_approx.norm(dim=0)),
+                #     dim=0,
+                # )
 
-                    if (cos_sim >= 0.8).all():
-                        solve_flag = True
-                        patience = 0
-                        prev_pointer = tensor([0], device=self.device)
+                diffs = (f_approx - d_approx).norm(dim=0)
+
+                # if converged to accuracy
+                if (diffs <= self.delta).all():
+
+                    # if solution was found too fast increase step
+                    step = step*2
+
+                    y_init = y_approx[:, -1].squeeze()
+                    f_init = f_approx[:, -1].squeeze()
+                    tp = t_lims[1]
+                    break
+
+                pointer = (diffs > self.delta).nonzero()[0].item()
+                if pointer > prev_pointer:
+                    patience = 0
+                    prev_pointer = pointer
+                    continue
+
+                if patience > self.patience:
+
+                    # if not a single point converged to accuracy
+                    if pointer == 0:
+                        tp = t_lims[0]
+                        step = (t_lims[1] - t_lims[0]) / 2
                         break
 
-                    if (pointer := (cos_sim < 0.8).nonzero()[0]) > prev_pointer:
-                        prev_pointer = pointer
-                        patience = 0
-                        continue
+                    tp = t_true[pointer - 1]
+                    y_init = y_approx[:, pointer].squeeze()
+                    f_init = f_approx[:, pointer].squeeze()
 
-                    # print(
-                    #     f"total: {idx} | prev_pointer: {prev_pointer.item()} -> pointer: {pointer.item()} |"
-                    #     f" patience: {patience} / {self.patience} , tlims={t_lims}"
-                    # )
+                    # lower step
+                    step = tp - t_lims[0]
+                    break
 
-                    if patience > self.patience:
-                        solve_flag = True
-                        patience = 0
-                        t_lims_all.pop(0)
-                        t_lims_all.insert(0, [t_lims[0], t_true[prev_pointer - 1]])
-                        if prev_pointer > self.num_points / 3:
-                            t_lims_all.insert(1, [t_true[prev_pointer - 1], t_lims[1]])
-                        else:
-                            t_lims_all.insert(
-                                2,
-                                [
-                                    t_true[prev_pointer - 1],
-                                    ppointer := 2 * t_true[prev_pointer - 1]
-                                    - t_lims[0],
-                                ],
-                            )
-                            t_lims_all.insert(3, [ppointer, t_lims[1]])
-                        prev_pointer = tensor([0], device=self.device)
-                        break
-
-                if solve_flag:
-                    if self.callback is not None:
-                        self.callback(
-                            t_lims,
-                            y_init.detach().reshape(*dims),
-                            f_init.detach().reshape(*dims),
-                            B.detach().reshape(*dims, self.num_coeff_per_dim),
-                        )
-
-                    # print(
-                    #     f"total: {idx} |  patience: {patience} / {self.patience} "
-                    #     f"| delta {(d_approx - f_approx).norm()}| tlims={t_lims}"
-                    # )
-
-                    patience += 1
-
-                    if (d_approx - f_approx).norm() < self.delta:
-                        patience = 0
-                        y_init = y_approx[:, -1].squeeze()
-                        f_init = f_approx[:, -1].squeeze()
-                        t_lims_all.pop(0)
-
-                        solve_flag = False
-                        break
-
-                    if patience > self.patience:
-                        patience = 0
-                        t_lims_all.pop(0)
-                        t_lims_all.insert(
-                            0, [t_lims[0], (midpoint := 0.5 * (t_lims[0] + t_lims[1]))]
-                        )
-                        t_lims_all.insert(1, [midpoint, t_lims[1]])
-                        break
+            t_lims = [tp, min(t_lims_init[1], tp + step)]
+            dt = 2 / (t_lims[1] - t_lims[0])
+            t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb[1:] + 1)
 
         return y_approx[:, -1].reshape(*dims), f_approx[:, -1].reshape(*dims)
 

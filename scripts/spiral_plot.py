@@ -34,11 +34,11 @@ class NN(nn.Module):
 
 if __name__ == "__main__":
 
-    f = NN(std=2.8).to(device)
+    f = NN(std=2.4).to(device)
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = 5 * torch.randn(1, 2, device=device)
+    y_init = 5 * torch.randn(10, 2, device=device)
 
     t_lims = [0, 10]
 
@@ -70,8 +70,8 @@ if __name__ == "__main__":
         plotter.approx(
             [torch.tensor(0.0), torch.tensor(10.0)],  # t_lims,
             B,
-            show_arrows=False,
-            num_arrows=20,
+            show_arrows=True,
+            num_arrows=5,
             num_points=32,
             marker=None,
             markersize=2.5,
@@ -91,12 +91,12 @@ if __name__ == "__main__":
         callback=callback,
         device=device,
         delta=1e-3,
-        patience=30,
-        max_iters=1000
+        patience=3,
+        max_iters=2000
     )
 
     approx, _ = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)
 
-    print(f" pan | nfe: {f.nfe} | err: {torch.norm(approx[-1]-sol_true[-1])} ")
+    print(f" pan | nfe: {f.nfe} | err: {torch.norm(approx - sol_true[-1])} ")
 
     plotter.wait()
