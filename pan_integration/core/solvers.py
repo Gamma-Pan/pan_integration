@@ -171,7 +171,6 @@ class PanSolver:
                 # if converged to accuracy
                 if (diffs <= self.tol).all():
 
-                    print(patience)
                     # if solution was found too fast increase step
                     # if patience <= 2:
                     step = step * 1.1
@@ -182,7 +181,6 @@ class PanSolver:
                     break
 
                 if patience > self.patience:
-                    print(step)
 
                     pointer = (diffs > self.tol).nonzero()[0].item()
 
