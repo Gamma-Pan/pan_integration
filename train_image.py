@@ -33,7 +33,7 @@ import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-NUM_WORKERS = mp.cpu_count() - 1
+NUM_WORKERS = 0 # mp.cpu_count() - 1
 MAX_STEPS = -1
 DATASET = "CIFAR10"
 
@@ -86,7 +86,6 @@ class Classifier(nn.Module):
         x = self.flatten(x)
         x = self.lin1(x)
         return x
-
 
 # dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
@@ -199,8 +198,8 @@ if __name__ == "__main__":
             mode="pan",
             solver_config={
                 "num_coeff_per_dim": 32,
-                "delta": 1e-3,
-                "max_iters": 100,
+                "tol": 1e-3,
+                "max_iters": 200,
                 "patience" : 20
             },
             log=WANDB_LOG,

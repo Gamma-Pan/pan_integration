@@ -38,7 +38,7 @@ plt.legend(loc='best')
 plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter('{x:.3f}'))
 plt.grid(alpha=0.4, linewidth=1)
 plt.xlabel("NFEs")
-plt.ylabel('Validation Set Accuracy')
+plt.ylabel('Validatdimsion Set Accuracy')
 plt.ylim([0,1])
 plt.show()
 

@@ -132,7 +132,8 @@ class PanSolver:
         B_R = torch.rand(y_init.numel(), self.num_coeff_per_dim - 2, device=self.device)
         step = 0
 
-        while t_lims[0] < t_lims_init[1]:
+        s = torch.sign(t_lims_init[1] - t_lims_init[0])
+        while s*t_lims[0] < s*t_lims_init[1]:
             prev_pointer = 0
             patience = 0
 
@@ -170,9 +171,10 @@ class PanSolver:
                 # if converged to accuracy
                 if (diffs <= self.tol).all():
 
+                    print(patience)
                     # if solution was found too fast increase step
-                    if patience <= 2:
-                        step = step * 1.5
+                    # if patience <= 2:
+                    step = step * 1.1
 
                     y_init = y_approx[:, -1].squeeze()
                     f_init = f_approx[:, -1].squeeze()
@@ -180,6 +182,8 @@ class PanSolver:
                     break
 
                 if patience > self.patience:
+                    print(step)
+
                     pointer = (diffs > self.tol).nonzero()[0].item()
 
                     # if not a single point converged to accuracy
@@ -207,9 +211,12 @@ class PanSolver:
         if f_init is None:
             f_init = f(t_span[0], y_init).reshape(-1)
 
+        y_eval = [y_init]
+
         for t_lims in zip(t_span, t_span[1:]):
             yk, fk = self._fixed_point(f, t_lims, y_init, f_init)
+            y_eval.append(yk)
             y_init = yk
             f_init = fk
 
-        return yk, fk
+        return torch.stack(y_eval, dim=0), None

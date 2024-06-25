@@ -8,7 +8,7 @@ from torchdyn.numerics.solvers.ode import SolverTemplate
 from torchdyn.core.neuralde import odeint
 
 torch.manual_seed(23)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
 
 
@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     t_lims = [0, 10]
 
-    plotter = VfPlotter(f, grid_definition=16)
+    plotter = VfPlotter(f, grid_definition=16, animation=True)
     sol_true = plotter.solve_ivp(
         torch.linspace(*t_lims, 100),
         y_init,
@@ -87,11 +87,11 @@ if __name__ == "__main__":
     f.nfe = 0
 
     solver = PanSolver(
-        num_coeff_per_dim=1,
+        num_coeff_per_dim=16,
         callback=callback,
         device=device,
-        tol=0.999,
-        patience=30,
+        tol=1e-1,
+        patience=10,
         max_iters=2000
     )
 
