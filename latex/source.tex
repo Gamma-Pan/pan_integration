@@ -772,11 +772,13 @@
     \end{gather}
     We can rewrite Eq.~\eqref{eq:pr_error} as $\Delta_n^0 = F(t_n,t_{n+1}, \pmb{y}_n^0) - G(t_n, t_{n+1}, \pmb{y}_n^0)$
     and our iterative relation is simply:
-    \begin{equation} \label{eq:pr_iter}
+    \begin{equation}
+        \label{eq:pr_iter}
         \pmb{y}^1_{n+1} = G(t_n, t_{n+1}, \pmb{y}_n^{1}) + \Delta_{n+1}^0
     \end{equation}
     Combining Eqs.~\eqref{eq:pr_error} and~\eqref{eq:pr_iter} we arrive at the parareal iteration at step $k$:
-    \begin{gather} \label{}
+    \begin{gather}
+        \label{}
         \pmb{y}^{k+1}_{n+1} = G(t_n, t_{n+1}, \pmb{y}_n^{k+1}) + F(t_n, t_{n+1}, \pmb{y}_n^{k}) - G(t_n, t_{n+1}, \pmb{y}_n^{k}) \\
         \pmb{y}_0^k = \pmb{y}_0
     \end{gather}
@@ -997,12 +999,12 @@
     \begin{algorithm}
         \caption{Polynomial approximation numerical integration}
         \begin{algorithmic}
-            \State choose $\epsilon_{ls}$, $\epsilon_{n}$, $B_0$, $K_max$
+            \State choose $\epsilon_{ls}$, $\epsilon_{n}$, $B_0$, $K_{max}$
             \State $\pmb{t} \gets [t_0 \; t_1 \; t_2 \; \dots \; t_{M-1} ]^T$
             \State $k \gets 1$
             \State calculate $\Phi, \dot\Phi$
             \Repeat
-                \State calculate $e(B_k]$
+                \State calculate $e(B_k)$
                 \If { $e(B^k)< \epsilon_{n}$ }
                     \State \textbf{return} $B_k$
                 \EndIf
@@ -1341,6 +1343,49 @@
     However, we must address at this point that accuracy seems to become saturated and decreasing tolerances or increasing number
     of coefficients doesn't improve results.
     It becomes apparent that finding the optimal hyperparameters is crucial for the most efficient use of the algorithm.
+
+    \subsection{A simple Neural Network}
+    We apply this (zero order) algorithm to a toy example neural network, where we want to classify two clusters of
+    non linearly separable points in 2 dimensions.
+
+    \begin{figure}[H]
+        \begin{center}
+            \input{moons.pgf}
+        \end{center}
+        \caption{The data are not linearly seperable}
+        \label{fig:moons}
+    \end{figure}
+
+    Our goal is to train a neural network that parametrises a vector field which when given these points ``maps'' them ()
+    in the sense that the solution at time $T$ of the differential equation
+    $\pmb{y}^{(1)}(t) = f(\pmb{y}; \pmb{\theta})$, when given the data as initial conditions) to linearly separable regions.
+    Besides the usual hyperparameters such as learning rate or network architecture we must also specify what solver will
+    be used to solve the differential equation at each step of training as well as the solvers parameters
+    (tolerance, order, etc.).
+    For comparison with our solver we use the Tsitouras solver of order 5, an commonly used adaptive step explicit
+    Runge Kutta method.
+
+
+    \begin{table}[!h]
+        \begin{center}
+            \caption{dfdf}
+            \label{moons_metics}
+            \renewcommand{\arraystretch}{1.5}
+            \renewcommand{\tabcolsep}{10.25pt}
+            \begin{tabular}{|c|c|c|c|}
+                \hline
+                Method(params) & loss & accuracy & NFE \\
+                \hline
+            \end{tabular}
+        \end{center}
+    \end{table}
+
+
+
+
+
+
+
 
     \newpage
     \printbibliography

@@ -24,6 +24,7 @@ train_loader = torch.utils.data.DataLoader(
     dataset=train_dataset, batch_size=64, shuffle=True
 )
 
+train_acc = []
 
 class LitLearner(lit.LightningModule):
     def __init__(self, model, t_span):
@@ -43,6 +44,7 @@ class LitLearner(lit.LightningModule):
         y_hat = traj[-1]
         acc = torch.sum(y == torch.max(y_hat, dim=1)[1]).item() / y.shape[0]
         loss = nn.CrossEntropyLoss()(y_hat, y)
+        train_acc.append(acc)
         self.log("loss", loss, prog_bar=True)
         self.log("acc", acc, prog_bar=True)
         self.log("nfe", self.model.vf.nfe, prog_bar=True)
@@ -69,12 +71,12 @@ class VF(nn.Module):
 
 vf = VF().to(device)
 
-model_pan = PanODE(
-    vf,
-    solver={"num_coeff_per_dim": 16, "patience": 20, "delta": 1e-3},
-    sensitivity="adjoint",
-    device=device,
-)
+# model_pan = PanODE(
+#     vf,
+#     solver={"num_coeff_per_dim": 16, "patience": 20, "tol": 1e-3},
+#     sensitivity="adjoint",
+#     device=device,
+# )
 
 model_tsit = NeuralODE(
     vf,
@@ -82,8 +84,8 @@ model_tsit = NeuralODE(
     sensitivity="adjoint",
 )
 
-# model = model_tsit
-model = model_pan
+model = model_tsit
+# model = model_pan
 t_span = torch.linspace(0, 1, 2).to(device)
 
 lit_learner = LitLearner(model, t_span)
@@ -95,7 +97,9 @@ with torch.no_grad():
     y = y.cpu()
     fig, ax = plt.subplots()
     indices = torch.randperm(X.shape[0])[:100]
-    ax.scatter(*X[indices].unbind(-1), c=y[indices], alpha=0.3)
+    ax.scatter(*X[indices].unbind(-1), c=y[indices], alpha=0.1)
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
 
     plotter = VfPlotter(vf, existing_axes=ax)
     plotter.solve_ivp(
@@ -103,12 +107,15 @@ with torch.no_grad():
         X[indices][y[indices].to(torch.bool)],
         set_lims=True,
         plot_kwargs=dict(color="orange", alpha=0.1),
+        end_point = True
     )
 
     plotter.solve_ivp(
         torch.linspace(0, 1, 100),
         X[indices][torch.logical_not(y[indices].to(torch.bool))],
         set_lims=True,
-        plot_kwargs=dict(color="purple", alpha=0.1),
+        plot_kwargs=dict(color="purple", alpha=0.3),
+        end_point=True,
+
     )
     plt.show()

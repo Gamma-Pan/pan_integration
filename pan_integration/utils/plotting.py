@@ -112,6 +112,7 @@ class VfPlotter:
         t_span,
         y_init: torch.tensor = None,
         set_lims=False,
+        end_point = True,
         ivp_kwargs=None,
         plot_kwargs=None,
     ):
@@ -125,6 +126,9 @@ class VfPlotter:
         trajectories = trajectories.cpu()
 
         self.ax.plot(*trajectories.unbind(dim=-1), **plot_kwargs)
+
+        if end_point:
+            self.ax.scatter(*trajectories[-1].unbind(dim=-1), marker='o' ,color=plot_kwargs["color"] )
 
         if set_lims:
             self._plot_vector_field(trajectories)

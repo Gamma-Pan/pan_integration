@@ -38,7 +38,7 @@ if __name__ == "__main__":
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = 5 * torch.randn(10, 2, device=device)
+    y_init = 5 * torch.randn(1, 2, device=device)
 
     t_lims = [0, 10]
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         y_init,
         set_lims=True,
         ivp_kwargs=dict(solver="tsit5", atol=1e-9, rtol=1e-9),
-        plot_kwargs=dict(alpha=0.5),
+        plot_kwargs=dict(alpha=0.5, color='green'),
     )
     sol_true = sol_true.to(device)
     f.nfe = 0
@@ -57,8 +57,8 @@ if __name__ == "__main__":
         y_init,
         t_span=torch.linspace(*t_lims, 2),
         solver="tsit5",
-        atol=1e-6,
-        rtol=1e-6,
+        atol=1e-4,
+        rtol=1e-4,
         return_all_eval=True,
     )
     plotter.ax.plot(sol[:, :, 0].cpu(), sol[:, :, 1].cpu(), "--", color="cyan")
@@ -87,11 +87,11 @@ if __name__ == "__main__":
     f.nfe = 0
 
     solver = PanSolver(
-        num_coeff_per_dim=32,
+        num_coeff_per_dim=1,
         callback=callback,
         device=device,
-        delta=1e-3,
-        patience=3,
+        tol=0.999,
+        patience=30,
         max_iters=2000
     )
 

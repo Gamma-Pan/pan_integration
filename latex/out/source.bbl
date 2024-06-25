@@ -795,6 +795,40 @@
       \field{title}{Numerical methods for ordinary differential equations}
       \field{year}{2016}
     \endentry
+    \entry{theis2017end}{article}{}
+      \name{author}{2}{}{%
+        {{hash=b401633d5c082a1dba10bbd8835400ca}{%
+           family={Theis},
+           familyi={T\bibinitperiod},
+           given={Thomas\bibnamedelima N},
+           giveni={T\bibinitperiod\bibinitdelim N\bibinitperiod}}}%
+        {{hash=60526d097df26e16f0535b4b1d5f7e5c}{%
+           family={Wong},
+           familyi={W\bibinitperiod},
+           given={H-S\bibnamedelima Philip},
+           giveni={H\bibinithyphendelim S\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {IEEE}%
+      }
+      \strng{namehash}{2c1c49679c92ceefc12d12438cf28794}
+      \strng{fullhash}{2c1c49679c92ceefc12d12438cf28794}
+      \strng{bibnamehash}{2c1c49679c92ceefc12d12438cf28794}
+      \strng{authorbibnamehash}{2c1c49679c92ceefc12d12438cf28794}
+      \strng{authornamehash}{2c1c49679c92ceefc12d12438cf28794}
+      \strng{authorfullhash}{2c1c49679c92ceefc12d12438cf28794}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Computing in science \& engineering}
+      \field{number}{2}
+      \field{title}{The end of moore's law: A new beginning for information technology}
+      \field{volume}{19}
+      \field{year}{2017}
+      \field{pages}{41\bibrangedash 50}
+      \range{pages}{10}
+    \endentry
     \entry{nievergelt1964parallel}{article}{}
       \name{author}{1}{}{%
         {{hash=15e403cf3f1d0560a30645ed50b3c2be}{%
@@ -858,40 +892,6 @@
       \field{pages}{387\bibrangedash 392}
       \range{pages}{6}
     \endentry
-    \entry{emmett2012toward}{article}{}
-      \name{author}{2}{}{%
-        {{hash=f4074efa38d281cbbd1c2487a2198ca5}{%
-           family={Emmett},
-           familyi={E\bibinitperiod},
-           given={Matthew},
-           giveni={M\bibinitperiod}}}%
-        {{hash=8cc31991bb5d104b9d85dbcf1b1bc59d}{%
-           family={Minion},
-           familyi={M\bibinitperiod},
-           given={Michael},
-           giveni={M\bibinitperiod}}}%
-      }
-      \list{publisher}{1}{%
-        {Mathematical Sciences Publishers}%
-      }
-      \strng{namehash}{a25c59c47424bd1a81a021741596d534}
-      \strng{fullhash}{a25c59c47424bd1a81a021741596d534}
-      \strng{bibnamehash}{a25c59c47424bd1a81a021741596d534}
-      \strng{authorbibnamehash}{a25c59c47424bd1a81a021741596d534}
-      \strng{authornamehash}{a25c59c47424bd1a81a021741596d534}
-      \strng{authorfullhash}{a25c59c47424bd1a81a021741596d534}
-      \field{sortinit}{2}
-      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{journaltitle}{Communications in Applied Mathematics and Computational Science}
-      \field{number}{1}
-      \field{title}{Toward an efficient parallel in time method for partial differential equations}
-      \field{volume}{7}
-      \field{year}{2012}
-      \field{pages}{105\bibrangedash 132}
-      \range{pages}{28}
-    \endentry
     \entry{massaroli2021differentiable}{article}{}
       \name{author}{7}{}{%
         {{hash=8d9ce6d5d3fa366cb7ebc5367465692c}{%
@@ -947,6 +947,55 @@
       \field{pages}{16532\bibrangedash 16544}
       \range{pages}{13}
     \endentry
+    \entry{baffico2002parallel}{article}{}
+      \name{author}{5}{}{%
+        {{hash=78bf0465a90ba773b10a64954a6863dc}{%
+           family={Baffico},
+           familyi={B\bibinitperiod},
+           given={Leonardo},
+           giveni={L\bibinitperiod}}}%
+        {{hash=565615e128f828d0ba2d4027bf6ebf4b}{%
+           family={Bernard},
+           familyi={B\bibinitperiod},
+           given={Stephane},
+           giveni={S\bibinitperiod}}}%
+        {{hash=b7ae5aec1a1ae0459470cebc48e93172}{%
+           family={Maday},
+           familyi={M\bibinitperiod},
+           given={Yvon},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=bf442fe9bd1f5d1f839b791ab8c61c67}{%
+           family={Turinici},
+           familyi={T\bibinitperiod},
+           given={Gabriel},
+           giveni={G\bibinitperiod}}}%
+        {{hash=e6a672a54cd8b816c169f8fa3e31ce39}{%
+           family={Zérah},
+           familyi={Z\bibinitperiod},
+           given={Gilles},
+           giveni={G\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {APS}%
+      }
+      \strng{namehash}{2ec13a68dcf8b4d465ecadc300ddc595}
+      \strng{fullhash}{8d6f616c7e8210a378698da4e9b3584a}
+      \strng{bibnamehash}{8d6f616c7e8210a378698da4e9b3584a}
+      \strng{authorbibnamehash}{8d6f616c7e8210a378698da4e9b3584a}
+      \strng{authornamehash}{2ec13a68dcf8b4d465ecadc300ddc595}
+      \strng{authorfullhash}{8d6f616c7e8210a378698da4e9b3584a}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Physical Review E}
+      \field{number}{5}
+      \field{title}{Parallel-in-time molecular-dynamics simulations}
+      \field{volume}{66}
+      \field{year}{2002}
+      \field{pages}{057701}
+      \range{pages}{1}
+    \endentry
     \entry{trefethen1996finite}{article}{}
       \name{author}{1}{}{%
         {{hash=63032a44f2bc372043964e7390ec209e}{%
@@ -999,8 +1048,8 @@
       \strng{authorbibnamehash}{1861b6f75bec12e3c638a88878023579}
       \strng{authornamehash}{1861b6f75bec12e3c638a88878023579}
       \strng{authorfullhash}{1861b6f75bec12e3c638a88878023579}
-      \field{sortinit}{2}
-      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Practical optimization}

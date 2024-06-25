@@ -55,7 +55,7 @@ class PanSolver:
         num_coeff_per_dim,
         device=None,
         callback=None,
-        delta=0.1,
+        tol=0.1,
         patience=30,
         max_iters=100,
     ):
@@ -64,7 +64,7 @@ class PanSolver:
         self.callback = callback
         self._num_coeff_per_dim = num_coeff_per_dim
         self.num_points = num_coeff_per_dim - 2
-        self.delta = delta
+        self.tol = tol
         self.patience = patience
         self.max_iters = max_iters
 
@@ -159,7 +159,7 @@ class PanSolver:
                         B.detach().reshape(*dims, self.num_coeff_per_dim),
                     )
 
-                # similar = torch.sum(
+                # diffs = torch.sum(
                 #     (f_approx / f_approx.norm(dim=0))
                 #     * (d_approx / d_approx.norm(dim=0)),
                 #     dim=0,
@@ -168,28 +168,24 @@ class PanSolver:
                 diffs = (f_approx - d_approx).norm(dim=0)
 
                 # if converged to accuracy
-                if (diffs <= self.delta).all():
+                if (diffs <= self.tol).all():
 
                     # if solution was found too fast increase step
-                    step = step*2
+                    if patience <= 2:
+                        step = step * 1.5
 
                     y_init = y_approx[:, -1].squeeze()
                     f_init = f_approx[:, -1].squeeze()
                     tp = t_lims[1]
                     break
 
-                pointer = (diffs > self.delta).nonzero()[0].item()
-                if pointer > prev_pointer:
-                    patience = 0
-                    prev_pointer = pointer
-                    continue
-
                 if patience > self.patience:
+                    pointer = (diffs > self.tol).nonzero()[0].item()
 
                     # if not a single point converged to accuracy
                     if pointer == 0:
                         tp = t_lims[0]
-                        step = (t_lims[1] - t_lims[0]) / 2
+                        step = (t_lims[1] - t_lims[0]) / 1.5
                         break
 
                     tp = t_true[pointer - 1]
