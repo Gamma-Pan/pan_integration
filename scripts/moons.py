@@ -71,17 +71,19 @@ class VF(nn.Module):
 
 vf = VF().to(device)
 
-# model_pan = PanODE(
-#     vf,
-#     solver={"num_coeff_per_dim": 16, "patience": 20, "tol": 1e-3},
-#     sensitivity="adjoint",
-#     device=device,
-# )
+model_pan = PanODE(
+    vf,
+    solver={"num_coeff_per_dim": 16, "patience": 15, "tol": 1e-3},
+    sensitivity="adjoint",
+    device=device,
+)
 
 model_tsit = NeuralODE(
     vf,
     solver="tsit5",
     sensitivity="adjoint",
+    atol=1e-3,
+    rtol=1e-3,
 )
 
 model = model_tsit
@@ -114,7 +116,7 @@ with torch.no_grad():
         torch.linspace(0, 1, 100),
         X[indices][torch.logical_not(y[indices].to(torch.bool))],
         set_lims=True,
-        plot_kwargs=dict(color="purple", alpha=0.3),
+        plot_kwargs=dict(color="purple", alpha=0.1),
         end_point=True,
 
     )

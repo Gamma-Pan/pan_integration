@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2024.5.30)  25 JUN 2024 11:40
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2024.5.30)  25 JUN 2024 18:57
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -1127,4 +1127,162 @@ e
 * \marginparwidth=59.0pt
 * \marginparsep=10.0pt
 * \columnsep=10.0pt
-* \skip\footins=10.0pt plu
+* \skip\footins=10.0pt plus 4.0pt minus 2.0pt
+* \hoffset=0.0pt
+* \voffset=0.0pt
+* \mag=1000
+* \@twocolumnfalse
+* \@twosidefalse
+* \@mparswitchfalse
+* \@reversemarginfalse
+* (1in=72.27pt=25.4mm, 1cm=28.453pt)
+
+Package pgfplots notification 'compat/show suggested version=true': document ha
+s been generated with the most recent feature set (\pgfplotsset{compat=1.18}).
+
+Package biblatex Info: Trying to load language 'english'...
+Package biblatex Info: ... file 'english.lbx' found.
+(/usr/share/texlive/texmf-dist/tex/latex/biblatex/lbx/english.lbx
+File: english.lbx 2023/03/05 v3.19 biblatex localization (PK/MW)
+)
+Package biblatex Info: Input encoding 'utf8' detected.
+Package biblatex Info: Automatic encoding selection.
+(biblatex)             Assuming data encoding 'utf8'.
+\openout4 = `source.bcf'.
+
+Package biblatex Info: Trying to load bibliographic data...
+Package biblatex Info: ... file 'source.bbl' found.
+
+(/home/pan/Projects/machine_learning/pan_integration/latex/out/source.bbl)
+Package biblatex Info: Reference section=0 on input line 28.
+Package biblatex Info: Reference segment=0 on input line 28.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 30.
+
+
+(/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
+File: umsa.fd 2013/01/14 v3.01 AMS symbols A
+)
+LaTeX Font Info:    Trying to load font information for U+msb on input line 30.
+
+
+(/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
+File: umsb.fd 2013/01/14 v3.01 AMS symbols B
+) [1
+
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [1]
+Chapter 1.
+[2
+
+]
+Chapter 2.
+===== Image 'source-figure0' is up-to-date. ======
+[3
+
+] [4 <./source-figure0.pdf>] [5]
+Chapter 3.
+[6
+
+] [7] (./resnet_to_node_plot.pgf) [8] [9] [10]
+Chapter 4.
+[11
+
+] [12] [13]
+Overfull \hbox (11.7396pt too wide) in paragraph at lines 531--533
+\OT1/cmr/m/n/10.95 Where $^^H$ is a con-tin-u-ous func-tion on its vari-ables, 
+in the case of for-ward Eu-ler $^^H(\OML/cmm/m/it/10.95 t[]; y[]\OT1/cmr/m/n/10
+.95 ; \OML/cmm/m/it/10.95 h\OT1/cmr/m/n/10.95 ) =
+ []
+
+[14] [15] [16] [17]
+Chapter 5.
+[18
+
+] [19]
+Underfull \hbox (badness 10000) in paragraph at lines 830--834
+
+ []
+
+[20] [21] (./sol_regression.pgf)
+Overfull \hbox (47.40184pt too wide) in paragraph at lines 7564--977
+ [] 
+ []
+
+[22] [23] [24] [25]
+Overfull \hbox (3.28117pt too wide) in paragraph at lines 1168--1182
+[]\OT1/cmr/m/n/10.95 Comparing pop-u-lar par-al-lel in time ODE solv-ing meth-o
+ds, like PFASST and parareal,
+ []
+
+[26] [27] [28] [29] (./moons.pgf) [30] (./moons_sol.pgf) [31] [32] [33
+
+]
+Overfull \hbox (56.2748pt too wide) in paragraph at lines 1402--1402
+[]\OT1/cmr/m/n/10.95 X. Chen, ``Or-di-nary dif-fer-en-tial equa-tions for deep 
+learn-ing,'' \OT1/cmr/m/it/10.95 arXiv preprint arXiv:1911.00502\OT1/cmr/m/n/10
+.95 ,
+ []
+
+[34] [35]
+Appendix A.
+[36
+
+] [37]
+===== Image 'source-figure1' is up-to-date. ======
+[38 <./source-figure1.pdf>] [39]
+Appendix B.
+[40
+
+] [41]
+Appendix C.
+[42
+
+] [43] [44] [45] [46] [47] [48] [49] [50]
+(/home/pan/Projects/machine_learning/pan_integration/latex/out/source.aux)
+ ***********
+LaTeX2e <2023-11-01> patch level 1
+L3 programming layer <2024-01-22>
+ ***********
+Package logreq Info: Writing requests to 'source.run.xml'.
+\openout1 = `source.run.xml'.
+
+ ) 
+Here is how much of TeX's memory you used:
+ 35787 strings out of 476106
+ 878157 string characters out of 5793933
+ 2311304 words of memory out of 5000000
+ 57192 multiletter control sequences out of 15000+600000
+ 582630 words of font info for 125 fonts, out of 8000000 for 9000
+ 59 hyphenation exceptions out of 8191
+ 99i,19n,107p,1088b,1240s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ </home/pan/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk
+></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr
+/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share
+/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx8.pfb></usr/share/texliv
+e/texmf-dist/fonts/type1/public/amsfonts/cm/cmbxti10.pfb></usr/share/texlive/te
+xmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-di
+st/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fon
+ts/type1/public/amsfonts/cm/cmmi12.pfb></usr/share/texlive/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmmi6.pfb></usr/share/texlive/texmf-dist/fonts/type1/publ
+ic/amsfonts/cm/cmmi7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsf
+onts/cm/cmmi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm
+/cmmib10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr1
+0.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb><
+/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/sh
+are/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/share/texl
+ive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texm
+f-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/f
+onts/type1/public/amsfonts/cm/cmss10.pfb></usr/share/texlive/texmf-dist/fonts/t
+ype1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/p
+ublic/amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/a
+msfonts/cm/cmsy8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts
+/cm/cmti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cm
+tt10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msb
+m10.pfb>
+Output written on /home/pan/Projects/machine_learning/pan_integration/latex/out
+/source.pdf (51 pages, 643108 bytes).
+PDF statistics:
+ 331 PDF objects out of 1000 (max. 8388607)
+ 219 compressed objects within 3 object streams
+ 0 named destinations out of 1000 (max. 500000)
+ 23 words of extra memory for PDF output out of 10000 (max. 10000000)
+

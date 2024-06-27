@@ -69,27 +69,42 @@ class VfPlotter:
     ):
         if trajectories is not None:
             padding = 0.1
-            xmax = float(torch.max(trajectories[..., 0]) + padding)
-            xmin = float(torch.min(trajectories[..., 0]) - padding)
-            ymax = float(torch.max(trajectories[..., 1]) + padding)
-            ymin = float(torch.min(trajectories[..., 1]) - padding)
+            xmax = float(torch.max(trajectories) + padding)
+            xmin = float(torch.min(trajectories) - padding)
+            ymax = float(torch.max(trajectories) + padding)
+            ymin = float(torch.min(trajectories) - padding)
 
+
+        # win_sz = max(xmax - xmin, ymax - ymin) / 2
+        #
+        # xs = torch.linspace(
+        #     (xcenter := (xmin + xmax) / 2) - win_sz,
+        #     xcenter + win_sz,
+        #     self.grid_definition,
+        # ).to(self.device)
+        # ys = torch.linspace(
+        #     (ycenter := (ymin + ymax) / 2) - win_sz,
+        #     ycenter + win_sz,
+        #     self.grid_definition,
+        # ).to(self.device)
 
         win_sz = max(xmax - xmin, ymax - ymin) / 2
 
         xs = torch.linspace(
-            (xcenter := (xmin + xmax) / 2) - win_sz,
-            xcenter + win_sz,
+            xmin,
+            xmax,
             self.grid_definition,
         ).to(self.device)
         ys = torch.linspace(
-            (ycenter := (ymin + ymax) / 2) - win_sz,
-            ycenter + win_sz,
+            xmin,
+            xmax,
             self.grid_definition,
         ).to(self.device)
 
-        self.ax.set_xlim(xcenter - win_sz, xcenter+win_sz)
-        self.ax.set_ylim(ycenter - win_sz, ycenter+win_sz)
+        # self.ax.set_xlim(xcenter - win_sz, xcenter+win_sz)
+        # self.ax.set_ylim(ycenter - win_sz, ycenter+win_sz)
+        self.ax.set_xlim(xmin, xmax)
+        self.ax.set_ylim(ymin ,ymax)
 
         Xs, Ys = torch.meshgrid(xs, ys, indexing="xy")
 

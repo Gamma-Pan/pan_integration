@@ -1346,45 +1346,55 @@
 
     \subsection{A simple Neural Network}
     We apply this (zero order) algorithm to a toy example neural network, where we want to classify two clusters of
-    non linearly separable points in 2 dimensions.
+    non linearly separable points in 2 dimensions as seen in Figure ~\ref{fig:moons}.
 
     \begin{figure}[H]
         \begin{center}
-            \input{moons.pgf}
+            \resizebox{\textwidth}{!}{ \input{moons.pgf} }
         \end{center}
         \caption{The data are not linearly seperable}
         \label{fig:moons}
     \end{figure}
 
-    Our goal is to train a neural network that parametrises a vector field which when given these points ``maps'' them ()
+    Our goal is to train a neural network that parametrises a vector field which when given these points ``maps'' them (
     in the sense that the solution at time $T$ of the differential equation
-    $\pmb{y}^{(1)}(t) = f(\pmb{y}; \pmb{\theta})$, when given the data as initial conditions) to linearly separable regions.
+    $\pmb{y}^{(1)}(t) = f(\pmb{y}; \pmb{\theta})$, when given the data as initial conditions leads) to linearly separable regions.
     Besides the usual hyperparameters such as learning rate or network architecture we must also specify what solver will
     be used to solve the differential equation at each step of training as well as the solvers parameters
     (tolerance, order, etc.).
     For comparison with our solver we use the Tsitouras solver of order 5, an commonly used adaptive step explicit
     Runge Kutta method.
 
+    \begin{figure}[H]
+        \begin{center}
+            \resizebox{\textwidth}{!}{ \input{moons_sol.pgf} }
+        \end{center}
+        \caption{At convergence the vector field has learned to linearly seperate the datapoints}
+        \label{fig:moons_sol}
+    \end{figure}
+
+    The learned function $f$ is parameterised by a simple fully connected network around $~300$ parameters.
+    As we can see in Figure ~\ref{fig:moons_sol} the network manages to linearly separate the two clusters which can now be
+    classified by a simple linear classifier.
+    Moreover our proposed method is able to solve the differential equation in a lower number of function evaluations.
 
     \begin{table}[!h]
         \begin{center}
-            \caption{dfdf}
+            \caption{The two solver achieve perfect accuracy in different amount of funtion evaluations}
             \label{moons_metics}
             \renewcommand{\arraystretch}{1.5}
             \renewcommand{\tabcolsep}{10.25pt}
             \begin{tabular}{|c|c|c|c|}
                 \hline
-                Method(params) & loss & accuracy & NFE \\
+                Method & accuracy & NFE \\
+                \hline
+                PAN(zero order)  & 100\% & 16K\\
+                \hline
+                Tsitouras 5 & 100\% & 24K \\
                 \hline
             \end{tabular}
         \end{center}
     \end{table}
-
-
-
-
-
-
 
 
     \newpage

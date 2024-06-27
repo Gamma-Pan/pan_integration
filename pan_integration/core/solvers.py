@@ -123,6 +123,7 @@ class PanSolver:
     def _fixed_point(self, f, t_lims_init: Tuple, y_init: Tensor, f_init: Tensor):
         dims = y_init.shape
         y_init = y_init.view(-1)
+        f_init = f_init.view(-1)
         t_lims = t_lims_init
 
         dt = 2 / (t_lims[1] - t_lims[0])
@@ -134,7 +135,6 @@ class PanSolver:
 
         s = torch.sign(t_lims_init[1] - t_lims_init[0])
         while s*t_lims[0] < s*t_lims_init[1]:
-            prev_pointer = 0
             patience = 0
 
             while idx < self.max_iters:
