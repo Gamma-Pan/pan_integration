@@ -404,7 +404,7 @@
     To this end, many numerical methods have been developed over the years.
 
     \subsection{Introduction}
-    In this chapter we will make a short reference to some basic theoretical prerequisites of numerical ODE solver.
+    In this chapter we will make a short reference to some basic theoretical prerequisites of numerical ODE solvers.
     Then we will showcase some important methods.
     For simplicity we will focus on scalars but all the theorems are easily extensible to vectors.
     Moreover, we can consider higher dimensional IVPs as a (coupled) collection of scalar ODEs, so the same principles as
@@ -733,7 +733,7 @@
     time algorithm which is based on the use of a polynomial approximation of the solution of the IVP.
 
     \subsection{The Parareal algorithm}
-    The parareal algorithm is a method for solving initial value problems of the form
+    The parareal algorithm, proposed in\cite{maday2002parareal}, is a method for solving initial value problems of the form
     \begin{equation}
         \label{eq:pr_ivp}
         \pmb{y}^{(1)}(t) = f(t, \pmb{y}(t))
@@ -742,19 +742,18 @@
     The coarse solver, usually denoted by $G(t_n, t_{n+1}, \pmb{y}_n)$ provides a rough estimate for the solutions of IVP~\eqref{eq:pr_ivp}
     from $t_n$ to $t_{n+1}$ with $\pmb{y}_n$ initial conditions and the fine solver $F(t_n, t_{n+1}, \pmb{y}_n)$ a more
     precise (and thus more expensive) approximation to the same problem.
-    The coarse solver could for example be an Euler method and the fine solver could be a higher order method from the
+    The coarse solver could for example be Euler's method and the fine solver a higher order method from the
     Runge Kutta family of solvers.
-    Following is simple, but mathematically equivalent to the original paper, derivation of the parareal method given
-    by~\cite{baffico2002parallel}.
+    Following is simpler derivation of the parareal method as proposed by~\cite{baffico2002parallel}.
 
-    To introduce parallelism to the solution of the IVP, parareal methods split the integration interval $[0, T]$ to $M$
+    To introduce parallelism to the solution of the IVP, parareal methods, split the integration interval $[0, T]$ to $M$
     sub-intervals $[t_n, t_{n+1}]$ with $0 = t_0 < t_1 < \dots < t_M = T$ and seeks to solve $M$ smaller IVPs.
-    More specifically, we start from an a set of initial conditions for each sub-interval
-    $(\pmb{y}_0^{0}, \pmb{y}_1^{0}, \dots ,\pmb{y}_M^{0})$.
+    More specifically, we start from the set $(\pmb{y}_0^{0}, \pmb{y}_1^{0}, \dots ,\pmb{y}_M^{0})$ of initial
+    conditions for each sub-interval.
     We can propagate this set of initial conditions to the final state at each interval $[t_n, t_{n+1}]$ using the fine
     solver and in fact we can perform all propagations in parallel.
-    If our set of initial conditions were the values of the true solution to Eq.~\ref{eq:pr_ivp} $\pmb{y}^*$ sampled at
-    points $\{t_n\}_0^M$, the terminal states of the fine solver at each sub-interval, $F(t_n, t_{n+1}, \pmb{y}^0_n)$ would
+    If our set of initial conditions were the values of the true solution $\pmb{y}^*$ to Eq.~\ref{eq:pr_ivp} sampled at
+    points $\{t_n\}_0^M$, the terminal states of the fine solver $F(t_n, t_{n+1}, \pmb{y}^0_n)$ at each sub-interval, would
     correspond to the initial condition of the next interval $\pmb{y}_{n+1}^0$ plus the solver error.
     Obviously, since our set of initial conditions is not the solution of the IVP there is an error term:
     \begin{equation}
@@ -764,7 +763,7 @@
     We seek to find the next set of initial conditions $(\pmb{y}_0^{1}, \pmb{y}_1^{1}, \dots ,\pmb{y}_M^{1})$ such that
     $\Delta_n^1 <  \Delta_n^0$
     We need to define how we obtain the first set of initial conditions and how we correct it.
-    A logical choice is to first solve the IVP sequentially using the cheap coarse solver $G$ yielding the sequence
+    A logical choice is to solve the IVP sequentially using the cheap coarse solver $G$ yielding the sequence:
     \begin{gather}
         \label{eq:pr_init}
         \pmb{y}_{n+1}^0 = G(t_n, t_{n+1}, \pmb{y}_n^0) \quad n = 0,1, \dots, M \\
@@ -786,30 +785,44 @@
     \subsection{Polynomial approximation}
     Let us consider the following initial value problem that we wish to solve in some time interval
     $t \in [0 , T]$ with $\pmb{y} (t_0)= \pmb{y}_0$.
-    We will examine the scalar case first where $y : \mathbb{R} \to \mathbb{R}$:
+    To begin with, we shall examine the scalar case first where $y : \mathbb{R} \to \mathbb{R}$:
     \begin{equation}
         y^{(1)}(t) = f(y(t)) \label{dydt}
     \end{equation}
-    We define the $N$-th order polynomial approximation  $\hat{y}(t)=\sum_{n=0}^{N-1} b_n \phi_n(t) $  where $ \phi_n(t) $ are basis functions
-    for a vector space of polynomials and $b_n$ are some coefficients we wish to find.
-    We can also express $\hat{y}$ as the dot product $\hat{y}(t)=  \pmb{b}^t \pmb{\phi}(t)$ where
-    $\pmb{\phi} : [0,T] \to \mathbb{R}^N$ and $\pmb{b} \in \mathbb{R}^N$.
+    We define the $N$-th order polynomial approximation:
+    \begin{equation*}
+        \hat{y}(t)=\sum_{n=0}^{N-1} b_n \phi_n(t)
+    \end{equation*}
+    where $ \phi_n(t) $ are basis functions for a vector space of polynomials and $b_n$ are some coefficients we wish to find.
+    We can also express $\hat{y}$ as the dot product $\hat{y}(t)=  \pmb{b}^t \pmb{\phi}(t)$ where $\pmb{b} \in \mathbb{R}^N$ and
+    $\pmb{\phi} : [0,T] \to \mathbb{R}^N$ a vector containing the basis functions:
+    \begin{equation*}
+        \pmb{\phi}(t) =
+        \begin{bmatrix}
+             \phi_0(t) & \phi_1(t) & \dots & \phi_{N-1}(t)
+        \end{bmatrix}
+    \end{equation*}
+    Logically, it follows that the time derivative of $\pmb{\phi}(t)$ is:
+    \begin{equation*}
+        \pmb{\phi}^{(1)}(t) =
+        \begin{bmatrix}
+            \phi_0^{(1)}(t) & \phi_1^{(1)}(t) & \dots & \phi_{N-1}^{(1)}(t)
+        \end{bmatrix}
+    \end{equation*}
     By substituting $\hat{y}$ in~\eqref{dydt} we get:
     \begin{align}
         \pmb{b}^T \pmb{\phi}^{(1)}(t)   &\approx f( \pmb{b}^T \pmb{\phi}(t) ) \label{dPhidt}
-        \\
-        \pmb{b}^T \pmb{\dot{\phi}}(t)  &\approx f( \pmb{b}^T \pmb{\phi}(t)) \label{dphi_fphi}
     \end{align}
-    We define an approximation error (in the mean square error sense) that we wish to minimise in the interval of interest.
+    We define an approximation error (in the mean square error sense):
     \begin{equation}
         \label{eq:error_wrt_B}
         e(\pmb{b}) = \int_0^T
         \left(
-        \pmb{b}^T  \, \pmb{\dot{\phi}}(\tau) - f( \pmb{b}^T \pmb{\phi}(\tau)   )
+        \pmb{b}^T  \, \pmb{\phi}^{(1)}(\tau) - f( \pmb{b}^T \pmb{\phi}(\tau)   )
         \right)^2
         d\tau
     \end{equation}
-
+    that we wish to minimise in the interval of interest.
     Depending on the choice of basis functions, the derivative of $\pmb{\phi}(t)$ with respect to time can be trivial
     to obtain analytically.
     Note that $\pmb{\phi}$ is a function of single variable hence it's derivative $\pmb{\phi}^{(1)}$ has the same
@@ -818,7 +831,7 @@
     We opt to use Chebyshev polynomials as the basis functions of our approximation which are known for their
     properties in approximation theory ~\cite{trefethen1996finite}.
     They form an orthonormal basis for functions in $[-1,1]$ but we can use them in our desired interval through a
-    simple change of variables while being mindful of the differential in $\frac{d}{dt} \pmb{\phi}(t) $.
+    simple change of variables while being mindful of the differential $d \hat{t}$.
     More specifically, through the linear transformation $\hat{t} = 2*\frac{ t -  \alpha} { \beta - \alpha} -1$ we can
     move the integration interval from $[a,b]$ to $[-1,1]$.
     By substituting $t = \hat{t}$  in ~\eqref{dPhidt} we get:
@@ -826,20 +839,20 @@
 %        \label{dydt_hat}
         \pmb{b}^T \pmb{\phi}^{(1)}(\hat{t}(t)) &= f( \pmb{b}^T \pmb{\phi}(\hat{t}(t)) ) \\
         \hat{t}^{(1)}(t)  \;  \pmb{b}^T \pmb{\phi}^{(1)}(\hat{t}(t))  &= f( \pmb{b}^T \pmb{\phi}(\hat{t}(t)) ) \\
-        \frac{2}{b-a} \pmb{b}^T \pmb{\dot\phi}(\hat{t}) &= f( \pmb{b}^T \pmb{\phi}(\hat{t}) )
+        \frac{2}{b-a} \pmb{b}^T \pmb{\phi}^{(1)}(\hat{t}) &= f( \pmb{b}^T \pmb{\phi}(\hat{t}) )
     \end{align*}
     For the sake of convenience for the rest of the section we omit the hat from $t$ and the constant in front of
-    $\pmb{\dot\phi}(t)$ but keep in mind that the limits of integration are $[-1,1]$
+    $\pmb{\phi}^{(1)}(t)$ but keep in mind that the limits of integration are $[-1,1]$
     \\
 
-    Chebyshev polynomials of the first kind $T_n(t)$ can be defined by:
-    \begin{equation}
+    The Chebyshev polynomials of the first kind $T_n(t)$ are defined as:
+    \begin{equation*}
         T_n(\cos \theta) = \cos(n \theta)
-    \end{equation}
-    While Chebyshev polynomials of the second kind can be defined by:
-    \begin{equation}
+    \end{equation*}
+    While the Chebyshev polynomials of the second kind are defined as:
+    \begin{equation*}
         U_n(\cos \theta) \sin \theta = \sin( (n+1)\theta )
-    \end{equation}
+    \end{equation*}
     Alternatively, they can be obtained through the recurrence relationships:
     \begin{equation}
         \label{eq:cheb_rec}
@@ -857,7 +870,7 @@
     \end{equation}
     It can also be shown that for the derivative of $T_n$ it holds that:
     \begin{equation}
-        T_n^{(1)} = n U_{n-1}
+        T_n^{(1)}(t) = n U_{n-1}(t)
         \label{Dcheb}
     \end{equation}
 
@@ -866,19 +879,19 @@
     The error function is then reformulated as
     \begin{align}
         e(B) &= \int_{t_0}^{t_1} \lVert
-        B^T \pmb{\dot\phi}(\tau)   -
+        B^T \pmb{\phi}^{(1)}(\tau)   -
         f (B^T  \pmb\phi(\tau)  )
         \rVert^2
         \; d\tau
         \label{approx_error}
     \end{align}
     Since we operate in discrete time we define a grid of $M$ points $\pmb{t} = [t_0 \; t_1 \; \dots \; t_{M-1}]^T$ and
-    replace the integral with a Riemann sum.
-    The points are usually equidistant but other sets of points between $t_0$ and $t_1$ could be used.
-    For our calculations we use the Chebyshev node of the second kind $t_m = \cos\left( \frac{m\pi}{M-1} \right), \ m=0,\dots,M-1$.
+    approximate the integral with a Riemannian sum.
+    The points could be equidistant but other sets of points between $t_0$ and $t_1$ could be used.
+    For our calculations we use the Chebyshev nodes of the second kind $t_m = \cos\left( \frac{m\pi}{M-1} \right), \ m=0,\dots,M-1$.
     \begin{align}
         e(B) &= \sum_m \lVert
-        B^T \pmb{\dot\phi}(t_m)  -
+        B^T \pmb{\phi}^{(1)}(t_m)  -
         B^T f (  \pmb\phi(t_m)  )
         \rVert^2
         \Delta t_m
@@ -900,12 +913,12 @@
     Let's substitute $B$ at $(k+1)$-th iteration in ~\ref{eq:error_zero}:
     \begin{align}
         \nabla_{B_{k+1}} \sum_m \lVert
-        B_{k+1}^T \pmb{\dot\phi}(t_m)  -
+        B_{k+1}^T \pmb{\phi}^{(1)}(t_m)  -
         f ( (B_{k+1}^T \pmb\phi(t_m)  )
         \rVert^2_2
         \Delta t_m = 0 \\
         \nabla_{B_{k+1}}\sum_m \lVert
-        B_{k+1}^T \pmb{\dot\phi}(t_m)  -
+        B_{k+1}^T \pmb{\phi}^{(1)}(t_m)  -
         f \big( (B_{k} + \eta \Delta B_k)^T \pmb\phi(t_m)  \big)
         \rVert^2_2
         \Delta t_m = 0 \label{eq:B_inside_f}
@@ -916,14 +929,14 @@
     \begin{align}
         \sum_m \;
         \left(
-        B_{k+1}^T \pmb{\dot\phi}(t_m)  -
+        B_{k+1}^T \pmb{\phi}^{(1)}(t_m)  -
         f \big( (B_{k}^T \pmb\phi(t_m)  \big)
         \right)
-        \pmb{\dot\phi}^T(t_m)
+        \pmb{\phi}^{(1)T}(t_m)
         \Delta t_m = 0 \\
         \sum_m
-        B_{k+1}^T \pmb{\dot\phi}(t_m) \pmb{\dot\phi}^T(t_m) \Delta t_m-
-        f \big( (B_{k}^T \pmb\phi(t_m)  \big) \pmb{\dot\phi}^T(t_m) \Delta t_m
+        B_{k+1}^T \pmb{\phi}^{(1)}(t_m) \pmb{\phi}^{(1)T}(t_m) \Delta t_m-
+        f \big( (B_{k}^T \pmb\phi(t_m)  \big) \pmb{\phi}^{(1)T}(t_m) \Delta t_m
         = 0
         \label{eq:grad_err}
     \end{align}
@@ -941,31 +954,31 @@
     From ~\eqref{Dcheb} we can define the time derivatives of $\pmb\phi$ as:
     \begin{equation*}
         \label{DPHI}
-        \dot{\Phi} = \pmb{\dot\phi}(\pmb{t}^t) =
+        {\Phi}^{(1)} = \pmb{\phi}^{(1)}(\pmb{t}^t) =
         \begin{bmatrix}
             0                        & 0                        & \dots & 0                            \\
-            1\cdot U_0(t_0)          & 1\cdot U_0(t_1)          & \dots & 1\cdot U_0(t_{M-1})          \\
+            1 \: U_0(t_0)          & 1 \: U_0(t_1)          & \dots &        1 \: U_0(t_{M-1})          \\
             & & \vdots \\
-            (N-1) \cdot U_{N-2}(t_0) & (N-1) \cdot U_{N-2}(t_1) & \dots & (N-1) \cdot U_{N-2}(t_{M-1})
+            (N-1) \: U_{N-2}(t_0) & (N-1) \: U_{N-2}(t_1) & \dots & (N-1) \: U_{N-2}(t_{M-1})
         \end{bmatrix}
     \end{equation*}
     Using these matrices we can rewrite Eq.~\ref{eq:grad_err} in terms of matrix products as follows:
     \begin{align}
         0 &=
-        B_{k+1}^T \dot\Phi (\dot\Phi^T \odot \Delta \pmb{t} \cdot \pmb{1}^T  ) -
-        f \big( B_{k}^T  \Phi \big) ({\dot\Phi}^T \odot \Delta \pmb{t} \cdot \pmb{1}^T )
+        B_{k+1}^T \Phi^{(1)} (\Phi^{(1)T} \odot \Delta \pmb{t} \cdot \pmb{1}^T  ) -
+        f \big( B_{k}^T  \Phi \big) ({\Phi}^{(1)T} \odot \Delta \pmb{t} \cdot \pmb{1}^T )
         \\
         B_{k+1}^T &=
-        f \big( B_{k}^T \Phi \big) ( {\dot\Phi}^T \odot \Delta \pmb{t} \cdot \pmb{1}^T)
-        ( \dot\Phi (\dot\Phi^T \odot \Delta \pmb{t} \cdot \pmb{1}^T ) )^{-1} \label{update}
+        f \big( B_{k}^T \Phi \big) ( {\Phi}^{(1)T} \odot \Delta \pmb{t} \cdot \pmb{1}^T)
+        ( \Phi^{(1)} (\Phi^{(1)T} \odot \Delta \pmb{t} \cdot \pmb{1}^T ) )^{-1} \label{update}
     \end{align}
-    where $\odot$ is an element wise product, Eq.~\ref{update} outlines the iteration scheme for this zero order optimisation algorithm.
-    Omitting the partitions' lengths terms $\Delta \pmb{t}$ temporarily for clarity:
+    where $\odot$ is the Hadamard element wise operator, Eq.~\eqref{update} outlines the iteration scheme for this zero order algorithm.
+    Omitting the partitions' lengths terms $\Delta \pmb{t}$ temporarily for clarity
     \begin{equation}
         \label{eq:biter}
         B_{k+1}^T =
-        f \big( B_{k}^T \Phi \big) {\dot\Phi}^T
-        ( \dot\Phi \dot\Phi^T )^{-1}
+        f \big( B_{k}^T \Phi \big) {\Phi}^{(1)T}
+        ( \Phi^{(1)} \Phi^{(1)T} )^{-1}
     \end{equation}
     It becomes apparent that the inverted matrix is the same for all iterations meaning it only needs to be inverted
     once at the beginning.
@@ -1380,7 +1393,7 @@
 
     \begin{table}[!h]
         \begin{center}
-            \caption{The two solver achieve perfect accuracy in different amount of funtion evaluations}
+            \caption{The two solvers achieve perfect accuracy in different amount of funtion evaluations}
             \label{moons_metics}
             \renewcommand{\arraystretch}{1.5}
             \renewcommand{\tabcolsep}{10.25pt}

@@ -1014,8 +1014,8 @@
       \strng{authorbibnamehash}{63032a44f2bc372043964e7390ec209e}
       \strng{authornamehash}{63032a44f2bc372043964e7390ec209e}
       \strng{authorfullhash}{63032a44f2bc372043964e7390ec209e}
-      \field{sortinit}{2}
-      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Finite difference and spectral methods for ordinary and partial differential equations}

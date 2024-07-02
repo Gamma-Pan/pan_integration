@@ -17,8 +17,8 @@ class NN(nn.Module):
         super().__init__()
         self.w1 = torch.nn.Linear(2, 5)
         torch.nn.init.normal_(self.w1.weight, std=std)
-        # self.w2 = torch.nn.Linear(5, 5)
-        # torch.nn.init.normal_(self.w2.weight, std=std)
+        self.w2 = torch.nn.Linear(5, 5)
+        torch.nn.init.normal_(self.w2.weight, std=std)
         self.w3 = torch.nn.Linear(5, 2)
         torch.nn.init.normal_(self.w3.weight, std=std)
         self.A = torch.tensor([[-0.9, -2.0], [1.5, -1]], device=device)
@@ -27,7 +27,7 @@ class NN(nn.Module):
     def forward(self, t, y):
         self.nfe += 1
         y = torch.cos(0.5 * self.w1(y))
-        # y = F.softplus(0.5 * self.w2(y))
+        y = F.softplus(0.5 * self.w2(y))
         y = F.tanh(self.w3(y))
         return F.tanh(self.A @ y[..., None]).squeeze(-1)
 
@@ -38,9 +38,9 @@ if __name__ == "__main__":
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init =  torch.randn(1, 2, device=device)
+    y_init =  1*torch.randn(1, 2, device=device)
 
-    t_lims = [0, 1]
+    t_lims = [0, 3]
 
     plotter = VfPlotter(f, grid_definition=64, animation=True)
     sol_true = plotter.solve_ivp(
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         callback=callback,
         device=device,
         tol=1e-3,
-        patience=100,
+        patience=3,
         max_iters=2000
     )
 
