@@ -56,26 +56,35 @@ class PanSolver:
         device=None,
         callback=None,
         tol=0.1,
+        min_lr=1e-3,
         patience=30,
         max_iters=100,
     ):
         super().__init__()
-
-        self.callback = callback
-        self._num_coeff_per_dim = num_coeff_per_dim
-        self.num_points = num_coeff_per_dim - 2
-        self.tol = tol
-        self.patience = patience
-        self.max_iters = max_iters
 
         if device is None:
             self.device = torch.device("cpu")
         else:
             self.device = device
 
-        self.t_cheb, self.PHI, self.DPHI, self.DPHI_inv = self.calc_independent(
-            self.num_coeff_per_dim, self._num_coeff_per_dim - 2, device=self.device
-        )
+        self.callback = callback
+        # self._num_coeff_per_dim
+        self.num_coeff_per_dim = num_coeff_per_dim
+        self.num_points = num_coeff_per_dim - 2
+        self.tol = tol
+        self.patience = patience
+        self.min_lr = min_lr
+        self.max_iters = max_iters
+
+        # (
+        #     self.t_cheb,
+        #     self.PHI,
+        #     self.DPHI,
+        #     self.PHI_r,
+        #     self.DPHI_r,
+        #     self.PHI_r_inv,
+        #     self.DPHI_r_inv,
+        # ) = self.calc_independent(self.num_coeff_per_dim, self.num_coeff_per_dim-2, device=self.device)
 
     @property
     def num_coeff_per_dim(self):
@@ -84,9 +93,15 @@ class PanSolver:
     @num_coeff_per_dim.setter
     def num_coeff_per_dim(self, value):
         self.num_points = value - 2
-        self.t_cheb, self.PHI, self.DPHI, self.DPHI_inv = self.calc_independent(
-            value, value - 2, device=self.device
-        )
+        (
+            self.t_cheb,
+            self.PHI,
+            self.DPHI,
+            self.PHI_r,
+            self.DPHI_r,
+            self.PHI_r_inv,
+            self.DPHI_r_inv,
+        ) = self.calc_independent(value, value - 2, device=self.device)
         self._num_coeff_per_dim = value
 
     @staticmethod
@@ -98,9 +113,19 @@ class PanSolver:
 
         PHI = T_grid(t_cheb, num_coeff_per_dim)
         DPHI = DT_grid(t_cheb, num_coeff_per_dim)
-        DPHI_inv = linalg.inv(DPHI[2:, 1:] - DPHI[2:, [0]])
 
-        return t_cheb, PHI, DPHI, DPHI_inv
+        DPHI_r = DPHI[2:, 1:] - DPHI[2:, [0]]
+        DPHI_r_inv = linalg.inv(DPHI_r)
+
+        PHI_r = (
+            -PHI[2:, [0]]
+            - DPHI[2:, [0]]
+            - DPHI[2:, [0]] * t_cheb[None, 1:]
+            + PHI[2:, 1:]
+        )
+        PHI_r_inv = linalg.inv(PHI_r)
+
+        return t_cheb, PHI, DPHI, PHI_r, DPHI_r, PHI_r_inv, DPHI_r_inv
 
     def _add_head(self, B_R, dt, y_init, f_init):
         Phi_R0 = self.PHI[2:, [0]]
@@ -114,105 +139,270 @@ class PanSolver:
 
         return torch.cat([b_01, B_R], dim=-1)
 
-    # def _B_rest(self, B_R, N ):
-    #     k = arange(2,  N + 1)
-    #     t_cheb = -cos(pi * k / N).to(self.device)
-    #     DPhi_r = DT_grid(t_cheb, N)
-    #     return B_R @ (DPhi_r @ self.DPHI_inv)
+    def _B_rest(self, pointer, B_R_old, C_old, C_new):
 
-    def _fixed_point(self, f, t_lims_init: Tuple, y_init: Tensor, f_init: Tensor):
+        t_pointer = self.t_cheb[pointer]
+        t_pcheb = t_pointer + 0.5 * (1 - t_pointer) * (self.t_cheb + 1)
+
+        # loops! potential bottleneck
+        PHI_old = T_grid(t_pcheb, self._num_coeff_per_dim)
+        DPHI_old = DT_grid(t_pcheb, self._num_coeff_per_dim)
+
+        PHI_r_old = (
+            -PHI_old[2:, [0]]
+            - DPHI_old[2:, [0]]
+            - DPHI_old[2:, [0]] * t_pcheb[None, 1:]
+            + PHI_old[2:, 1:]
+        )
+
+        B_R_new = (C_old + B_R_old @ PHI_r_old - C_new) @ self.PHI_r_inv
+
+        return B_R_new
+
+    def _zero_order_nesterov(
+        self, f, t_lims: Tuple, y_init: Tensor, f_init: Tensor, B_R: Tensor = None
+    ):
+        # TODO: rewrite zero and first order more gracefully to avoid duplicate code
         dims = y_init.shape
-        y_init = y_init.view(-1)
-        f_init = f_init.view(-1)
-        t_lims = t_lims_init
-
         dt = 2 / (t_lims[1] - t_lims[0])
-        t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb[1:] + 1)
+        a = 1 / dt
+        t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb + 1)
 
-        idx = 0
-        B_R = torch.rand(y_init.numel(), self.num_coeff_per_dim - 2, device=self.device)
-        step = 0
+        y_init = y_init[..., None]
+        f_init = f_init[..., None]
 
-        s = torch.sign(t_lims_init[1] - t_lims_init[0])
-        while s*t_lims[0] < s*t_lims_init[1]:
-            patience = 0
+        C = a * f_init + y_init + a * f_init * self.t_cheb[None, 1:]
 
-            while idx < self.max_iters:
-                idx += 1
-                patience += 1
+        y_approx = torch.empty(*dims, self.num_points + 1)
+        f_approx = torch.empty(*dims, self.num_points)
 
-                B = self._add_head(B_R, dt, y_init, f_init)
+        def pseudo_grad(Bk):
+            nonlocal y_approx
+            nonlocal f_approx
 
-                y_approx = B @ self.PHI
-                f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1))(
-                    t_true,
-                    y_approx[..., 1:].reshape(*dims, -1),  # t=-1 is constrained by b0
-                ).reshape(-1, self.num_points)
+            y_approx = C + Bk @ self.PHI_r
+            f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_true[1:], y_approx)
+            Bk_p1 = (a * (f_approx - f_init)) @ self.DPHI_r_inv
+            return Bk_p1 - Bk
 
-                B_R = ((1 / dt) * (f_approx - f_init[..., None])) @ self.DPHI_inv
-                d_approx = dt * B @ self.DPHI[..., 1:]
+        if B_R is None:
+            B_R = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
 
-                if self.callback is not None:
-                    self.callback(
-                        t_lims,
-                        y_init.detach().reshape(*dims),
-                        f_init.detach().reshape(*dims),
-                        B.detach().reshape(*dims, self.num_coeff_per_dim),
+        DB_R = torch.zeros_like(B_R)
+
+        lr = 0.1
+        mu = 0.9
+
+        for i in range(1, 1000):
+            DB_R = mu * DB_R + lr * pseudo_grad(B_R + DB_R)
+            B_R = B_R + DB_R
+
+            if self.callback is not None:
+                B = self._add_head(B_R, dt, y_init[..., 0], f_init[..., 0])
+                self.callback(
+                    t_lims,
+                    y_init[..., 0].detach(),
+                    f_init[..., 0].detach(),
+                    B.detach(),
+                )
+
+        return y_approx[..., -1].reshape(*dims), f_approx[..., -1].reshape(*dims), B_R
+
+    def _zero_order(
+        self, f, t_lims: Tuple, y_init: Tensor, f_init: Tensor, B_R: Tensor = None
+    ):
+        # TODO: rewrite zero and first order more gracefully to avoid duplicate code
+        dims = y_init.shape
+        dt = 2 / (t_lims[1] - t_lims[0])
+        a = 1 / dt
+        t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb + 1)
+
+        y_init = y_init[..., None]
+        f_init = f_init[..., None]
+
+        C = a * f_init + y_init + a * f_init * self.t_cheb[None, 1:]
+
+        if B_R is None:
+            B_R = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
+
+        lr = 1
+        patience = 0
+        prev_pointer = 0
+        i = 0
+
+        while i < self.max_iters:
+            i += 1
+            patience += 1
+
+            y_approx = C + B_R @ self.PHI_r
+            f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_true[1:], y_approx)
+            d_approx = B_R @ self.DPHI_r
+
+            if self.callback is not None:
+                B = self._add_head(B_R.clone(), dt, y_init[..., 0], f_init[..., 0])
+                self.callback(
+                    t_lims,
+                    y_init[..., 0].detach(),
+                    f_init[..., 0].detach(),
+                    B.detach(),
+                )
+
+            losses = linalg.vector_norm(
+                f_approx - f_init - dt * d_approx, dim=(*range(len(dims)),)
+            )
+            print(losses)
+
+            pointer = -1 if len(x := (losses > self.tol).nonzero()) == 0 else x[0]
+            print(f"pointer {pointer.item()} | patience {patience}| lr {lr}")
+
+            if pointer == -1:
+                break
+
+            B_Rk = (a * (f_approx - f_init)) @ self.DPHI_r_inv
+            B_R = B_R + lr * (B_Rk - B_R)
+
+            if pointer > prev_pointer:
+                patience = 0
+                prev_pointer = pointer
+                continue
+
+            if patience == self.patience:
+                patience = 0
+                prev_pointer = 0
+                lr = lr * 0.5
+                if lr < self.min_lr:
+                    break
+                    lr = lr * (1 / 0.5) ** 2
+
+                    t_lims = [t_true[pointer - 1], t_lims[1]]
+
+                    dt = 2 / (t_lims[1] - t_lims[0])
+                    a = 1 / dt
+                    t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (
+                        self.t_cheb + 1
                     )
 
-                # diffs = torch.sum(
-                #     (f_approx / f_approx.norm(dim=0))
-                #     * (d_approx / d_approx.norm(dim=0)),
-                #     dim=0,
-                # )
+                    y_init = y_approx[..., [pointer - 1]]
+                    f_init = f_approx[..., [pointer - 1]]
 
-                diffs = (f_approx - d_approx).norm(dim=0)
+                    C_old = C
+                    C = a * f_init + y_init + a * f_init * self.t_cheb[None, 1:]
 
-                # if converged to accuracy
-                if (diffs <= self.tol).all():
+                    B_R = self._B_rest(pointer, B_R, C_old, C)
 
-                    # if solution was found too fast increase step
-                    # if patience <= 2:
-                    step = step * 1.1
+        return y_approx[..., -1].reshape(*dims), f_approx[..., -1].reshape(*dims), B_R
 
-                    y_init = y_approx[:, -1].squeeze()
-                    f_init = f_approx[:, -1].squeeze()
-                    tp = t_lims[1]
+    def _zero_order_fe(
+        self, f, t_lims: Tuple, y_init: Tensor, f_init: Tensor, B_R: Tensor = None
+    ):
+        dims = y_init.shape
+        dt = 2 / (t_lims[1] - t_lims[0])
+        a = 1 / dt
+        t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb + 1)
+
+        y_init = y_init[..., None]
+        f_init = f_init[..., None]
+
+        C = a * f_init + y_init + a * f_init * self.t_cheb[None, 1:]
+
+        if B_R is None:
+            B_R = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
+
+        i = 0
+        lr = 0.01
+
+        y_approx = C + B_R @ self.PHI_r
+        f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_true[1:], y_approx)
+        f_m1 = f_approx.clone()
+        f_m2 = f_approx.clone()
+        while i < self.max_iters:
+            i += 1
+
+            y_approx = C + B_R @ self.PHI_r
+            f_approx = vmap(f, in_dims=(0, -1), out_dims=(-1,))(t_true[1:], y_approx)
+            # d_approx = B_R @ self.DPHI_r
+
+            B_R = (lr * (f_m1 - f_init) + (1 - lr) * (f_m2 - f_init)) @ self.DPHI_r_inv
+            f_m2 = f_m1
+            f_m1 = f_approx
+
+            if self.callback is not None:
+                B = self._add_head(B_R.clone(), dt, y_init[..., 0], f_init[..., 0])
+                self.callback(
+                    t_lims,
+                    y_init[..., 0].detach(),
+                    f_init[..., 0].detach(),
+                    B.detach(),
+                )
+
+        return y_approx[..., -1].reshape(*dims), f_approx[..., -1].reshape(*dims), B_R
+
+    def _first_order(
+        self, f, t_lims: Tuple, y_init: Tensor, f_init: Tensor, B_R: Tensor = None
+    ):
+        print("-1-")
+        dims = y_init.shape
+        dt = 2 / (t_lims[1] - t_lims[0])
+        a = 1 / dt
+        t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb + 1)
+
+        y_init = y_init[..., None]
+        f_init = f_init[..., None]
+
+        C = a * f_init + y_init + a * f_init * self.t_cheb[None, 1:]
+
+        if B_R is None:
+            B_R = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
+
+        DB_R = torch.zeros_like(B_R)
+
+        prev_DB_R = DB_R
+        for i in range(self.max_iters):
+            y_approx = C + B_R @ self.PHI_r
+            d_approx = B_R @ self.DPHI_r
+
+            for i in range(200):
+                v = DB_R @ self.PHI_r
+
+                f_approx, Jvp = vmap(
+                    lambda t, y, v: torch.func.jvp(f, (t, y), (torch.tensor(1.0), v)),
+                    in_dims=(0, -1, -1),
+                    out_dims=(-1, -1),
+                )(t_true[1:], y_approx, v)
+
+                DB_R = (
+                    -d_approx + a * f_approx + a * Jvp - a * f_init
+                ) @ self.DPHI_r_inv
+
+                tol = (DB_R - prev_DB_R).norm()
+                if tol < 0.01:
                     break
 
-                if patience > self.patience:
+                prev_DB_R = DB_R
 
-                    pointer = (diffs > self.tol).nonzero()[0].item()
+                if self.callback is not None:
+                    B = self._add_head((B_R + DB_R), dt, y_init[..., 0], f_init[..., 0])
+                    self.callback(
+                        t_lims,
+                        y_init[..., 0].detach(),
+                        f_init[..., 0].detach(),
+                        B.detach(),
+                    )
 
-                    # if not a single point converged to accuracy
-                    if pointer == 0:
-                        tp = t_lims[0]
-                        step = (t_lims[1] - t_lims[0]) / 1.5
-                        break
+            B_R = B_R + DB_R
 
-                    tp = t_true[pointer - 1]
-                    y_init = y_approx[:, pointer].squeeze()
-                    f_init = f_approx[:, pointer].squeeze()
-
-                    # lower step
-                    step = tp - t_lims[0]
-                    break
-
-            t_lims = [tp, min(t_lims_init[1], tp + step)]
-            dt = 2 / (t_lims[1] - t_lims[0])
-            t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb[1:] + 1)
-
-        return y_approx[:, -1].reshape(*dims), f_approx[:, -1].reshape(*dims)
+        return (y_approx[..., -1].reshape(*dims), f_approx[..., -1].reshape(*dims), B_R)
 
     def solve(self, f, t_span, y_init, f_init=None, B_init=None):
 
         if f_init is None:
-            f_init = f(t_span[0], y_init).reshape(-1)
+            f_init = f(t_span[0], y_init)
 
         y_eval = [y_init]
 
         for t_lims in zip(t_span, t_span[1:]):
-            yk, fk = self._fixed_point(f, t_lims, y_init, f_init)
+            yk, fk, Bk = self._zero_order(f, t_lims, y_init, f_init)
+            yk, fk, Bk = self._first_order(f, t_lims, y_init, f_init, B_k)
             y_eval.append(yk)
             y_init = yk
             f_init = fk

@@ -34,11 +34,11 @@ class NN(nn.Module):
 
 if __name__ == "__main__":
 
-    f = NN(std=5).to(device)
+    f = NN(std=2).to(device)
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init =  1*torch.randn(1, 2, device=device)
+    y_init = 1 * torch.randn(1, 2, device=device)
 
     t_lims = [0, 3]
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         y_init,
         set_lims=True,
         ivp_kwargs=dict(solver="tsit5", atol=1e-9, rtol=1e-9),
-        plot_kwargs=dict(alpha=0.5, color='green'),
+        plot_kwargs=dict(alpha=0.5, color="green"),
     )
     sol_true = sol_true.to(device)
     f.nfe = 0
@@ -57,32 +57,34 @@ if __name__ == "__main__":
         y_init,
         t_span=torch.linspace(*t_lims, 2),
         solver="tsit5",
-        atol=1e-5,
-        rtol=1e-5,
+        atol=1e-4,
+        rtol=1e-4,
         return_all_eval=True,
     )
     plotter.ax.plot(sol[:, :, 0].cpu(), sol[:, :, 1].cpu(), "--", color="cyan")
     plotter.wait()
     print(f"tsit | nfe: {f.nfe} | err: {torch.norm(sol_true[-1]-sol[-1])} ")
     max_iter = f.nfe
+    plotter.wait()
 
-    def callback(t_lims, y_init, f_init, B ):
-        plotter.approx(
-            [torch.tensor(0.0), torch.tensor(10.0)],  # t_lims,
+    def callback(tt_lims, y_init, f_init, B):
+        approx = plotter.approx(
+            tensor(t_lims),
             B,
-            show_arrows=True,
-            num_arrows=5,
-            num_points=32,
+            num_arrows=10,
+            num_points=101,
             marker=None,
             markersize=2.5,
             alpha=0.70,
             color="green",
         )
 
+        print(f" pan | nfe: {f.nfe} | err: {torch.norm(approx[-1] - sol_true[-1])} ")
+
         plotter.fig.canvas.flush_events()
         plotter.fig.canvas.draw()
-        # plt.pause(0.5)
-        plotter.wait()
+        # plt.pause(0.2)
+        # plotter.wait()
 
     f.nfe = 0
 
@@ -90,9 +92,10 @@ if __name__ == "__main__":
         num_coeff_per_dim=32,
         callback=callback,
         device=device,
-        tol=1e-3,
-        patience=3,
-        max_iters=2000
+        tol=1e-4,
+        patience=5,
+        min_lr = 1e-10,
+        max_iters=10000,
     )
 
     approx, _ = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)

@@ -19,6 +19,7 @@ quiver_args = {
     "headaxislength": 1.5,
     "linewidth": 0.1,
     "angles": "xy",
+    'scale_units': 'width',
 }
 
 stream_kwargs = {
@@ -74,7 +75,6 @@ class VfPlotter:
             ymax = float(torch.max(trajectories) + padding)
             ymin = float(torch.min(trajectories) - padding)
 
-
         # win_sz = max(xmax - xmin, ymax - ymin) / 2
         #
         # xs = torch.linspace(
@@ -104,7 +104,7 @@ class VfPlotter:
         # self.ax.set_xlim(xcenter - win_sz, xcenter+win_sz)
         # self.ax.set_ylim(ycenter - win_sz, ycenter+win_sz)
         self.ax.set_xlim(xmin, xmax)
-        self.ax.set_ylim(ymin ,ymax)
+        self.ax.set_ylim(ymin, ymax)
 
         Xs, Ys = torch.meshgrid(xs, ys, indexing="xy")
 
@@ -127,7 +127,7 @@ class VfPlotter:
         t_span,
         y_init: torch.tensor = None,
         set_lims=False,
-        end_point = True,
+        end_point=True,
         ivp_kwargs=None,
         plot_kwargs=None,
     ):
@@ -143,7 +143,9 @@ class VfPlotter:
         self.ax.plot(*trajectories.unbind(dim=-1), **plot_kwargs)
 
         if end_point:
-            self.ax.scatter(*trajectories[-1].unbind(dim=-1), marker='o' ,color=plot_kwargs["color"] )
+            self.ax.scatter(
+                *trajectories[-1].unbind(dim=-1), marker="o", color=plot_kwargs["color"]
+            )
 
         if set_lims:
             self._plot_vector_field(trajectories)
@@ -157,11 +159,10 @@ class VfPlotter:
         num_coeff = B.shape[-1]
         t = torch.linspace(-1, 1, num_points)
         Phi = T_grid(t, num_coeff).to(B.device)
-        DPhi = (
-            2 / (t_lims[1].cpu() - t_lims[0].cpu()) * DT_grid(t, num_coeff).to(B.device)
-        )
+        DPhi = DT_grid(t, num_coeff).to(B.device)
+
         approx = B @ Phi
-        Dapprox = B @ DPhi
+        Dapprox = 2 / (t_lims[1].cpu() - t_lims[0].cpu()) * ( B @ DPhi)
         return (
             approx.permute(-1, *list(range(dims))),
             Dapprox.permute(-1, *list(range(dims))),
@@ -171,27 +172,33 @@ class VfPlotter:
         self,
         t_lims,
         B=None,
-        show_arrows=False,
         num_arrows: int = 10,
         num_points=100,
         **kwargs,
     ):
+        show_arrows = (num_arrows > 0,)
+
         t_init = t_lims[0]
         approx, Dapprox = self._approx_from_B(B, t_lims, num_points)
+        approx = approx.cpu()
 
-        every_num_points = num_points // num_arrows
-
-        # approx = approx + y_init
         if self.t_init != t_init:
             self.t_init = t_init
             self.lines = self.ax.plot(*approx.cpu().unbind(-1), **kwargs)
             if show_arrows:
+                every_num_points = num_points // (num_arrows)
+                d_approx = Dapprox[::every_num_points].cpu()
+                f_approx = self.f(0, approx[::every_num_points]).cpu()
+                self.f.nfe -= 1
+
                 self.arrows = self.ax.quiver(
-                    *approx[::every_num_points].cpu().unbind(-1), *Dapprox[::every_num_points].cpu().unbind(-1), **quiver_args
+                    *approx[::every_num_points].unbind(-1),
+                    *d_approx.unbind(-1),
+                    **quiver_args,
                 )
                 self.farrows = self.ax.quiver(
-                    *approx[::every_num_points].cpu().unbind(-1),
-                    *self.f(0, approx)[::every_num_points].cpu().unbind(-1),
+                    *approx[::every_num_points].unbind(-1),
+                    *f_approx.unbind(-1),
                     **quiver_args,
                     color="red",
                 )
@@ -200,11 +207,17 @@ class VfPlotter:
                 line.set_data(*data.unbind(-1))
 
             if show_arrows:
-                self.arrows.set_UVC(*Dapprox[::every_num_points].cpu().unbind(-1))
-                self.farrows.set_UVC(*self.f(0, approx[::every_num_points]).cpu().unbind(-1))
+                every_num_points = num_points // (num_arrows)
+                d_approx = Dapprox[::every_num_points].cpu()
+                f_approx = self.f(0, approx)[::every_num_points].cpu()
+                self.f.nfe -= 1
 
-                self.arrows.set_offsets(approx[::every_num_points].cpu().reshape(-1, 2))
-                self.farrows.set_offsets(approx[::every_num_points].cpu().reshape(-1, 2))
+                self.arrows.set_UVC(*d_approx.unbind(-1))
+
+                self.farrows.set_UVC(*f_approx.unbind(-1))
+
+                self.arrows.set_offsets(approx[::every_num_points].reshape(-1, 2))
+                self.farrows.set_offsets(approx[::every_num_points].reshape(-1, 2))
 
         return approx
 
