@@ -35,13 +35,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 NUM_WORKERS = mp.cpu_count() - 1
 MAX_STEPS = -1
-DATASET = "CIFAR10"
+DATASET = "MNIST"
 
 
 class Augmenter(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, channels, 3, 1, 1, bias=False)
+        self.conv1 = nn.Conv2d(1, channels, 3, 1, 1, bias=False)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -158,7 +158,7 @@ def run(
         callbacks=callbacks,
         max_steps=max_steps,
     )
-    dmodule = CIFAR10DataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
+    dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
     trainer.fit(learner, datamodule=dmodule)
     if test:
@@ -194,22 +194,6 @@ if __name__ == "__main__":
 
     configs = (
         dict(
-            name="pan_32_32",
-            mode="pan",
-            solver_config={
-                "num_coeff_per_dim": 32,
-                "tol": 1e-3,
-                "max_iters": 200,
-                "patience" : 20
-            },
-            log=WANDB_LOG,
-            epochs=EPOCHS,
-            profile=PROFILE,
-            test=TEST,
-            max_steps=MAX_STEPS,
-            points=2,
-        ),
-        dict(
             name="dopri",
             mode="shoot",
             solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
@@ -218,6 +202,22 @@ if __name__ == "__main__":
             profile=PROFILE,
             test=TEST,
             max_steps=MAX_STEPS,
+        ),
+        dict(
+            name="pan_32_32",
+            mode="pan",
+            solver_config={
+                "num_coeff_per_dim": 32,
+                "tol": 1e-3,
+                "max_iters": 200,
+                "patience" : 3
+            },
+            log=WANDB_LOG,
+            epochs=EPOCHS,
+            profile=PROFILE,
+            test=TEST,
+            max_steps=MAX_STEPS,
+            points=2,
         ),
         # dict(
         #     name="rk4-10",

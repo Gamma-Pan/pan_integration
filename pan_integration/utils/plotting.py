@@ -176,7 +176,7 @@ class VfPlotter:
         num_points=100,
         **kwargs,
     ):
-        show_arrows = (num_arrows > 0,)
+        show_arrows = num_arrows > 0
 
         t_init = t_lims[0]
         approx, Dapprox = self._approx_from_B(B, t_lims, num_points)
@@ -186,7 +186,7 @@ class VfPlotter:
             self.t_init = t_init
             self.lines = self.ax.plot(*approx.cpu().unbind(-1), **kwargs)
             if show_arrows:
-                every_num_points = num_points // (num_arrows)
+                every_num_points = num_points // num_arrows
                 d_approx = Dapprox[::every_num_points].cpu()
                 f_approx = self.f(0, approx[::every_num_points]).cpu()
                 self.f.nfe -= 1
@@ -207,7 +207,7 @@ class VfPlotter:
                 line.set_data(*data.unbind(-1))
 
             if show_arrows:
-                every_num_points = num_points // (num_arrows)
+                every_num_points = num_points // num_arrows
                 d_approx = Dapprox[::every_num_points].cpu()
                 f_approx = self.f(0, approx)[::every_num_points].cpu()
                 self.f.nfe -= 1

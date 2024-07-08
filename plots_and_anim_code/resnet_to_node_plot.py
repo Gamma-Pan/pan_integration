@@ -9,14 +9,14 @@ mpl.use("TkAgg")
 mpl.rc("axes", edgecolor="55555588")
 
 # copy pasted code
-mpl.rcParams.update(
-    {
-        "pgf.texsystem": "pdflatex",
-        "font.family": "serif",
-        "text.usetex": True,
-        "pgf.rcfonts": False,
-    }
-)
+# mpl.rcParams.update(
+#     {
+#         "pgf.texsystem": "pdflatex",
+#         "font.family": "serif",
+#         "text.usetex": True,
+#         "pgf.rcfonts": False,
+#     }
+# )
 plt.close("all")
 
 
@@ -29,9 +29,9 @@ t_grid_def = 20
 y_lims = [-0.6, 0.6]
 y_grid_def = 20
 
-cm = 1/2.54
-fig_ode, ax = plt.subplots(2, 2, layout="tight", figsize=(12*cm, 12*cm))
-fig_ode.suptitle("ResNet as discretisation of ODEs")
+cm = 1 / 2.54
+# fig_ode, ax = plt.subplots(2, 2, layout="tight", figsize=(12 * cm, 12 * cm))
+# fig_ode.suptitle("ResNet as discretisation of ODEs")
 
 init_points = np.linspace(-0.1, 0.1, 5)
 init_points = np.vstack((np.zeros(init_points.shape[0]), init_points)).T
@@ -102,18 +102,25 @@ def ode_streams(ax, opacity, stream_kwargs=None):
     )
 
 
+fig, ax = plt.subplots()
 # draw resnet states
-resnet_states(ax[0][0], 7, {"marker": "o"})
-ode_streams(ax[0][0], "10")
+resnet_states(ax, 7, {"marker": "o"})
+ode_streams(ax, "10")
+plt.savefig("resnet_to_node_plot_1.png")
 
-resnet_states(ax[0][1], 18, {"marker": "o"})
-ode_streams(ax[0][1], "20")
+fig, ax = plt.subplots()
+resnet_states(ax, 18, {"marker": "o"})
+ode_streams(ax, "20")
+plt.savefig("resnet_to_node_plot_2.png")
 
-resnet_states(ax[1][0], 50, {"marker": "o", "linestyle": "-", "markersize": 4})
-ode_streams(ax[1][0], "30")
+fig, ax = plt.subplots()
+resnet_states(ax, 50, {"marker": "o", "linestyle": "-", "markersize": 4})
+ode_streams(ax, "30")
+plt.savefig("resnet_to_node_plot_3.png")
 
+fig, ax = plt.subplots()
 resnet_states(
-    ax[1][1],
+    ax,
     100,
     {
         "linestyle": "-",
@@ -121,8 +128,8 @@ resnet_states(
     },
     discrete=False,
 )
-ode_streams(ax[1][1], "80")
+ode_streams(ax, "80")
+plt.savefig("resnet_to_node_plot_4.png")
 
 # plt.show()
-plt.savefig("resnet_to_node_plot.pgf")
-
+# plt.savefig("resnet_to_node_plot.pgf")

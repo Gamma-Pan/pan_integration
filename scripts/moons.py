@@ -73,7 +73,7 @@ vf = VF().to(device)
 
 model_pan = PanODE(
     vf,
-    solver={"num_coeff_per_dim": 16, "patience": 15, "tol": 1e-3},
+    solver={"num_coeff_per_dim": 16, "patience": 3, "tol": 1e-3},
     sensitivity="adjoint",
     device=device,
 )
@@ -86,8 +86,8 @@ model_tsit = NeuralODE(
     rtol=1e-3,
 )
 
-model = model_tsit
-# model = model_pan
+# model = model_tsit
+model = model_pan
 t_span = torch.linspace(0, 1, 2).to(device)
 
 lit_learner = LitLearner(model, t_span)

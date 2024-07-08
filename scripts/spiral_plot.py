@@ -34,11 +34,11 @@ class NN(nn.Module):
 
 if __name__ == "__main__":
 
-    f = NN(std=2).to(device)
+    f = NN(std=5).to(device)
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = 1 * torch.randn(1, 2, device=device)
+    y_init = 1 * torch.randn(5, 2, device=device)
 
     t_lims = [0, 3]
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         y_init,
         set_lims=True,
         ivp_kwargs=dict(solver="tsit5", atol=1e-9, rtol=1e-9),
-        plot_kwargs=dict(alpha=0.5, color="green"),
+        plot_kwargs=dict(alpha=0.2, color="green"),
     )
     sol_true = sol_true.to(device)
     f.nfe = 0
@@ -61,17 +61,17 @@ if __name__ == "__main__":
         rtol=1e-4,
         return_all_eval=True,
     )
-    plotter.ax.plot(sol[:, :, 0].cpu(), sol[:, :, 1].cpu(), "--", color="cyan")
+    plotter.ax.plot(sol[:, :, 0].cpu(), sol[:, :, 1].cpu(), "--", color="cyan", alpha=0.2)
     plotter.wait()
     print(f"tsit | nfe: {f.nfe} | err: {torch.norm(sol_true[-1]-sol[-1])} ")
     max_iter = f.nfe
     plotter.wait()
 
-    def callback(tt_lims, y_init, f_init, B):
+    def callback(i, tt_lims, y_init, f_init, B):
         approx = plotter.approx(
             tensor(t_lims),
             B,
-            num_arrows=10,
+            num_arrows=0,
             num_points=101,
             marker=None,
             markersize=2.5,
@@ -79,7 +79,7 @@ if __name__ == "__main__":
             color="green",
         )
 
-        print(f" pan | nfe: {f.nfe} | err: {torch.norm(approx[-1] - sol_true[-1])} ")
+        # print(f" pan | nfe: {f.nfe} | err: {torch.norm(approx[-1] - sol_true[-1])} ")
 
         plotter.fig.canvas.flush_events()
         plotter.fig.canvas.draw()
@@ -93,9 +93,9 @@ if __name__ == "__main__":
         callback=callback,
         device=device,
         tol=1e-4,
-        patience=5,
-        min_lr = 1e-10,
-        max_iters=10000,
+        patience=3,
+        min_lr = 1e-3,
+        max_iters=1000,
     )
 
     approx, _ = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)
