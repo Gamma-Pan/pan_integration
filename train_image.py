@@ -33,7 +33,7 @@ import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-NUM_WORKERS = mp.cpu_count() - 1
+NUM_WORKERS = 10 #mp.cpu_count() - 1
 MAX_STEPS = -1
 DATASET = "MNIST"
 
@@ -86,8 +86,6 @@ class Classifier(nn.Module):
         x = self.flatten(x)
         x = self.lin1(x)
         return x
-
-# dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
 
 def run(
@@ -210,7 +208,9 @@ if __name__ == "__main__":
                 "num_coeff_per_dim": 32,
                 "tol": 1e-3,
                 "max_iters": 200,
-                "patience" : 3
+                "min_lr": 1e-3,
+                "gamma": 0.9
+
             },
             log=WANDB_LOG,
             epochs=EPOCHS,
@@ -219,15 +219,6 @@ if __name__ == "__main__":
             max_steps=MAX_STEPS,
             points=2,
         ),
-        # dict(
-        #     name="rk4-10",
-        #     mode="shoot",
-        #     solver_config={"solver": "rk-4"},
-        #     log=WANDB_LOG,
-        #     epochs=EPOCHS,
-        #     test=TEST,
-        #     max_steps=MAX_STEPS
-        # ),
     )
 
     for config in configs:

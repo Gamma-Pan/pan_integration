@@ -63,7 +63,7 @@ class PanSolver:
         min_lr=1e-3,
         patience=3,
         max_iters=100,
-        gamma = 0.9
+        gamma=0.9,
     ):
         super().__init__()
 
@@ -161,7 +161,7 @@ class PanSolver:
 
         t_lims = [t_pointer, t_true[-1]]
         t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb + 1)
-        a = 0.5* (t_lims[-1] - t_lims[0])
+        a = 0.5 * (t_lims[-1] - t_lims[0])
         y_init = y_k[..., [pointer - 1]]
         f_init = f_k[..., [pointer - 1]]
         C_new = a * f_init + y_init + a * f_init * self.t_cheb[None, 1:]
@@ -176,7 +176,6 @@ class PanSolver:
     def _zero_order(
         self, f, t_lims: Tuple, y_init: Tensor, f_init: Tensor, B_R: Tensor = None
     ):
-        # TODO: rewrite zero and first order more gracefully to avoid duplicate code
         dims = y_init.shape
         a = 0.5 * (t_lims[1] - t_lims[0])
         t_true = t_lims[0] + 0.5 * (t_lims[1] - t_lims[0]) * (self.t_cheb + 1)
@@ -189,10 +188,9 @@ class PanSolver:
         if B_R is None:
             B_R = torch.rand(*dims, self.num_coeff_per_dim - 2, device=self.device)
 
-        lr = 1
+        lr = torch.ones(dims[0], device=self.device)
         gamma = self.gamma
-        patience = 0
-        prev_pointer = 0
+        prev_rel_error = torch.inf * torch.ones(dims[0], device=self.device)
 
         for i in range(self.max_iters):
             y_k = C + B_R @ self.PHI_r
@@ -203,40 +201,30 @@ class PanSolver:
             )
 
             DB_R = (a * f_k - a * f_init - Dy_k) @ self.DPHI_r_inv
-            B_R = B_R + lr * DB_R
+            B_R = B_R + lr.view(dims[0], *len(dims) * [1]) * DB_R
 
+            # error per batch sample
             rel_err = linalg.vector_norm(
-                Dy_k - a * (f_k - f_init), dim=(*range(len(dims)),)
+                a * f_k - a * f_init - Dy_k, dim=(*range(1, len(dims) + 1),)
             )
+
+            print(rel_err)
 
             if (rel_err < self.tol).all():
                 break
 
-            pointer = (rel_err > self.tol).nonzero()[0]
+            lr = torch.where(rel_err > prev_rel_error, lr * gamma, lr)
 
-            if pointer > prev_pointer:
-                patience = 0
-            else:
-                patience += 1
-                if patience >= self.patience:
-                    lr *= gamma
-                    patience = 0
-                    if lr < self.min_lr:
-                        break
-                        # print(pointer)
-                        # lr = lr*10
-                        # pointer = 0
-                        # t_lims, t_true, a, y_init, f_init, C, B_R = self._B_rest(
-                        #     pointer, t_true, y_init, f_init, B_R, C, y_k, f_k
-                        # )
+            if (lr < self.min_lr).all():
+                break
 
-            prev_pointer = pointer
+            prev_rel_error = rel_err
 
             if self.callback is not None:
                 B = self._add_head(
                     B_R.detach().clone(), 1 / a, y_init[..., 0], f_init[..., 0]
                 )
-                self.callback(i, t_lims, y_init, f_init, B)
+                self.callback(i, t_lims, y_init, f_init, B, lr)
 
         return y_k[..., -1].reshape(*dims), f_k[..., -1].reshape(*dims), B_R
 
