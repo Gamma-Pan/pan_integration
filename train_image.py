@@ -30,8 +30,8 @@ from typing import Union
 from datetime import datetime
 import multiprocessing as mp
 
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.set_float32_matmul_precision('high')
 
 NUM_WORKERS = 10 #mp.cpu_count() - 1
 MAX_STEPS = -1
@@ -152,9 +152,11 @@ def run(
         max_epochs=epochs,
         enable_checkpointing=True,
         accelerator="gpu",
+        gpus=1,
         logger=logger,
         callbacks=callbacks,
         max_steps=max_steps,
+
     )
     dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
