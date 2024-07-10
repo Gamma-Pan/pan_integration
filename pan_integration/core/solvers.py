@@ -208,7 +208,7 @@ class PanSolver:
                 a * f_k - a * f_init - Dy_k, dim=(*range(1, len(dims) + 1),)
             )
 
-            print(rel_err)
+            # print(rel_err)
 
             if (rel_err < self.tol).all():
                 break

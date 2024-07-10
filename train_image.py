@@ -152,7 +152,7 @@ def run(
         max_epochs=epochs,
         enable_checkpointing=True,
         accelerator="gpu",
-        gpus=1,
+        devices=1,
         logger=logger,
         callbacks=callbacks,
         max_steps=max_steps,
