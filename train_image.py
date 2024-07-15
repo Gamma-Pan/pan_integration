@@ -31,9 +31,9 @@ from datetime import datetime
 import multiprocessing as mp
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.set_float32_matmul_precision('high')
+torch.set_float32_matmul_precision("high")
 
-NUM_WORKERS = 10 #mp.cpu_count() - 1
+NUM_WORKERS = 10  # mp.cpu_count() - 1
 MAX_STEPS = -1
 DATASET = "MNIST"
 
@@ -156,7 +156,6 @@ def run(
         logger=logger,
         callbacks=callbacks,
         max_steps=max_steps,
-
     )
     dmodule = MNISTDataModule(batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
 
@@ -194,7 +193,7 @@ if __name__ == "__main__":
 
     configs = (
         dict(
-            name="dopri",
+            name="dopri5",
             mode="shoot",
             solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
             log=WANDB_LOG,
@@ -207,19 +206,18 @@ if __name__ == "__main__":
             name="pan_32_32",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 32,
-                "tol": 1e-3,
-                "max_iters": 200,
+                "num_coeff_per_dim": 8,
+                "tol": 1e-2,
+                "max_iters": 10,
                 "min_lr": 1e-3,
-                "gamma": 0.9
-
+                "gamma": 0.95,
             },
             log=WANDB_LOG,
             epochs=EPOCHS,
             profile=PROFILE,
             test=TEST,
             max_steps=MAX_STEPS,
-            points=2,
+            points=20,
         ),
     )
 

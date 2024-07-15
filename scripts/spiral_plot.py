@@ -36,11 +36,11 @@ class NN(nn.Module):
 
 if __name__ == "__main__":
 
-    f = NN(std=5.0).to(device)
+    f = NN(std=10.0).to(device)
     for param in f.parameters():
         param.requires_grad_(False)
 
-    y_init = 1 * torch.randn(5, 2, device=device)
+    y_init = 1 * torch.randn(1, 2, device=device)
 
     t_lims = [0, 2]
 
@@ -109,8 +109,7 @@ if __name__ == "__main__":
         plotter.fig.canvas.draw()
         # plt.pause(0.2)
 
-        if i > 100:
-            plotter.wait()
+        # plotter.wait()
 
         # writer.grab_frame()
 
@@ -121,9 +120,9 @@ if __name__ == "__main__":
         callback=callback,
         device=device,
         tol=1e-3,
-        min_lr=1e-3,
-        max_iters=1000,
-        gamma=0.9,
+        min_lr=1e-5,
+        max_iters=10000,
+        gamma=0.99,
     )
 
     approx, _ = solver.solve(f, torch.linspace(*t_lims, 2, device=device), y_init)

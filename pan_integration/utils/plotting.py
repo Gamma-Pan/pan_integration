@@ -2,6 +2,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from typing import Callable
 from itertools import cycle
+from math import sqrt, ceil, floor
 
 from matplotlib.animation import PillowWriter
 import torch
@@ -14,12 +15,10 @@ from torchdyn.numerics import odeint
 mpl.use("TkAgg")
 
 quiver_args = {
-    "headwidth": 2,
-    "headlength": 2,
+    "headwidth": 3,
+    "headlength": 3,
     "headaxislength": 1.5,
-    "linewidth": 0.1,
-    "angles": "xy",
-    'scale_units': 'width',
+    "linewidth": 1,
 }
 
 stream_kwargs = {
@@ -162,7 +161,7 @@ class VfPlotter:
         DPhi = DT_grid(t, num_coeff).to(B.device)
 
         approx = B @ Phi
-        Dapprox = 2 / (t_lims[1].cpu() - t_lims[0].cpu()) * ( B @ DPhi)
+        Dapprox = 2 / (t_lims[1].cpu() - t_lims[0].cpu()) * (B @ DPhi)
         return (
             approx.permute(-1, *list(range(dims))),
             Dapprox.permute(-1, *list(range(dims))),
@@ -171,7 +170,7 @@ class VfPlotter:
     def approx(
         self,
         t_lims,
-        B=None,
+        B,
         num_arrows: int = 10,
         num_points=100,
         **kwargs,
@@ -213,7 +212,6 @@ class VfPlotter:
                 self.f.nfe -= 1
 
                 self.arrows.set_UVC(*d_approx.unbind(-1))
-
                 self.farrows.set_UVC(*f_approx.unbind(-1))
 
                 self.arrows.set_offsets(approx[::every_num_points].reshape(-1, 2))
@@ -227,6 +225,164 @@ class VfPlotter:
 
     def wait(self):
         wait()
+
+
+class DimPlotter:
+    def __init__(
+        self,
+        f: Callable,
+        plot_dims: list,
+        existing_axes=None,
+        ax_kwargs=None,
+    ):
+        self.f = f
+        self.t_init = None
+
+        self.textx = 0.05
+
+        if isinstance(plot_dims, list):
+            self.plot_dims = tensor(plot_dims)
+        elif isinstance(plot_dims, torch.Tensor):
+            self.plot_dims = plot_dims
+
+        axis_side = ceil(sqrt(len(plot_dims)))
+
+        if existing_axes is None:
+            self.fig, self.axes = plt.subplots(axis_side, axis_side)
+            for ax in self.fig.axes:
+                ax.set_xticks([])
+            self.axes_r = [self.axes] if len(plot_dims) == 1 else self.axes.reshape(-1)
+        else:
+            self.axes = existing_axes
+
+    def solve_ivp(
+        self,
+        t_span,
+        y_init: torch.tensor = None,
+        set_lims=False,
+        ivp_kwargs=None,
+        plot_kwargs=None,
+    ):
+        if plot_kwargs is None:
+            plot_kwargs = {"color": "red"}
+        if ivp_kwargs is None:
+            ivp_kwargs = {"solver": "tsit5", "atol": 1e-9, "rtol": 1e-12}
+
+        self.device = y_init.device
+        self.f.nfe = 0
+        t_eval, trajectories = odeint(self.f, y_init, t_span, **ivp_kwargs)
+        nfe = self.f.nfe
+        trajectories = trajectories[..., *self.plot_dims.unbind(-1)]
+
+        self.fig.text(x=self.textx, y=0.05, s=f"nfe: {nfe}", color=plot_kwargs["color"])
+        self.textx += 0.3
+
+        for ax, dim in zip(self.axes_r, trajectories.unbind(dim=-1)):
+            ax.plot(t_span, dim, **plot_kwargs)
+            ax.set_ylim(
+                (dmin := dim.min()) - 0.1 * dmin * dmin.sign(),
+                (dmax := dim.max()) + 0.1 * dmax * dmax.sign(),
+            )
+
+    def _approx_from_B(self, B, t_lims, num_points=100):
+        num_coeff = B.shape[-1]
+        t = torch.linspace(-1, 1, num_points)
+        Phi = T_grid(t, num_coeff).to(B.device)
+        DPhi = DT_grid(t, num_coeff).to(B.device)
+
+        approx = B @ Phi
+        Dapprox = 2 / (t_lims[1].cpu() - t_lims[0].cpu()) * (B @ DPhi)
+
+        return approx, Dapprox
+
+    def approx(
+        self,
+        t_lims,
+        B,
+        num_arrows: int = 10,
+        num_points=100,
+        **kwargs,
+    ):
+        temp = self.f.nfe
+        show_arrows = num_arrows > 0
+        if show_arrows:
+            every_n = num_points // num_arrows
+
+        t_init = t_lims[0]
+        approx, Dapprox = self._approx_from_B(B, t_lims, num_points)
+        approx = approx.cpu()
+
+        t_span = torch.linspace(*t_lims, num_points).to(B.device)
+
+        if self.t_init != t_init:
+            self.t_init = t_init
+
+            self.approx_lines = []
+            for ax, dim in zip(self.axes_r, approx[*self.plot_dims.unbind(-1)].cpu()):
+                self.approx_lines.append(ax.plot(t_span, dim, **kwargs)[0])
+
+            if show_arrows:
+                d_approx = Dapprox[*self.plot_dims.unbind(-1), ::every_n].cpu()
+                f_approx = torch.func.vmap(self.f, in_dims=(0, -1), out_dims=(-1))(
+                    t_span, approx
+                )[*self.plot_dims.unbind(-1), ::every_n].cpu()
+
+                self.arrows = []
+                self.farrows = []
+                for ax, dim, d_dim, f_dim in zip(
+                    self.axes_r,
+                    approx[*self.plot_dims.unbind(-1), ::every_n],
+                    d_approx,
+                    f_approx,
+                ):
+                    # self.arrows.append(
+                    #     ax.quiver(
+                    #         t_span[::every_n],
+                    #         dim,
+                    #         torch.ones_like(d_dim),
+                    #         d_dim,
+                    #         angles="xy",
+                    #         color="blue",
+                    #     )
+                    # )
+                    self.farrows.append(
+                        ax.quiver(
+                            t_span[::every_n],
+                            dim,
+                            torch.ones_like(f_dim),
+                            f_dim,
+                            angles="xy",
+                            color="green",
+                        )
+                    )
+        else:
+            for line, dim in zip(self.approx_lines, approx[*self.plot_dims.unbind(-1)]):
+                line.set_data(t_span, dim)
+
+                if show_arrows:
+                    d_approx = Dapprox[*self.plot_dims.unbind(-1), ::every_n].cpu()
+                    f_approx = torch.func.vmap(self.f, in_dims=(0, -1), out_dims=(-1))(
+                        t_span, approx
+                    )[*self.plot_dims.unbind(-1), ::every_n].cpu()
+
+                    for fquiver, dim, ddim, fdim in zip(
+                        self.farrows,
+                        approx[*self.plot_dims.unbind(-1), ::every_n],
+                        d_approx,
+                        f_approx,
+                    ):
+
+                        # quiver.set_offsets(
+                        #     torch.stack([t_span[::every_n], dim], dim=-1)
+                        # )
+                        fquiver.set_offsets(
+                            torch.stack([t_span[::every_n], dim], dim=-1)
+                        )
+
+                        # quiver.set_UVC(torch.ones_like(ddim), ddim)
+                        fquiver.set_UVC(torch.ones_like(fdim), fdim)
+        self.f.nfe = temp
+        return approx
 
 
 class LsPlotter:
@@ -318,32 +474,3 @@ class LsPlotter:
 
     def close_all(self):
         plt.close(self.fig)
-
-
-# class DimPlotter():
-#
-#     def callback(B, t_lims, y_init):
-#         dims = len(B.shape) - 1
-#         num_coeff = B.shape[-1]
-#         t = torch.linspace(-1, 1, 100).to(device)
-#         Phi = T_grid(t, num_coeff)
-#         DPhi = 2 / (t_lims[1] - t_lims[0]) * DT_grid(t, num_coeff)
-#
-#         approx = B @ Phi
-#         Dapprox = B @ DPhi
-#
-#         t_sol = torch.linspace(*t_lims, 100)
-#         _, sol = torchdyn.numerics.odeint(
-#             vf, solver="tsit5", t_span=t_sol, save_at=t_sol, x=y_init
-#         )
-#         batch = torch.randint(0,BATCH_SIZE-1,(1,))
-#         channel = torch.randint(0, 8-1, (1,))
-#         dim1= torch.randint(0,5, (1,))
-#         dim2 = torch.randint(0,5, (1,))
-#         yy_init = y_init[batch, channel, dim1, dim2].cpu()
-#         ax.set_ylim( yy_init -1, yy_init+1)
-#         line_sol.set_ydata(sol[:, batch, channel, dim1, dim2].cpu())
-#         line_approx.set_ydata(approx[batch, channel, dim1, dim2, :].mT.cpu())
-#
-#         fig.canvas.flush_events()
-#         fig.canvas.draw()
