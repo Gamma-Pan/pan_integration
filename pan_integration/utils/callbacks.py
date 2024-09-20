@@ -75,7 +75,7 @@ class VizEmbeddings(pl.Callback):
                     f'loss: {trainer.callback_metrics["train_loss"]:2.2f}'
                 )
                 # get the 2D embedding of saved images
-                pl_module.model.eval()
+                pl_module.model.int()
                 embeddings = encoder(imgs.cuda()).cpu()
                 pl_module.model.train()
 
@@ -143,7 +143,7 @@ class VizComparison(pl.Callback):
                     f"epoch: {trainer.current_epoch} "
                     f'loss: {trainer.callback_metrics["train_loss"]:2.2f}'
                 )
-                pl_module.model.eval()
+                pl_module.model.int()
                 reconstructions = pl_module.forward(pl_module.img_tensor.cuda()).cpu()
                 pl_module.model.train()
                 appended_imgs = torch.concat(

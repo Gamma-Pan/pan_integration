@@ -266,11 +266,14 @@ class DimPlotter:
         if plot_kwargs is None:
             plot_kwargs = {"color": "red"}
         if ivp_kwargs is None:
-            ivp_kwargs = {"solver": "tsit5", "atol": 1e-9, "rtol": 1e-12}
+            ivp_kwargs = {"solver": "dopri5", "atol": 1e-9, "rtol": 1e-9}
 
         self.device = y_init.device
         self.f.nfe = 0
-        t_eval, trajectories = odeint(self.f, y_init, t_span, **ivp_kwargs)
+        t_eval, trajectories = odeint(
+            self.f, y_init, t_span, return_all_eval=True, **ivp_kwargs
+        )
+        t_plot = torch.linspace( t_span[0], t_span[1], trajectories.shape[0])
         nfe = self.f.nfe
         trajectories = trajectories[..., *self.plot_dims.unbind(-1)]
 
@@ -278,11 +281,13 @@ class DimPlotter:
         self.textx += 0.3
 
         for ax, dim in zip(self.axes_r, trajectories.unbind(dim=-1)):
-            ax.plot(t_span, dim, **plot_kwargs)
+            ax.plot(t_plot, dim, **plot_kwargs)
             ax.set_ylim(
                 (dmin := dim.min()) - 0.1 * dmin * dmin.sign(),
                 (dmax := dim.max()) + 0.1 * dmax * dmax.sign(),
             )
+
+        return trajectories
 
     def _approx_from_B(self, B, t_lims, num_points=100):
         num_coeff = B.shape[-1]
@@ -353,6 +358,8 @@ class DimPlotter:
                             f_dim,
                             angles="xy",
                             color="green",
+                            zorder=1000,
+                            alpha=0.5,
                         )
                     )
         else:

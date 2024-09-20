@@ -192,21 +192,21 @@ if __name__ == "__main__":
     PROFILE = args["profile"]
 
     configs = (
-        dict(
-            name="dopri5",
-            mode="shoot",
-            solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
-            log=WANDB_LOG,
-            epochs=EPOCHS,
-            profile=PROFILE,
-            test=TEST,
-            max_steps=MAX_STEPS,
-        ),
+        # dict(
+        #     name="dopri5",
+        #     mode="shoot",
+        #     solver_config={"solver": "dopri5", "atol": 1e-4, "rtol": 1e-4},
+        #     log=WANDB_LOG,
+        #     epochs=EPOCHS,
+        #     profile=PROFILE,
+        #     test=TEST,
+        #     max_steps=MAX_STEPS,
+        # ),
         dict(
             name="pan_32_32",
             mode="pan",
             solver_config={
-                "num_coeff_per_dim": 8,
+                "num_coeff_per_dim": 10,
                 "tol": 1e-2,
                 "max_iters": 10,
                 "min_lr": 1e-3,
@@ -217,7 +217,7 @@ if __name__ == "__main__":
             profile=PROFILE,
             test=TEST,
             max_steps=MAX_STEPS,
-            points=20,
+            points=2,
         ),
     )
 
