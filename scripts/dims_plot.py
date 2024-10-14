@@ -1,14 +1,8 @@
 import torch
 from torch import tensor, nn, linalg, cos, sin, cosh, exp
 from torch.nn import functional as F
-from torch.func import jacrev
 from pan_integration.utils.plotting import wait, DimPlotter
 
-from scipy.optimize import linprog
-from torchdiffeq import odeint
-
-
-import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 mpl.use("TkAgg")
@@ -25,7 +19,7 @@ torch.manual_seed(68)
 device = torch.device("cpu")
 DIMS = 1
 NUM_COFF = 20
-INTERS = 20
+INTERS = 10
 
 a = 1000
 
@@ -110,7 +104,7 @@ if __name__ == "__main__":
             num_arrows=0,
             num_points=100,
             marker='o',
-            markersize=2.5,
+            markersize=1,
             alpha=0.70,
             color="red",
         )
@@ -138,10 +132,10 @@ if __name__ == "__main__":
         f,
         torch.linspace(*t_lims, INTERS+1),
         y_init,
+        method='lstsq'
     )
 
-    plt.show()
-    #########################################################################
+    wait()
 
 
 

@@ -2,15 +2,7 @@ import torch
 from torch import Tensor, tensor, nn, cos, pi, arange, hstack, cat, arccos, linspace
 from torch.func import vmap, jacrev
 from torch import linalg
-from typing import Tuple, Callable
-from functools import partial
-from scipy.optimize import linprog
-
-from torchmin import minimize
-
-import matplotlib.pyplot as plt
-
-from torch.linalg import inv
+from typing import Tuple
 
 
 def T_grid(t, num_coeff_per_dim):
@@ -330,26 +322,31 @@ class PanSolver:
         C = a * f_init + y_init + a * f_init * self.t_scld[None, 1:]
 
         if B_R is None:
-            B_R = torch.zeros(*dims, self.num_coeff_per_dim - 2, device=self.device)
+            B_R = torch.randn(*dims, self.num_coeff_per_dim - 2, device=self.device)
 
-        for i in range(1, self.max_iters):
+        def g(B_R):
 
-            B_Rr = (torch.randn(*dims, self.num_coeff_per_dim - 2, device=self.device)*
-                    torch.pow(10, torch.arange(self.num_coeff_per_dim -2))
-                    )
-
-            y_k = C + B_Rr @ self.PHI_r
+            y_k = C + B_R @ self.PHI_r
 
             f_k = vmap(f, in_dims=(0, -1), out_dims=(-1))(
                 t_true[1:],
                 y_k,
             )
 
-            h = 1/(i + 1)
-            B_R = B_R + h*((a * f_k - a * f_init) @ self.DPHI_r_inv - B_R)
+            return f_k, (y_k, f_k)
 
-            Dy_k = B_R @ self.DPHI_r
-            rel_error = torch.norm((a * f_k - a * f_init) - Dy_k)
+        for i in range(1, self.max_iters):
+
+            # naive version, no jvp
+            J_k, (y_k, f_k) = jacrev(g, has_aux=True)(B_R)
+
+            # TODO: figure out what to do with cross batch jacobian
+            J_k = J_k.squeeze().mT[None]
+            A = self.DPHI_r #- a*J_k
+            q = B_R @ self.DPHI_r - a*f_k + a*f_init
+
+            h = 0.01
+            B_R = B_R + h * q @ A.mT @ linalg.inv(A @ A.mT)
 
             if self.callback is not None:
                 B = self._add_head(
@@ -367,8 +364,16 @@ class PanSolver:
         y_init,
         f_init=None,
         B_init=None,
+        method='zero',
         **kwargs,
     ):
+
+        func = None
+        match method:
+            case 'zero':
+                func = self._zero_order
+            case 'lstsq':
+                func = self._lstsq
 
         if f_init is None:
             f_init = f(t_span[0], y_init)
@@ -379,7 +384,7 @@ class PanSolver:
         yk = y_init
         fk = f_init
         for t_lims in zip(t_span, t_span[1:]):
-            yk, fk, Bk = self._zero_order(
+            yk, fk, Bk = func(
                 f,
                 t_lims,
                 yk,

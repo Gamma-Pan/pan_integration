@@ -2,7 +2,6 @@ from typing import Any
 
 from lightning import LightningModule
 from lightning.pytorch.callbacks import Callback
-from lightning.pytorch.utilities.types import STEP_OUTPUT
 import matplotlib.pyplot as plt
 
 import torch

@@ -51,6 +51,7 @@
     </requires>
     <requires type="static">
       <file>blx-dm.def</file>
+      <file>blx-unicode.def</file>
       <file>blx-compat.def</file>
       <file>biblatex.def</file>
       <file>standard.bbx</file>
@@ -60,7 +61,9 @@
       <file>numeric-comp.cbx</file>
       <file>ieee.cbx</file>
       <file>biblatex.cfg</file>
+      <file>greek.lbx</file>
       <file>english.lbx</file>
+      <file>american.lbx</file>
     </requires>
   </internal>
   <external package="biblatex" priority="5" active="0">

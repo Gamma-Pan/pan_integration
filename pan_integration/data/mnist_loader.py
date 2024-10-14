@@ -73,27 +73,30 @@ class MNISTDataModule(L.LightningDataModule):
                 self.data_dir, train=False, transform=self.test_transform
             )
 
-    def train_dataloader(self):
+    def train_dataloader(self, **kwargs):
         return DataLoader(
             self.mnist_train,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             shuffle=False,
+            **kwargs
         )
 
-    def val_dataloader(self):
+    def val_dataloader(self, **kwargs):
         return DataLoader(
             self.mnist_val,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
+            **kwargs
         )
 
-    def test_dataloader(self):
+    def test_dataloader(self, **kwargs):
         return DataLoader(
             self.mnist_test,
-            batch_size=self.batch_size,
+            batch_size =self.batch_size,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
+            **kwargs
         )

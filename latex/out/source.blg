@@ -1,17 +1,17 @@
 [0] Config.pm:307> INFO - This is Biber 2.19
 [0] Config.pm:310> INFO - Logfile is 'source.blg'
-[66] biber:340> INFO - === Σαβ Ιουλ  6, 2024, 14:25:55
-[80] Biber.pm:419> INFO - Reading 'source.bcf'
-[133] Biber.pm:979> INFO - Found 37 citekeys in bib section 0
-[144] Biber.pm:4419> INFO - Processing section 0
-[152] Biber.pm:4610> INFO - Looking for bibtex file 'references.bib' for section 0
-[153] bibtex.pm:1713> INFO - LaTeX decoding ...
-[178] bibtex.pm:1519> INFO - Found BibTeX data source '/home/pan/Projects/machine_learning/pan_integration/latex/references.bib'
-[397] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
-[397] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
-[397] Biber.pm:4239> INFO - Sorting list 'none/global//global/global' of type 'entry' with template 'none' and locale 'en-US'
-[397] Biber.pm:4245> INFO - No sort tailoring available for locale 'en-US'
-[413] bbl.pm:660> INFO - Writing 'source.bbl' with encoding 'UTF-8'
-[423] bbl.pm:763> INFO - Output to source.bbl
-[424] Biber.pm:131> WARN - legacy month field 'June' in entry 'He_2016_CVPR' is not an integer - this will probably not sort properly.
-[424] Biber.pm:133> INFO - WARNINGS: 1
+[64] biber:340> INFO - === Παρ Σεπ 20, 2024, 23:55:54
+[77] Biber.pm:419> INFO - Reading 'source.bcf'
+[130] Biber.pm:979> INFO - Found 37 citekeys in bib section 0
+[141] Biber.pm:4419> INFO - Processing section 0
+[149] Biber.pm:4610> INFO - Looking for bibtex file 'references.bib' for section 0
+[151] bibtex.pm:1713> INFO - LaTeX decoding ...
+[175] bibtex.pm:1519> INFO - Found BibTeX data source '/home/pan/Projects/machine_learning/pan_integration/latex/references.bib'
+[391] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[391] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[391] Biber.pm:4239> INFO - Sorting list 'none/global//global/global' of type 'entry' with template 'none' and locale 'en-US'
+[391] Biber.pm:4245> INFO - No sort tailoring available for locale 'en-US'
+[407] bbl.pm:660> INFO - Writing 'source.bbl' with encoding 'UTF-8'
+[417] bbl.pm:763> INFO - Output to source.bbl
+[417] Biber.pm:131> WARN - legacy month field 'June' in entry 'He_2016_CVPR' is not an integer - this will probably not sort properly.
+[417] Biber.pm:133> INFO - WARNINGS: 1

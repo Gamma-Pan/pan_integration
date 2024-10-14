@@ -1,37 +1,241 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2024.5.30)  6 JUL 2024 14:26
-entering extended mode
- restricted \write18 enabled.
+This is LuaHBTeX, Version 1.17.0 (TeX Live 2023/Debian)  (format=lualatex 2024.7.10)  20 SEP 2024 23:56
+ restricted system commands enabled.
  file:line:error style messages enabled.
- %&-line parsing enabled.
 **source.tex
 (./source.tex
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
-(/usr/share/texlive/texmf-dist/tex/latex/base/report.cls
+Lua module: luaotfload 2023-08-31 3.26 Lua based OpenType font support
+Lua module: lualibs 2023-07-13 2.76 ConTeXt Lua standard libraries.
+Lua module: lualibs-extended 2023-07-13 2.76 ConTeXt Lua libraries -- extended c
+ollection.
+luaotfload | conf : Root cache directory is "/home/pan/.texlive2023/texmf-var/lu
+atex-cache/generic/names".
+luaotfload | init : Loading fontloader "fontloader-2023-08-19.lua" from kpse-res
+olved path "/usr/share/texlive/texmf-dist/tex/luatex/luaotfload/fontloader-2023-
+08-19.lua".
+Lua-only attribute luaotfload@noligature = 1
+luaotfload | init : Context OpenType loader version 3.133
+Inserting `luaotfload.node_processor' in `pre_linebreak_filter'.
+Inserting `luaotfload.node_processor' in `hpack_filter'.
+Inserting `luaotfload.glyph_stream' in `glyph_stream_provider'.
+Inserting `luaotfload.define_font' in `define_font'.
+Lua-only attribute luaotfload_color_attribute = 2
+luaotfload | conf : Root cache directory is "/home/pan/.texlive2023/texmf-var/lu
+atex-cache/generic/names".
+Inserting `luaotfload.harf.strip_prefix' in `find_opentype_file'.
+Inserting `luaotfload.harf.strip_prefix' in `find_truetype_file'.
+Removing  `luaotfload.glyph_stream' from `glyph_stream_provider'.
+Inserting `luaotfload.harf.glyphstream' in `glyph_stream_provider'.
+Inserting `luaotfload.harf.finalize_vlist' in `post_linebreak_filter'.
+Inserting `luaotfload.harf.finalize_hlist' in `hpack_filter'.
+Inserting `luaotfload.cleanup_files' in `wrapup_run'.
+Inserting `luaotfload.harf.finalize_unicode' in `finish_pdffile'.
+Inserting `luaotfload.glyphinfo' in `glyph_info'.
+Lua-only attribute luaotfload.letterspace_done = 3
+Inserting `luaotfload.aux.set_sscale_dimens' in `luaotfload.patch_font'.
+Inserting `luaotfload.aux.set_font_index' in `luaotfload.patch_font'.
+Inserting `luaotfload.aux.patch_cambria_domh' in `luaotfload.patch_font'.
+Inserting `luaotfload.aux.fixup_fontdata' in `luaotfload.patch_font_unsafe'.
+Inserting `luaotfload.aux.set_capheight' in `luaotfload.patch_font'.
+Inserting `luaotfload.aux.set_xheight' in `luaotfload.patch_font'.
+Inserting `luaotfload.rewrite_fontname' in `luaotfload.patch_font'.
+Inserting `tracingstacklevels' in `input_level_string'. (/usr/share/texlive/tex
+mf-dist/tex/latex/base/report.cls
 Document Class: report 2023/05/17 v1.4n Standard LaTeX document class
 (/usr/share/texlive/texmf-dist/tex/latex/base/size11.clo
 File: size11.clo 2023/05/17 v1.4n Standard LaTeX file (size option)
-)
-\c@part=\count187
-\c@chapter=\count188
-\c@section=\count189
-\c@subsection=\count190
-\c@subsubsection=\count191
-\c@paragraph=\count192
-\c@subparagraph=\count193
-\c@figure=\count194
-\c@table=\count195
+luaotfload | db : Font names database loaded from /home/pan/.texlive2023/texmf-v
+ar/luatex-cache/generic/names/luaotfload-names.luc.gz)
+\c@part=\count185
+\c@chapter=\count186
+\c@section=\count187
+\c@subsection=\count188
+\c@subsubsection=\count189
+\c@paragraph=\count190
+\c@subparagraph=\count191
+\c@figure=\count192
+\c@table=\count193
 \abovecaptionskip=\skip48
 \belowcaptionskip=\skip49
-\bibindent=\dimen140
+\bibindent=\dimen139
+)
+(/usr/share/texlive/texmf-dist/tex/latex/fontspec/fontspec.sty
+(/usr/share/texlive/texmf-dist/tex/latex/l3packages/xparse/xparse.sty
+(/usr/share/texlive/texmf-dist/tex/latex/l3kernel/expl3.sty
+Package: expl3 2024-01-22 L3 programming layer (loader) 
+
+(/usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-luatex.def
+File: l3backend-luatex.def 2024-01-04 L3 backend support: PDF output (LuaTeX)
+\l__color_backend_stack_int=\count194
+Inserting `l3color' in `luaotfload.parse_color'.
+\l__pdf_internal_box=\box51
+))
+Package: xparse 2023-10-10 L3 Experimental document command parser
+)
+Package: fontspec 2022/01/15 v2.8a Font selection for XeLaTeX and LuaLaTeX
+Lua module: fontspec 2022/01/15 2.8a Font selection for XeLaTeX and LuaLaTeX
+(/usr/share/texlive/texmf-dist/tex/latex/fontspec/fontspec-luatex.sty
+Package: fontspec-luatex 2022/01/15 v2.8a Font selection for XeLaTeX and LuaLaT
+eX
+\l__fontspec_script_int=\count195
+\l__fontspec_language_int=\count196
+\l__fontspec_strnum_int=\count197
+\l__fontspec_tmp_int=\count198
+\l__fontspec_tmpa_int=\count199
+\l__fontspec_tmpb_int=\count266
+\l__fontspec_tmpc_int=\count267
+\l__fontspec_em_int=\count268
+\l__fontspec_emdef_int=\count269
+\l__fontspec_strong_int=\count270
+\l__fontspec_strongdef_int=\count271
+\l__fontspec_tmpa_dim=\dimen140
+\l__fontspec_tmpb_dim=\dimen141
+\l__fontspec_tmpc_dim=\dimen142
+
+(/usr/share/texlive/texmf-dist/tex/latex/base/fontenc.sty
+Package: fontenc 2021/04/29 v2.0v Standard LaTeX package
+)
+(/usr/share/texlive/texmf-dist/tex/latex/fontspec/fontspec.cfg)))
+luaotfload | cache : Lookup cache loaded from /home/pan/.texlive2023/texmf-var/l
+uatex-cache/generic/names/luaotfload-lookup-cache.luc.
+luaotfload | aux : font no 23 (nil) does not define feature smcp for script latn
+ with language dflt
+luaotfload | aux : font no 24 (nil) does not define feature smcp for script latn
+ with language dflt
+luaotfload | aux : font no 25 (nil) does not define feature smcp for script latn
+ with language dflt
+luaotfload | aux : font no 26 (nil) does not define feature smcp for script latn
+ with language dflt
+
+Package fontspec Info: Font family 'LiberationSerif(0)' created for font
+(fontspec)             'Liberation Serif' with options [Ligatures=TeX].
+(fontspec)              
+(fontspec)              This font family consists of the following NFSS
+(fontspec)             series/shapes:
+(fontspec)              
+(fontspec)             - 'normal' (m/n) with NFSS spec.:
+(fontspec)             <->"LiberationSerif:mode=node;script=latn;language=dflt;
++tlig;"
+(fontspec)             - 'small caps'  (m/sc) with NFSS spec.: 
+(fontspec)             - 'bold' (b/n) with NFSS spec.:
+(fontspec)             <->"LiberationSerif/B:mode=node;script=latn;language=dfl
+t;+tlig;"
+(fontspec)             - 'bold small caps'  (b/sc) with NFSS spec.: 
+(fontspec)             - 'italic' (m/it) with NFSS spec.:
+(fontspec)             <->"LiberationSerif/I:mode=node;script=latn;language=dfl
+t;+tlig;"
+(fontspec)             - 'italic small caps'  (m/scit) with NFSS spec.: 
+(fontspec)             - 'bold italic' (b/it) with NFSS spec.:
+(fontspec)             <->"LiberationSerif/BI:mode=node;script=latn;language=df
+lt;+tlig;"
+(fontspec)             - 'bold italic small caps'  (b/scit) with NFSS spec.: 
+
+
+Package fontspec Info: Could not resolve font "GFSArtemisia/BI" (it probably
+(fontspec)             doesn't exist).
+
+luaotfload | aux : font no 34 (nil) does not define feature smcp for script latn
+ with language dflt
+luaotfload | aux : font no 35 (nil) does not define feature smcp for script latn
+ with language dflt
+
+Package fontspec Info: Font family 'GFSArtemisia(0)' created for font 'GFS
+(fontspec)             Artemisia' with options [].
+(fontspec)              
+(fontspec)              This font family consists of the following NFSS
+(fontspec)             series/shapes:
+(fontspec)              
+(fontspec)             - 'normal' (m/n) with NFSS spec.:
+(fontspec)             <->"GFSArtemisia:mode=node;script=latn;language=dflt;"
+(fontspec)             - 'small caps'  (m/sc) with NFSS spec.:
+(fontspec)             <->"GFSArtemisia:mode=node;script=latn;language=dflt;+sm
+cp;"
+(fontspec)             - 'bold' (b/n) with NFSS spec.:
+(fontspec)             <->"GFSArtemisia/B:mode=node;script=latn;language=dflt;"
+
+(fontspec)             - 'bold small caps'  (b/sc) with NFSS spec.: 
+(fontspec)             - 'italic' (m/it) with NFSS spec.:
+(fontspec)             <->"GFSArtemisia/I:mode=node;script=latn;language=dflt;"
+
+(fontspec)             - 'italic small caps'  (m/scit) with NFSS spec.: 
+
+
+(/usr/share/texlive/texmf-dist/tex/latex/polyglossia/polyglossia.sty
+Package: polyglossia 2023/12/11 v1.66 Modern multilingual typesetting with XeLa
+TeX and LuaLaTeX
+
+(/usr/share/texlive/texmf-dist/tex/latex/etoolbox/etoolbox.sty
+Package: etoolbox 2020/10/05 v2.5k e-TeX tools for LaTeX (JAW)
+\etb@tempcnta=\count272
+)
+(/usr/share/texlive/texmf-dist/tex/latex/xkeyval/xkeyval.sty
+Package: xkeyval 2022/06/16 v2.9 package option processing (HA)
+
+(/usr/share/texlive/texmf-dist/tex/generic/xkeyval/xkeyval.tex
+(/usr/share/texlive/texmf-dist/tex/generic/xkeyval/xkvutils.tex
+\XKV@toks=\toks17
+\XKV@tempa@toks=\toks18
+
+(/usr/share/texlive/texmf-dist/tex/generic/xkeyval/keyval.tex))
+\XKV@depth=\count273
+File: xkeyval.tex 2014/12/03 v2.7a key=value parser (HA)
+))
+(/usr/share/texlive/texmf-dist/tex/generic/iftex/iftex.sty
+Package: iftex 2022/02/03 v1.0f TeX engine tests
+)
+(/usr/share/texlive/texmf-dist/tex/luatex/luatexbase/luatexbase.sty
+Package: luatexbase 2015/10/04 v1.3 luatexbase interface to LuaTeX 
+
+(/usr/share/texlive/texmf-dist/tex/luatex/ctablestack/ctablestack.sty
+Package: ctablestack 2015/10/01 v1.0 Catcode table stable support
+\@catcodetablestackcnt=\count274
+)
+\CatcodeTableOther=\catcodetable14
+\CatcodeTableExpl=\catcodetable15
+)
+Lua module: polyglossia 2013/05/11 1.3 Polyglossia
+(/usr/share/texlive/texmf-dist/tex/latex/polyglossia/gloss-latex.lde
+Package: gloss-latex 2023/12/11 v1.66 polyglossia: module for default language
+)
+Package polyglossia Info: Default language is latex.
+Package polyglossia Info: Setting LuaTeX font renderer to Harfbuzz.
+)
+(/usr/share/texlive/texmf-dist/tex/latex/polyglossia/gloss-english.ldf
+File: gloss-english.ldf polyglossia: module for English
+Package polyglossia Info: Option: English, variant=american.
+)
+Package polyglossia Info: Default language is english.
+
+(/usr/share/texlive/texmf-dist/tex/latex/polyglossia/gloss-greek.ldf
+File: gloss-greek.ldf polyglossia: module for Greek
+Module polyglossia Info: Language data for greek
+(polyglossia)            loader	loadhyph-el-polyton.tex
+(polyglossia)            righthyphenmin	1
+(polyglossia)            lefthyphenmin	1
+(polyglossia)            hyphenation	
+(polyglossia)            synonyms	polygreek
+(polyglossia)            patterns	hyph-el-polyton.pat.txt on input line 21
+Module polyglossia Info: Language greek was not yet loaded; created with id 2 on
+ input line 21
+
+(/usr/share/texlive/texmf-dist/tex/latex/polyglossia/xgreek-fixes.def)
+Module polyglossia Info: Language data for monogreek
+(polyglossia)            loader	loadhyph-el-monoton.tex
+(polyglossia)            righthyphenmin	1
+(polyglossia)            lefthyphenmin	1
+(polyglossia)            hyphenation	
+(polyglossia)            synonyms	
+(polyglossia)            patterns	hyph-el-monoton.pat.txt on input line 147
+Module polyglossia Info: Language monogreek was not yet loaded; created with id 
+3 on input line 147
+Package polyglossia Info: Option: Greek, variant=monotonic.
+Package polyglossia Info: Option: Greek, numerals=greek.
+\@attic@num=\count275
 )
 (/usr/share/texlive/texmf-dist/tex/latex/graphics/graphicx.sty
 Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
 
-(/usr/share/texlive/texmf-dist/tex/latex/graphics/keyval.sty
-Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
-\KV@toks@=\toks17
-)
 (/usr/share/texlive/texmf-dist/tex/latex/graphics/graphics.sty
 Package: graphics 2022/03/10 v1.4e Standard LaTeX Graphics (DPC,SPQR)
 
@@ -41,13 +245,13 @@ Package: trig 2021/08/11 v1.11 sin cos tan (DPC)
 (/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
 File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
 )
-Package graphics Info: Driver file: pdftex.def on input line 107.
+Package graphics Info: Driver file: luatex.def on input line 107.
 
-(/usr/share/texlive/texmf-dist/tex/latex/graphics-def/pdftex.def
-File: pdftex.def 2022/09/22 v1.2b Graphics/color driver for pdftex
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-def/luatex.def
+File: luatex.def 2022/09/22 v1.2d Graphics/color driver for luatex
 ))
-\Gin@req@height=\dimen141
-\Gin@req@width=\dimen142
+\Gin@req@height=\dimen143
+\Gin@req@width=\dimen144
 )
 (/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsmath.sty
 Package: amsmath 2023/05/13 v2.17o AMS math features
@@ -59,61 +263,61 @@ Package: amstext 2021/08/26 v2.01 AMS text
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsgen.sty
 File: amsgen.sty 1999/11/30 v2.0 generic functions
-\@emptytoks=\toks18
-\ex@=\dimen143
+\@emptytoks=\toks19
+\ex@=\dimen145
 ))
 (/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsbsy.sty
 Package: amsbsy 1999/11/29 v1.2d Bold Symbols
-\pmbraise@=\dimen144
+\pmbraise@=\dimen146
 )
 (/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsopn.sty
 Package: amsopn 2022/04/08 v2.04 operator names
 )
-\inf@bad=\count196
-LaTeX Info: Redefining \frac on input line 234.
-\uproot@=\count197
-\leftroot@=\count198
+\inf@bad=\count276
+LaTeX Info: Redefining \frac on input line 236.
+\uproot@=\count277
+\leftroot@=\count278
 LaTeX Info: Redefining \overline on input line 399.
 LaTeX Info: Redefining \colon on input line 410.
-\classnum@=\count199
-\DOTSCASE@=\count266
+\classnum@=\count279
+\DOTSCASE@=\count280
 LaTeX Info: Redefining \ldots on input line 496.
 LaTeX Info: Redefining \dots on input line 499.
 LaTeX Info: Redefining \cdots on input line 620.
-\Mathstrutbox@=\box51
-\strutbox@=\box52
+\Mathstrutbox@=\box52
+\strutbox@=\box53
 LaTeX Info: Redefining \big on input line 722.
 LaTeX Info: Redefining \Big on input line 723.
 LaTeX Info: Redefining \bigg on input line 724.
 LaTeX Info: Redefining \Bigg on input line 725.
-\big@size=\dimen145
+\big@size=\dimen147
 LaTeX Font Info:    Redeclaring font encoding OML on input line 743.
 LaTeX Font Info:    Redeclaring font encoding OMS on input line 744.
-\macc@depth=\count267
+\macc@depth=\count281
 LaTeX Info: Redefining \bmod on input line 905.
 LaTeX Info: Redefining \pmod on input line 910.
 LaTeX Info: Redefining \smash on input line 940.
 LaTeX Info: Redefining \relbar on input line 970.
 LaTeX Info: Redefining \Relbar on input line 971.
-\c@MaxMatrixCols=\count268
+\c@MaxMatrixCols=\count282
 \dotsspace@=\muskip16
-\c@parentequation=\count269
-\dspbrk@lvl=\count270
-\tag@help=\toks19
-\row@=\count271
-\column@=\count272
-\maxfields@=\count273
-\andhelp@=\toks20
-\eqnshift@=\dimen146
-\alignsep@=\dimen147
-\tagshift@=\dimen148
-\tagwidth@=\dimen149
-\totwidth@=\dimen150
-\lineht@=\dimen151
-\@envbody=\toks21
+\c@parentequation=\count283
+\dspbrk@lvl=\count284
+\tag@help=\toks20
+\row@=\count285
+\column@=\count286
+\maxfields@=\count287
+\andhelp@=\toks21
+\eqnshift@=\dimen148
+\alignsep@=\dimen149
+\tagshift@=\dimen150
+\tagwidth@=\dimen151
+\totwidth@=\dimen152
+\lineht@=\dimen153
+\@envbody=\toks22
 \multlinegap=\skip51
 \multlinetaggap=\skip52
-\mathdisplay@stack=\toks22
+\mathdisplay@stack=\toks23
 LaTeX Info: Redefining \[ on input line 2953.
 LaTeX Info: Redefining \] on input line 2954.
 )
@@ -147,17 +351,17 @@ nment
 
 (/usr/share/texlive/texmf-dist/tex/latex/float/float.sty
 Package: float 2001/11/08 v1.3d Float enhancements (AL)
-\c@float@type=\count274
-\float@exts=\toks23
-\float@box=\box53
-\@float@everytoks=\toks24
-\@floatcapt=\box54
+\c@float@type=\count288
+\float@exts=\toks24
+\float@box=\box54
+\@float@everytoks=\toks25
+\@floatcapt=\box55
 )
 (/usr/share/texlive/texmf-dist/tex/latex/base/ifthen.sty
 Package: ifthen 2022/04/13 v1.1d Standard LaTeX ifthen package (DPC)
 )
-\@float@every@algorithm=\toks25
-\c@algorithm=\count275
+\@float@every@algorithm=\toks26
+\c@algorithm=\count289
 )
 (/usr/share/texlive/texmf-dist/tex/latex/algpseudocodex/algpseudocodex.sty
 Package: algpseudocodex 2023-04-17 v1.1.2 pseudocode typesetting
@@ -175,37 +379,33 @@ Package: kvsetkeys 2022-10-05 v1.19 Key value parser (HO)
 Package: algorithmicx 2005/04/27 v1.2 Algorithmicx
 
 Document Style algorithmicx 1.2 - a greatly improved `algorithmic' style
-\c@ALG@line=\count276
-\c@ALG@rem=\count277
-\c@ALG@nested=\count278
+\c@ALG@line=\count290
+\c@ALG@rem=\count291
+\c@ALG@nested=\count292
 \ALG@tlm=\skip53
 \ALG@thistlm=\skip54
-\c@ALG@Lnr=\count279
-\c@ALG@blocknr=\count280
-\c@ALG@storecount=\count281
-\c@ALG@tmpcounter=\count282
+\c@ALG@Lnr=\count293
+\c@ALG@blocknr=\count294
+\c@ALG@storecount=\count295
+\c@ALG@tmpcounter=\count296
 \ALG@tmplength=\skip55
-) (/usr/share/texlive/texmf-dist/tex/latex/etoolbox/etoolbox.sty
-Package: etoolbox 2020/10/05 v2.5k e-TeX tools for LaTeX (JAW)
-\etb@tempcnta=\count283
-)
-(/usr/share/texlive/texmf-dist/tex/latex/fifo-stack/fifo-stack.sty
+) (/usr/share/texlive/texmf-dist/tex/latex/fifo-stack/fifo-stack.sty
 Package: fifo-stack 2014/03/24 v1.0 Multi-FIFO/stack system
-\tmp@fifo@stack@top=\count284
-\tmp@fifo@stack@bottom=\count285
-\tmp@fifo@stack@size=\count286
+\tmp@fifo@stack@top=\count297
+\tmp@fifo@stack@bottom=\count298
+\tmp@fifo@stack@size=\count299
 )
 (/usr/share/texlive/texmf-dist/tex/latex/varwidth/varwidth.sty
 Package: varwidth 2009/03/30 ver 0.92;  Variable-width minipages
-\@vwid@box=\box55
-\sift@deathcycles=\count287
-\@vwid@loff=\dimen152
-\@vwid@roff=\dimen153
+\@vwid@box=\box56
+\sift@deathcycles=\count300
+\@vwid@loff=\dimen154
+\@vwid@roff=\dimen155
 )
 (/usr/share/texlive/texmf-dist/tex/latex/tabto-ltx/tabto.sty
 Package: tabto 2018/12/28  v 1.4  Another tabbing mechanism
-\CurrentLineWidth=\dimen154
-\TabPrevPos=\dimen155
+\CurrentLineWidth=\dimen156
+\TabPrevPos=\dimen157
 )
 (/usr/share/texlive/texmf-dist/tex/latex/totcount/totcount.sty
 Package: totcount 2011/01/25 v1.2 package for gettingthe total value of LaTeX c
@@ -215,12 +415,12 @@ ounters
 (/usr/share/texlive/texmf-dist/tex/latex/pgf/basiclayer/pgf.sty
 (/usr/share/texlive/texmf-dist/tex/latex/pgf/utilities/pgfrcs.sty
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfutil-common.tex
-\pgfutil@everybye=\toks26
-\pgfutil@tempdima=\dimen156
-\pgfutil@tempdimb=\dimen157
+\pgfutil@everybye=\toks27
+\pgfutil@tempdima=\dimen158
+\pgfutil@tempdimb=\dimen159
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfutil-latex.def
-\pgfutil@abb=\box56
+\pgfutil@abb=\box57
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfrcs.code.tex
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/pgf.revision.tex)
@@ -234,39 +434,39 @@ Package: pgf 2023-01-15 v3.1.10 (3.1.10)
 Package: pgfsys 2023-01-15 v3.1.10 (3.1.10)
 
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeys.code.tex
-\pgfkeys@pathtoks=\toks27
-\pgfkeys@temptoks=\toks28
+\pgfkeys@pathtoks=\toks28
+\pgfkeys@temptoks=\toks29
 
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeyslibraryfiltered
 .code.tex
-\pgfkeys@tmptoks=\toks29
+\pgfkeys@tmptoks=\toks30
 ))
-\pgf@x=\dimen158
-\pgf@y=\dimen159
-\pgf@xa=\dimen160
-\pgf@ya=\dimen161
-\pgf@xb=\dimen162
-\pgf@yb=\dimen163
-\pgf@xc=\dimen164
-\pgf@yc=\dimen165
-\pgf@xd=\dimen166
-\pgf@yd=\dimen167
+\pgf@x=\dimen160
+\pgf@y=\dimen161
+\pgf@xa=\dimen162
+\pgf@ya=\dimen163
+\pgf@xb=\dimen164
+\pgf@yb=\dimen165
+\pgf@xc=\dimen166
+\pgf@yc=\dimen167
+\pgf@xd=\dimen168
+\pgf@yd=\dimen169
 \w@pgf@writea=\write3
 \r@pgf@reada=\read2
-\c@pgf@counta=\count288
-\c@pgf@countb=\count289
-\c@pgf@countc=\count290
-\c@pgf@countd=\count291
-\t@pgf@toka=\toks30
-\t@pgf@tokb=\toks31
-\t@pgf@tokc=\toks32
-\pgf@sys@id@count=\count292
+\c@pgf@counta=\count301
+\c@pgf@countb=\count302
+\c@pgf@countc=\count303
+\c@pgf@countd=\count304
+\t@pgf@toka=\toks31
+\t@pgf@tokb=\toks32
+\t@pgf@tokc=\toks33
+\pgf@sys@id@count=\count305
  (/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgf.cfg
 File: pgf.cfg 2023-01-15 v3.1.10 (3.1.10)
 )
-Driver file for pgf: pgfsys-pdftex.def
-(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-pdftex.def
-File: pgfsys-pdftex.def 2023-01-15 v3.1.10 (3.1.10)
+Driver file for pgf: pgfsys-luatex.def
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-luatex.def
+File: pgfsys-luatex.def 2023-01-15 v3.1.10 (3.1.10)
 
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-common-pdf.de
 f
@@ -275,8 +475,8 @@ File: pgfsys-common-pdf.def 2023-01-15 v3.1.10 (3.1.10)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsyssoftpath.code.
 tex
 File: pgfsyssoftpath.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgfsyssoftpath@smallbuffer@items=\count293
-\pgfsyssoftpath@bigbuffer@items=\count294
+\pgfsyssoftpath@smallbuffer@items=\count306
+\pgfsyssoftpath@bigbuffer@items=\count307
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsysprotocol.code.
 tex
@@ -287,7 +487,7 @@ Package: xcolor 2023/11/15 v3.01 LaTeX color extensions (UK)
 (/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/color.cfg
 File: color.cfg 2016/01/02 v1.6 sample color configuration
 )
-Package xcolor Info: Driver file: pdftex.def on input line 274.
+Package xcolor Info: Driver file: luatex.def on input line 274.
 
 (/usr/share/texlive/texmf-dist/tex/latex/graphics/mathcolor.ltx)
 Package xcolor Info: Model `cmy' substituted by `cmy0' on input line 1350.
@@ -306,12 +506,12 @@ Package: pgfcore 2023-01-15 v3.1.10 (3.1.10)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathutil.code.tex)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathparser.code.tex
-\pgfmath@dimen=\dimen168
-\pgfmath@count=\count295
-\pgfmath@box=\box57
-\pgfmath@toks=\toks33
-\pgfmath@stack@operand=\toks34
-\pgfmath@stack@operation=\toks35
+\pgfmath@dimen=\dimen170
+\pgfmath@count=\count308
+\pgfmath@box=\box58
+\pgfmath@toks=\toks34
+\pgfmath@stack@operand=\toks35
+\pgfmath@stack@operation=\toks36
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.code.tex)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.basic.code
@@ -332,58 +532,58 @@ tex)
 thmetics.code.tex)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathcalc.code.tex)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfloat.code.tex
-\c@pgfmathroundto@lastzeros=\count296
+\c@pgfmathroundto@lastzeros=\count309
 ))
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfint.code.tex)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepoints.code.te
 x
 File: pgfcorepoints.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgf@picminx=\dimen169
-\pgf@picmaxx=\dimen170
-\pgf@picminy=\dimen171
-\pgf@picmaxy=\dimen172
-\pgf@pathminx=\dimen173
-\pgf@pathmaxx=\dimen174
-\pgf@pathminy=\dimen175
-\pgf@pathmaxy=\dimen176
-\pgf@xx=\dimen177
-\pgf@xy=\dimen178
-\pgf@yx=\dimen179
-\pgf@yy=\dimen180
-\pgf@zx=\dimen181
-\pgf@zy=\dimen182
+\pgf@picminx=\dimen171
+\pgf@picmaxx=\dimen172
+\pgf@picminy=\dimen173
+\pgf@picmaxy=\dimen174
+\pgf@pathminx=\dimen175
+\pgf@pathmaxx=\dimen176
+\pgf@pathminy=\dimen177
+\pgf@pathmaxy=\dimen178
+\pgf@xx=\dimen179
+\pgf@xy=\dimen180
+\pgf@yx=\dimen181
+\pgf@yy=\dimen182
+\pgf@zx=\dimen183
+\pgf@zy=\dimen184
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathconstruct.
 code.tex
 File: pgfcorepathconstruct.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgf@path@lastx=\dimen183
-\pgf@path@lasty=\dimen184
+\pgf@path@lastx=\dimen185
+\pgf@path@lasty=\dimen186
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathusage.code
 .tex
 File: pgfcorepathusage.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgf@shorten@end@additional=\dimen185
-\pgf@shorten@start@additional=\dimen186
+\pgf@shorten@end@additional=\dimen187
+\pgf@shorten@start@additional=\dimen188
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorescopes.code.te
 x
 File: pgfcorescopes.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgfpic=\box58
-\pgf@hbox=\box59
-\pgf@layerbox@main=\box60
-\pgf@picture@serial@count=\count297
+\pgfpic=\box59
+\pgf@hbox=\box60
+\pgf@layerbox@main=\box61
+\pgf@picture@serial@count=\count310
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoregraphicstate.c
 ode.tex
 File: pgfcoregraphicstate.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgflinewidth=\dimen187
+\pgflinewidth=\dimen189
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoretransformation
 s.code.tex
 File: pgfcoretransformations.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgf@pt@x=\dimen188
-\pgf@pt@y=\dimen189
-\pgf@pt@temp=\dimen190
+\pgf@pt@x=\dimen190
+\pgf@pt@y=\dimen191
+\pgf@pt@temp=\dimen192
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorequick.code.tex
 File: pgfcorequick.code.tex 2023-01-15 v3.1.10 (3.1.10)
@@ -399,13 +599,13 @@ File: pgfcorepathprocessing.code.tex 2023-01-15 v3.1.10 (3.1.10)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorearrows.code.te
 x
 File: pgfcorearrows.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgfarrowsep=\dimen191
+\pgfarrowsep=\dimen193
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreshade.code.tex
 File: pgfcoreshade.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgf@max=\dimen192
-\pgf@sys@shading@range@num=\count298
-\pgf@shadingcount=\count299
+\pgf@max=\dimen194
+\pgf@sys@shading@range@num=\count311
+\pgf@shadingcount=\count312
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreimage.code.tex
 File: pgfcoreimage.code.tex 2023-01-15 v3.1.10 (3.1.10)
@@ -413,7 +613,7 @@ File: pgfcoreimage.code.tex 2023-01-15 v3.1.10 (3.1.10)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreexternal.code.
 tex
 File: pgfcoreexternal.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgfexternal@startupbox=\box61
+\pgfexternal@startupbox=\box62
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorelayers.code.te
 x
@@ -432,15 +632,15 @@ File: pgfcorerdf.code.tex 2023-01-15 v3.1.10 (3.1.10)
 )))
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmoduleshapes.code.tex
 File: pgfmoduleshapes.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgfnodeparttextbox=\box62
+\pgfnodeparttextbox=\box63
 ) (/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmoduleplot.code.tex
 File: pgfmoduleplot.code.tex 2023-01-15 v3.1.10 (3.1.10)
 )
 (/usr/share/texlive/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version-0-65
 .sty
 Package: pgfcomp-version-0-65 2023-01-15 v3.1.10 (3.1.10)
-\pgf@nodesepstart=\dimen193
-\pgf@nodesepend=\dimen194
+\pgf@nodesepstart=\dimen195
+\pgf@nodesepend=\dimen196
 )
 (/usr/share/texlive/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version-1-18
 .sty
@@ -452,10 +652,10 @@ Package: pgfcomp-version-1-18 2023-01-15 v3.1.10 (3.1.10)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex))
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgffor.code.tex
 Package: pgffor 2023-01-15 v3.1.10 (3.1.10)
-\pgffor@iter=\dimen195
-\pgffor@skip=\dimen196
-\pgffor@stack=\toks36
-\pgffor@toks=\toks37
+\pgffor@iter=\dimen197
+\pgffor@skip=\dimen198
+\pgffor@stack=\toks37
+\pgffor@toks=\toks38
 ))
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/tikz.code.tex
 Package: tikz 2023-01-15 v3.1.10 (3.1.10)
@@ -463,33 +663,33 @@ Package: tikz 2023-01-15 v3.1.10 (3.1.10)
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/libraries/pgflibraryplothandlers
 .code.tex
 File: pgflibraryplothandlers.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgf@plot@mark@count=\count300
-\pgfplotmarksize=\dimen197
+\pgf@plot@mark@count=\count313
+\pgfplotmarksize=\dimen199
 )
-\tikz@lastx=\dimen198
-\tikz@lasty=\dimen199
-\tikz@lastxsaved=\dimen256
-\tikz@lastysaved=\dimen257
-\tikz@lastmovetox=\dimen258
-\tikz@lastmovetoy=\dimen259
-\tikzleveldistance=\dimen260
-\tikzsiblingdistance=\dimen261
-\tikz@figbox=\box63
-\tikz@figbox@bg=\box64
-\tikz@tempbox=\box65
-\tikz@tempbox@bg=\box66
-\tikztreelevel=\count301
-\tikznumberofchildren=\count302
-\tikznumberofcurrentchild=\count303
-\tikz@fig@count=\count304
+\tikz@lastx=\dimen256
+\tikz@lasty=\dimen257
+\tikz@lastxsaved=\dimen258
+\tikz@lastysaved=\dimen259
+\tikz@lastmovetox=\dimen260
+\tikz@lastmovetoy=\dimen261
+\tikzleveldistance=\dimen262
+\tikzsiblingdistance=\dimen263
+\tikz@figbox=\box64
+\tikz@figbox@bg=\box65
+\tikz@tempbox=\box66
+\tikz@tempbox@bg=\box67
+\tikztreelevel=\count314
+\tikznumberofchildren=\count315
+\tikznumberofcurrentchild=\count316
+\tikz@fig@count=\count317
 
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmodulematrix.code.tex
 File: pgfmodulematrix.code.tex 2023-01-15 v3.1.10 (3.1.10)
-\pgfmatrixcurrentrow=\count305
-\pgfmatrixcurrentcolumn=\count306
-\pgf@matrix@numberofcolumns=\count307
+\pgfmatrixcurrentrow=\count318
+\pgfmatrixcurrentcolumn=\count319
+\pgf@matrix@numberofcolumns=\count320
 )
-\tikz@expandcount=\count308
+\tikz@expandcount=\count321
 
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
 zlibrarytopaths.code.tex
@@ -507,24 +707,13 @@ File: tikzlibraryfit.code.tex 2023-01-15 v3.1.10 (3.1.10)
 File: tikzlibrarytikzmark.code.tex 2022/08/24 v1.15 TikZ library for marking po
 sitions in a document
 
-(/usr/share/texlive/texmf-dist/tex/latex/l3kernel/expl3.sty
-Package: expl3 2024-01-22 L3 programming layer (loader) 
-
-(/usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
-File: l3backend-pdftex.def 2024-01-04 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count309
-\l__pdf_internal_box=\box67
-))
 (/usr/share/texlive/texmf-dist/tex/latex/l3packages/l3keys2e/l3keys2e.sty
 Package: l3keys2e 2023-10-10 LaTeX2e option processing using LaTeX3 keys
 )
-(/usr/share/texlive/texmf-dist/tex/latex/l3packages/xparse/xparse.sty
-Package: xparse 2023-10-10 L3 Experimental document command parser
-)
-\l__sn_x_dim=\dimen262
-\l__sn_y_dim=\dimen263
-\l__sn_xa_dim=\dimen264
-\l__sn_ya_dim=\dimen265
+\l__sn_x_dim=\dimen264
+\l__sn_y_dim=\dimen265
+\l__sn_xa_dim=\dimen266
+\l__sn_ya_dim=\dimen267
 )
 \algpx@codeBoxInnerSep=\skip56
 \algpx@codeBoxSep=\skip57
@@ -545,16 +734,16 @@ Package: xparse 2023-10-10 L3 Experimental document command parser
 \algpx@extraShiftX=\skip72
 \algpx@minTopPageHeight=\skip73
 \algpx@minBotPageDepth=\skip74
-\c@algpx@codeBoxCount=\count310
-\c@algpx@nestedCBoxCount=\count311
-\c@algpx@startedBoxesCount=\count312
-\c@algpx@endedBoxesCount=\count313
-\c@algpx@nestedBoxedStringCount=\count314
-\c@algpx@nestedBoxedStringMaxCount=\count315
-\c@algpx@indentCount=\count316
-\c@algpx@lastIndentEnded=\count317
-\c@algpx@pageCount=\count318
-\c@algpx@tmpCount=\count319
+\c@algpx@codeBoxCount=\count322
+\c@algpx@nestedCBoxCount=\count323
+\c@algpx@startedBoxesCount=\count324
+\c@algpx@endedBoxesCount=\count325
+\c@algpx@nestedBoxedStringCount=\count326
+\c@algpx@nestedBoxedStringMaxCount=\count327
+\c@algpx@indentCount=\count328
+\c@algpx@lastIndentEnded=\count329
+\c@algpx@pageCount=\count330
+\c@algpx@tmpCount=\count331
 \algpx@boxedStringBox=\box68
 )
 (/usr/share/texlive/texmf-dist/tex/latex/geometry/geometry.sty
@@ -562,25 +751,22 @@ Package: geometry 2020/01/02 v5.9 Page Geometry
 
 (/usr/share/texlive/texmf-dist/tex/generic/iftex/ifvtex.sty
 Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
-
-(/usr/share/texlive/texmf-dist/tex/generic/iftex/iftex.sty
-Package: iftex 2022/02/03 v1.0f TeX engine tests
-))
-\Gm@cnth=\count320
-\Gm@cntv=\count321
-\c@Gm@tempcnt=\count322
-\Gm@bindingoffset=\dimen266
-\Gm@wd@mp=\dimen267
-\Gm@odd@mp=\dimen268
-\Gm@even@mp=\dimen269
-\Gm@layoutwidth=\dimen270
-\Gm@layoutheight=\dimen271
-\Gm@layouthoffset=\dimen272
-\Gm@layoutvoffset=\dimen273
-\Gm@dimlist=\toks38
 )
-\c@theorem=\count323
-\c@definition=\count324
+\Gm@cnth=\count332
+\Gm@cntv=\count333
+\c@Gm@tempcnt=\count334
+\Gm@bindingoffset=\dimen268
+\Gm@wd@mp=\dimen269
+\Gm@odd@mp=\dimen270
+\Gm@even@mp=\dimen271
+\Gm@layoutwidth=\dimen272
+\Gm@layoutheight=\dimen273
+\Gm@layouthoffset=\dimen274
+\Gm@layoutvoffset=\dimen275
+\Gm@dimlist=\toks39
+)
+\c@theorem=\count335
+\c@definition=\count336
 
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
 zlibraryshapes.code.tex
@@ -666,12 +852,14 @@ Package: pgfplots 2021/05/15 v1.18.1 Data Visualization (1.18.1)
 
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/pgfplots.code.tex
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/pgfplotscore.code.tex
-\t@pgfplots@toka=\toks39
-\t@pgfplots@tokb=\toks40
-\t@pgfplots@tokc=\toks41
-\pgfplots@tmpa=\dimen274
-\c@pgfplots@coordindex=\count325
-\c@pgfplots@scanlineindex=\count326
+Package pgfplots info on input line 124: Initializing with LUA version Lua 5.3
+\pgfplots@luabackend@table=\catcodetable16
+\t@pgfplots@toka=\toks40
+\t@pgfplots@tokb=\toks41
+\t@pgfplots@tokc=\toks42
+\pgfplots@tmpa=\dimen276
+\c@pgfplots@coordindex=\count337
+\c@pgfplots@scanlineindex=\count338
 
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/sys/pgfplotssysgeneric.code
 .tex))
@@ -682,27 +870,35 @@ gfsupp_loader.code.tex
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/libraries/pgflibraryfpu.code.tex
 )
 Package pgfplots: loading complementary utilities for your pgf version...
-\t@pgf@toka=\toks42
-\t@pgf@tokb=\toks43
-\t@pgf@tokc=\toks44
+\t@pgf@toka=\toks43
+\t@pgf@tokb=\toks44
+\t@pgf@tokc=\toks45
 
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/oldpgfcompatib/pgfplotsoldp
-gfsupp_pgfutil-common-lists.tex))
+gfsupp_pgfutil-common-lists.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/libraries/luamath/pgflibraryluam
+ath.code.tex)
+Package pgfplots info on input line 290: luamath library shipped with pgf 3.1.1
+0 is up-to-date
+)
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/util/pgfplotsutil.code.tex
+Package pgfplots info on input line 82: Found new luatex: initializing lua comm
+ands instead of write18 (shell-escape)
+
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/liststructure/pgfplotslists
 tructure.code.tex)
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/liststructure/pgfplotslists
 tructureext.code.tex)
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/liststructure/pgfplotsarray
 .code.tex
-\c@pgfplotsarray@tmp=\count327
+\c@pgfplotsarray@tmp=\count339
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/liststructure/pgfplotsmatri
 x.code.tex)
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/numtable/pgfplotstableshare
 d.code.tex
-\c@pgfplotstable@counta=\count328
-\t@pgfplotstable@a=\toks45
+\c@pgfplotstable@counta=\count340
+\t@pgfplotstable@a=\toks46
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/liststructure/pgfplotsdeque
 .code.tex)
@@ -714,10 +910,10 @@ de.tex))
 .tex)
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/libs/pgflibrarypgfplots.sur
 fshading.code.tex
-\c@pgfplotslibrarysurf@no=\count329
+\c@pgfplotslibrarysurf@no=\count341
 
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/sys/pgflibrarypgfplots.surf
-shading.pgfsys-pdftex.def)))
+shading.pgfsys-luatex.def)))
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/util/pgfplotscolormap.code.
 tex
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/util/pgfplotscolor.code.tex
@@ -741,14 +937,14 @@ e.tex)
 zlibrarydecorations.code.tex
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmoduledecorations.cod
 e.tex
-\pgfdecoratedcompleteddistance=\dimen275
-\pgfdecoratedremainingdistance=\dimen276
-\pgfdecoratedinputsegmentcompleteddistance=\dimen277
-\pgfdecoratedinputsegmentremainingdistance=\dimen278
-\pgf@decorate@distancetomove=\dimen279
-\pgf@decorate@repeatstate=\count330
-\pgfdecorationsegmentamplitude=\dimen280
-\pgfdecorationsegmentlength=\dimen281
+\pgfdecoratedcompleteddistance=\dimen277
+\pgfdecoratedremainingdistance=\dimen278
+\pgfdecoratedinputsegmentcompleteddistance=\dimen279
+\pgfdecoratedinputsegmentremainingdistance=\dimen280
+\pgf@decorate@distancetomove=\dimen281
+\pgf@decorate@repeatstate=\count342
+\pgfdecorationsegmentamplitude=\dimen282
+\pgfdecorationsegmentlength=\dimen283
 )
 \tikz@lib@dec@box=\box91
 )
@@ -762,13 +958,13 @@ zlibrarydecorations.pathreplacing.code.tex
 decorations.pathreplacing.code.tex))
 (/usr/share/texlive/texmf-dist/tex/generic/pgfplots/libs/tikzlibrarypgfplots.co
 ntourlua.code.tex)
-\pgfplots@numplots=\count331
-\pgfplots@xmin@reg=\dimen282
-\pgfplots@xmax@reg=\dimen283
-\pgfplots@ymin@reg=\dimen284
-\pgfplots@ymax@reg=\dimen285
-\pgfplots@zmin@reg=\dimen286
-\pgfplots@zmax@reg=\dimen287
+\pgfplots@numplots=\count343
+\pgfplots@xmin@reg=\dimen284
+\pgfplots@xmax@reg=\dimen285
+\pgfplots@ymin@reg=\dimen286
+\pgfplots@ymax@reg=\dimen287
+\pgfplots@zmin@reg=\dimen288
+\pgfplots@zmax@reg=\dimen289
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
 zlibraryplotmarks.code.tex
@@ -792,6 +988,7 @@ Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
 Package pdftexcmds Info: \pdf@primitive is available.
 Package pdftexcmds Info: \pdf@ifprimitive is available.
 Package pdftexcmds Info: \pdfdraftmode found.
+\pdftexcmds@toks=\toks47
 )
 (/usr/share/texlive/texmf-dist/tex/latex/base/atveryend-ltx.sty
 Package: atveryend-ltx 2020/08/19 v1.0a Emulation of the original atveryend pac
@@ -800,15 +997,14 @@ with kernel methods
 )
 (/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
 zexternalshared.code.tex)))
-\openout3 = `source.auxlock'.
-
+\openout3 = source.auxlock
 
 (/usr/share/texlive/texmf-dist/tex/latex/biblatex/biblatex.sty
 Package: biblatex 2023/03/05 v3.19 programmable bibliographies (PK/MW)
 
 (/usr/share/texlive/texmf-dist/tex/latex/logreq/logreq.sty
 Package: logreq 2010/08/04 v1.0 xml request logger
-\lrq@indent=\count332
+\lrq@indent=\count344
 
 (/usr/share/texlive/texmf-dist/tex/latex/logreq/logreq.def
 File: logreq.def 2010/08/04 v1.0 logreq spec v1.0
@@ -817,49 +1013,49 @@ File: logreq.def 2010/08/04 v1.0 logreq spec v1.0
 \Urlmuskip=\muskip17
 Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
 )
-\c@tabx@nest=\count333
-\c@listtotal=\count334
-\c@listcount=\count335
-\c@liststart=\count336
-\c@liststop=\count337
-\c@citecount=\count338
-\c@citetotal=\count339
-\c@multicitecount=\count340
-\c@multicitetotal=\count341
-\c@instcount=\count342
-\c@maxnames=\count343
-\c@minnames=\count344
-\c@maxitems=\count345
-\c@minitems=\count346
-\c@citecounter=\count347
-\c@maxcitecounter=\count348
-\c@savedcitecounter=\count349
-\c@uniquelist=\count350
-\c@uniquename=\count351
-\c@refsection=\count352
-\c@refsegment=\count353
-\c@maxextratitle=\count354
-\c@maxextratitleyear=\count355
-\c@maxextraname=\count356
-\c@maxextradate=\count357
-\c@maxextraalpha=\count358
-\c@abbrvpenalty=\count359
-\c@highnamepenalty=\count360
-\c@lownamepenalty=\count361
-\c@maxparens=\count362
-\c@parenlevel=\count363
-\blx@tempcnta=\count364
-\blx@tempcntb=\count365
-\blx@tempcntc=\count366
-\c@blx@maxsection=\count367
-\blx@maxsegment@0=\count368
-\blx@notetype=\count369
-\blx@parenlevel@text=\count370
-\blx@parenlevel@foot=\count371
-\blx@sectionciteorder@0=\count372
-\blx@sectionciteorderinternal@0=\count373
-\blx@entrysetcounter=\count374
-\blx@biblioinstance=\count375
+\c@tabx@nest=\count345
+\c@listtotal=\count346
+\c@listcount=\count347
+\c@liststart=\count348
+\c@liststop=\count349
+\c@citecount=\count350
+\c@citetotal=\count351
+\c@multicitecount=\count352
+\c@multicitetotal=\count353
+\c@instcount=\count354
+\c@maxnames=\count355
+\c@minnames=\count356
+\c@maxitems=\count357
+\c@minitems=\count358
+\c@citecounter=\count359
+\c@maxcitecounter=\count360
+\c@savedcitecounter=\count361
+\c@uniquelist=\count362
+\c@uniquename=\count363
+\c@refsection=\count364
+\c@refsegment=\count365
+\c@maxextratitle=\count366
+\c@maxextratitleyear=\count367
+\c@maxextraname=\count368
+\c@maxextradate=\count369
+\c@maxextraalpha=\count370
+\c@abbrvpenalty=\count371
+\c@highnamepenalty=\count372
+\c@lownamepenalty=\count373
+\c@maxparens=\count374
+\c@parenlevel=\count375
+\blx@tempcnta=\count376
+\blx@tempcntb=\count377
+\blx@tempcntc=\count378
+\c@blx@maxsection=\count379
+\blx@maxsegment@0=\count380
+\blx@notetype=\count381
+\blx@parenlevel@text=\count382
+\blx@parenlevel@foot=\count383
+\blx@sectionciteorder@0=\count384
+\blx@sectionciteorderinternal@0=\count385
+\blx@entrysetcounter=\count386
+\blx@biblioinstance=\count387
 \labelnumberwidth=\skip75
 \labelalphawidth=\skip76
 \biblabelsep=\skip77
@@ -870,10 +1066,10 @@ Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
 \bibhang=\skip82
 \blx@bcfin=\read3
 \blx@bcfout=\write4
-\blx@langwohyphens=\language9
-\c@mincomprange=\count376
-\c@maxcomprange=\count377
-\c@mincompwidth=\count378
+\blx@langwohyphens=\language4
+\c@mincomprange=\count388
+\c@maxcomprange=\count389
+\c@mincompwidth=\count390
 Package biblatex Info: Trying to load biblatex default data model...
 Package biblatex Info: ... file 'blx-dm.def' found.
 
@@ -884,74 +1080,74 @@ Package biblatex Info: Trying to load biblatex style data model...
 Package biblatex Info: ... file 'ieee.dbx' not found.
 Package biblatex Info: Trying to load biblatex custom data model...
 Package biblatex Info: ... file 'biblatex-dm.cfg' not found.
-\c@afterword=\count379
-\c@savedafterword=\count380
-\c@annotator=\count381
-\c@savedannotator=\count382
-\c@author=\count383
-\c@savedauthor=\count384
-\c@bookauthor=\count385
-\c@savedbookauthor=\count386
-\c@commentator=\count387
-\c@savedcommentator=\count388
-\c@editor=\count389
-\c@savededitor=\count390
-\c@editora=\count391
-\c@savededitora=\count392
-\c@editorb=\count393
-\c@savededitorb=\count394
-\c@editorc=\count395
-\c@savededitorc=\count396
-\c@foreword=\count397
-\c@savedforeword=\count398
-\c@holder=\count399
-\c@savedholder=\count400
-\c@introduction=\count401
-\c@savedintroduction=\count402
-\c@namea=\count403
-\c@savednamea=\count404
-\c@nameb=\count405
-\c@savednameb=\count406
-\c@namec=\count407
-\c@savednamec=\count408
-\c@translator=\count409
-\c@savedtranslator=\count410
-\c@shortauthor=\count411
-\c@savedshortauthor=\count412
-\c@shorteditor=\count413
-\c@savedshorteditor=\count414
-\c@labelname=\count415
-\c@savedlabelname=\count416
-\c@institution=\count417
-\c@savedinstitution=\count418
-\c@lista=\count419
-\c@savedlista=\count420
-\c@listb=\count421
-\c@savedlistb=\count422
-\c@listc=\count423
-\c@savedlistc=\count424
-\c@listd=\count425
-\c@savedlistd=\count426
-\c@liste=\count427
-\c@savedliste=\count428
-\c@listf=\count429
-\c@savedlistf=\count430
-\c@location=\count431
-\c@savedlocation=\count432
-\c@organization=\count433
-\c@savedorganization=\count434
-\c@origlocation=\count435
-\c@savedoriglocation=\count436
-\c@origpublisher=\count437
-\c@savedorigpublisher=\count438
-\c@publisher=\count439
-\c@savedpublisher=\count440
-\c@language=\count441
-\c@savedlanguage=\count442
-\c@origlanguage=\count443
-\c@savedoriglanguage=\count444
-\c@pageref=\count445
-\c@savedpageref=\count446
+\c@afterword=\count391
+\c@savedafterword=\count392
+\c@annotator=\count393
+\c@savedannotator=\count394
+\c@author=\count395
+\c@savedauthor=\count396
+\c@bookauthor=\count397
+\c@savedbookauthor=\count398
+\c@commentator=\count399
+\c@savedcommentator=\count400
+\c@editor=\count401
+\c@savededitor=\count402
+\c@editora=\count403
+\c@savededitora=\count404
+\c@editorb=\count405
+\c@savededitorb=\count406
+\c@editorc=\count407
+\c@savededitorc=\count408
+\c@foreword=\count409
+\c@savedforeword=\count410
+\c@holder=\count411
+\c@savedholder=\count412
+\c@introduction=\count413
+\c@savedintroduction=\count414
+\c@namea=\count415
+\c@savednamea=\count416
+\c@nameb=\count417
+\c@savednameb=\count418
+\c@namec=\count419
+\c@savednamec=\count420
+\c@translator=\count421
+\c@savedtranslator=\count422
+\c@shortauthor=\count423
+\c@savedshortauthor=\count424
+\c@shorteditor=\count425
+\c@savedshorteditor=\count426
+\c@labelname=\count427
+\c@savedlabelname=\count428
+\c@institution=\count429
+\c@savedinstitution=\count430
+\c@lista=\count431
+\c@savedlista=\count432
+\c@listb=\count433
+\c@savedlistb=\count434
+\c@listc=\count435
+\c@savedlistc=\count436
+\c@listd=\count437
+\c@savedlistd=\count438
+\c@liste=\count439
+\c@savedliste=\count440
+\c@listf=\count441
+\c@savedlistf=\count442
+\c@location=\count443
+\c@savedlocation=\count444
+\c@organization=\count445
+\c@savedorganization=\count446
+\c@origlocation=\count447
+\c@savedoriglocation=\count448
+\c@origpublisher=\count449
+\c@savedorigpublisher=\count450
+\c@publisher=\count451
+\c@savedpublisher=\count452
+\c@language=\count453
+\c@savedlanguage=\count454
+\c@origlanguage=\count455
+\c@savedoriglanguage=\count456
+\c@pageref=\count457
+\c@savedpageref=\count458
 \shorthandwidth=\skip83
 \shortjournalwidth=\skip84
 \shortserieswidth=\skip85
@@ -966,6 +1162,10 @@ Package biblatex Info: ... file 'biblatex-dm.cfg' not found.
 \localshorttitlewidth=\skip94
 \localshortauthorwidth=\skip95
 \localshorteditorwidth=\skip96
+Package biblatex Info: Trying to load enhanced support for Unicode engines...
+Package biblatex Info: ... file 'blx-unicode.def' found.
+
+(/usr/share/texlive/texmf-dist/tex/latex/biblatex/blx-unicode.def)
 Package biblatex Info: Trying to load compatibility code...
 Package biblatex Info: ... file 'blx-compat.def' found.
 
@@ -977,19 +1177,19 @@ Package biblatex Info: ... file 'biblatex.def' found.
 
 (/usr/share/texlive/texmf-dist/tex/latex/biblatex/biblatex.def
 File: biblatex.def 2023/03/05 v3.19 biblatex compatibility (PK/MW)
-\c@textcitecount=\count447
-\c@textcitetotal=\count448
-\c@textcitemaxnames=\count449
-\c@biburlbigbreakpenalty=\count450
-\c@biburlbreakpenalty=\count451
-\c@biburlnumpenalty=\count452
-\c@biburlucpenalty=\count453
-\c@biburllcpenalty=\count454
+\c@textcitecount=\count459
+\c@textcitetotal=\count460
+\c@textcitemaxnames=\count461
+\c@biburlbigbreakpenalty=\count462
+\c@biburlbreakpenalty=\count463
+\c@biburlnumpenalty=\count464
+\c@biburlucpenalty=\count465
+\c@biburllcpenalty=\count466
 \biburlbigskip=\muskip18
 \biburlnumskip=\muskip19
 \biburlucskip=\muskip20
 \biburllcskip=\muskip21
-\c@smartand=\count455
+\c@smartand=\count467
 )
 Package biblatex Info: Trying to load bibliography style 'ieee'...
 Package biblatex Info: ... file 'ieee.bbx' found.
@@ -1011,8 +1211,8 @@ Package biblatex Info: ... file 'standard.bbx' found.
 
 (/usr/share/texlive/texmf-dist/tex/latex/biblatex/bbx/standard.bbx
 File: standard.bbx 2023/03/05 v3.19 biblatex bibliography style (PK/MW)
-\c@bbx:relatedcount=\count456
-\c@bbx:relatedtotal=\count457
+\c@bbx:relatedcount=\count468
+\c@bbx:relatedtotal=\count469
 ))))
 Package biblatex Info: Trying to load citation style 'ieee'...
 Package biblatex Info: ... file 'ieee.cbx' found.
@@ -1024,10 +1224,10 @@ Package biblatex Info: ... file 'numeric-comp.cbx' found.
 
 (/usr/share/texlive/texmf-dist/tex/latex/biblatex/cbx/numeric-comp.cbx
 File: numeric-comp.cbx 2023/03/05 v3.19 biblatex citation style (PK/MW)
-\c@cbx@tempcnta=\count458
-\c@cbx@tempcntb=\count459
-\c@cbx@tempcntc=\count460
-\c@cbx@tempcntd=\count461
+\c@cbx@tempcnta=\count470
+\c@cbx@tempcntb=\count471
+\c@cbx@tempcntc=\count472
+\c@cbx@tempcntd=\count473
 Package biblatex Info: Redefining '\cite'.
 Package biblatex Info: Redefining '\parencite'.
 Package biblatex Info: Redefining '\footcite'.
@@ -1050,7 +1250,8 @@ Package biblatex Info: ... file 'biblatex.cfg' found.
 (/usr/share/texlive/texmf-dist/tex/latex/biblatex/biblatex.cfg
 File: biblatex.cfg 
 )
-Package biblatex Info: Input encoding 'utf8' detected.
+Package biblatex Info: LuaTeX detected.
+(biblatex)             Assuming input encoding 'utf8'.
 Package biblatex Info: Document encoding is UTF8 ....
 Package biblatex Info: ... and expl3
 (biblatex)             2024-01-22 L3 programming layer (loader) 
@@ -1060,40 +1261,111 @@ Package biblatex Info: ... and expl3
 (/usr/share/texlive/texmf-dist/tex/latex/biblatex/blx-case-expl3.sty
 Package: blx-case-expl3 2023/03/05 v3.19 expl3 case changing code for biblatex
 ))
-\@quotelevel=\count462
-\@quotereset=\count463
+\@quotelevel=\count474
+\@quotereset=\count475
 
 (/home/pan/Projects/machine_learning/pan_integration/latex/out/source.aux)
-\openout1 = `source.aux'.
+\openout1 = source.aux
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 28.
-LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 38.
+LaTeX Font Info:    Trying to load font information for TS1+cmr on input line 3
+8.
+
+(/usr/share/texlive/texmf-dist/tex/latex/base/ts1cmr.fd
+File: ts1cmr.fd 2023/04/13 v2.5m Standard LaTeX font definitions
+)
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 38.
+LaTeX Font Info:    ... okay on input line 38.
+
+Package fontspec Info: Adjusting the maths setup (use [no-math] to avoid
+(fontspec)             this).
+
+\symlegacymaths=\mathgroup9
+LaTeX Font Info:    Overwriting symbol font `legacymaths' in version `bold'
+(Font)                  OT1/cmr/m/n --> OT1/cmr/bx/n on input line 38.
+LaTeX Font Info:    Redeclaring math accent \acute on input line 38.
+LaTeX Font Info:    Redeclaring math accent \grave on input line 38.
+LaTeX Font Info:    Redeclaring math accent \ddot on input line 38.
+LaTeX Font Info:    Redeclaring math accent \tilde on input line 38.
+LaTeX Font Info:    Redeclaring math accent \bar on input line 38.
+LaTeX Font Info:    Redeclaring math accent \breve on input line 38.
+LaTeX Font Info:    Redeclaring math accent \check on input line 38.
+LaTeX Font Info:    Redeclaring math accent \hat on input line 38.
+LaTeX Font Info:    Redeclaring math accent \dot on input line 38.
+LaTeX Font Info:    Redeclaring math accent \mathring on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Gamma on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Delta on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Theta on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Lambda on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Xi on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Pi on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Sigma on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Upsilon on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Phi on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Psi on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \Omega on input line 38.
+LaTeX Font Info:    Redeclaring math symbol \mathdollar on input line 38.
+LaTeX Font Info:    Redeclaring symbol font `operators' on input line 38.
+LaTeX Font Info:    Encoding `OT1' has changed to `TU' for symbol font
+(Font)              `operators' in the math version `normal' on input line 38.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `normal'
+(Font)                  OT1/cmr/m/n --> TU/LiberationSerif(0)/m/n on input line
+ 38.
+LaTeX Font Info:    Encoding `OT1' has changed to `TU' for symbol font
+(Font)              `operators' in the math version `bold' on input line 38.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `bold'
+(Font)                  OT1/cmr/bx/n --> TU/LiberationSerif(0)/m/n on input lin
+e 38.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `normal'
+(Font)                  TU/LiberationSerif(0)/m/n --> TU/LiberationSerif(0)/m/n
+ on input line 38.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `normal'
+(Font)                  OT1/cmr/m/it --> TU/LiberationSerif(0)/m/it on input li
+ne 38.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `normal'
+(Font)                  OT1/cmr/bx/n --> TU/LiberationSerif(0)/b/n on input lin
+e 38.
+LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `normal'
+(Font)                  OT1/cmss/m/n --> TU/lmss/m/n on input line 38.
+LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `normal'
+(Font)                  OT1/cmtt/m/n --> TU/lmtt/m/n on input line 38.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `bold'
+(Font)                  TU/LiberationSerif(0)/m/n --> TU/LiberationSerif(0)/b/n
+ on input line 38.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `bold'
+(Font)                  OT1/cmr/bx/it --> TU/LiberationSerif(0)/b/it on input l
+ine 38.
+LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `bold'
+(Font)                  OT1/cmss/bx/n --> TU/lmss/b/n on input line 38.
+LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `bold'
+(Font)                  OT1/cmtt/m/n --> TU/lmtt/b/n on input line 38.
 
 (/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count464
-\scratchdimen=\dimen288
+\scratchcounter=\count476
+\scratchdimen=\dimen290
 \scratchbox=\box92
-\nofMPsegments=\count465
-\nofMParguments=\count466
-\everyMPshowfont=\toks46
-\MPscratchCnt=\count467
-\MPscratchDim=\dimen289
-\MPnumerator=\count468
-\makeMPintoPDFobject=\count469
-\everyMPtoPDFconversion=\toks47
+\nofMPsegments=\count477
+\nofMParguments=\count478
+\everyMPshowfont=\toks48
+\MPscratchCnt=\count479
+\MPscratchDim=\dimen291
+\MPnumerator=\count480
+\makeMPintoPDFobject=\count481
+\everyMPtoPDFconversion=\toks49
 ) (/usr/share/texlive/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
@@ -1104,9 +1376,9 @@ File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
 *geometry* driver: auto-detecting
-*geometry* detected driver: pdftex
+*geometry* detected driver: luatex
 *geometry* verbose mode - [ preamble ] result:
-* driver: pdftex
+* driver: luatex
 * paper: <default>
 * layout: <same size as paper>
 * layoutoffset:(h,v)=(0.0pt,0.0pt)
@@ -1140,149 +1412,1200 @@ e
 Package pgfplots notification 'compat/show suggested version=true': document ha
 s been generated with the most recent feature set (\pgfplotsset{compat=1.18}).
 
+Package biblatex Info: Trying to load language 'greek'...
+Package biblatex Info: ... file 'greek.lbx' found.
+(/usr/share/texlive/texmf-dist/tex/latex/biblatex/lbx/greek.lbx
+File: greek.lbx 2023/03/05 v3.19 biblatex localization (PK/MW)
+)
+Package biblatex Info: Trying to load language 'american'...
+Package biblatex Info: ... file 'american.lbx' found.
+
+(/usr/share/texlive/texmf-dist/tex/latex/biblatex/lbx/american.lbx
+File: american.lbx 2023/03/05 v3.19 biblatex localization (PK/MW)
 Package biblatex Info: Trying to load language 'english'...
 Package biblatex Info: ... file 'english.lbx' found.
+
 (/usr/share/texlive/texmf-dist/tex/latex/biblatex/lbx/english.lbx
 File: english.lbx 2023/03/05 v3.19 biblatex localization (PK/MW)
 )
-Package biblatex Info: Input encoding 'utf8' detected.
+Package biblatex Info: Trying to load language 'english'...
+Package biblatex Info: ... file 'english.lbx' found.
+
+(/usr/share/texlive/texmf-dist/tex/latex/biblatex/lbx/english.lbx
+File: english.lbx 2023/03/05 v3.19 biblatex localization (PK/MW)
+))
+Package biblatex Info: LuaTeX detected.
+(biblatex)             Assuming input encoding 'utf8'.
 Package biblatex Info: Automatic encoding selection.
 (biblatex)             Assuming data encoding 'utf8'.
-\openout4 = `source.bcf'.
 
+\openout4 = source.bcf
 Package biblatex Info: Trying to load bibliographic data...
 Package biblatex Info: ... file 'source.bbl' found.
 
 (/home/pan/Projects/machine_learning/pan_integration/latex/out/source.bbl)
-Package biblatex Info: Reference section=0 on input line 28.
-Package biblatex Info: Reference segment=0 on input line 28.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 30.
+Package biblatex Info: Reference section=0 on input line 38.
+Package biblatex Info: Reference segment=0 on input line 38.
+LaTeX Info: Redefining \rmfamily on input line 38.
+LaTeX Info: Redefining \sffamily on input line 38.
+LaTeX Info: Redefining \ttfamily on input line 38.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+<up_logo.jpg, id=4, 488.5452pt x 177.3024pt>
+File: up_logo.jpg Graphic file (type jpg)
+<use up_logo.jpg>
+Package luatex.def Info: up_logo.jpg  used on input line 43.
+(luatex.def)             Requested size: 341.97931pt x 124.11081pt.
+LaTeX Info: Redefining \rmfamily on input line 53.
+LaTeX Info: Redefining \sffamily on input line 53.
+LaTeX Info: Redefining \ttfamily on input line 53.
+LaTeX Info: Redefining \rmfamily on input line 69.
+LaTeX Info: Redefining \sffamily on input line 69.
+LaTeX Info: Redefining \ttfamily on input line 69.
+LaTeX Info: Redefining \rmfamily on input line 82.
+LaTeX Info: Redefining \sffamily on input line 82.
+LaTeX Info: Redefining \ttfamily on input line 82.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+[1
 
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}<./up_logo.jpg>] [1]
+Package polyglossia Info: Option: English, variant=american.
+LaTeX Info: Redefining \rmfamily on input line 126.
+LaTeX Info: Redefining \sffamily on input line 126.
+LaTeX Info: Redefining \ttfamily on input line 126.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+[1]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng (/home/pan/Projects/machine_learning/pan_integration/latex/out/source.
+lof
+LaTeX Info: Redefining \rmfamily on input line 4.
+LaTeX Info: Redefining \sffamily on input line 4.
+LaTeX Info: Redefining \ttfamily on input line 4.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Font Info:    Trying to load font information for U+msa on input line 5.
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 30.
-
+LaTeX Font Info:    Trying to load font information for U+msb on input line 5.
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-) [1
+)
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 7.
+LaTeX Info: Redefining \sffamily on input line 7.
+LaTeX Info: Redefining \ttfamily on input line 7.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 11.
+LaTeX Info: Redefining \sffamily on input line 11.
+LaTeX Info: Redefining \ttfamily on input line 11.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 13.
+LaTeX Info: Redefining \sffamily on input line 13.
+LaTeX Info: Redefining \ttfamily on input line 13.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 14.
+LaTeX Info: Redefining \sffamily on input line 14.
+LaTeX Info: Redefining \ttfamily on input line 14.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 15.
+LaTeX Info: Redefining \sffamily on input line 15.
+LaTeX Info: Redefining \ttfamily on input line 15.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 16.
+LaTeX Info: Redefining \sffamily on input line 16.
+LaTeX Info: Redefining \ttfamily on input line 16.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 18.
+LaTeX Info: Redefining \sffamily on input line 18.
+LaTeX Info: Redefining \ttfamily on input line 18.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 20.
+LaTeX Info: Redefining \sffamily on input line 20.
+LaTeX Info: Redefining \ttfamily on input line 20.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 22.
+LaTeX Info: Redefining \sffamily on input line 22.
+LaTeX Info: Redefining \ttfamily on input line 22.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 23.
+LaTeX Info: Redefining \sffamily on input line 23.
+LaTeX Info: Redefining \ttfamily on input line 23.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 26.
+LaTeX Info: Redefining \sffamily on input line 26.
+LaTeX Info: Redefining \ttfamily on input line 26.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 27.
+LaTeX Info: Redefining \sffamily on input line 27.
+LaTeX Info: Redefining \ttfamily on input line 27.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 28.
+LaTeX Info: Redefining \sffamily on input line 28.
+LaTeX Info: Redefining \ttfamily on input line 28.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng)
+\tf@lof=\write5
 
-{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [1]
+\openout5 = source.lof
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [2
+
+]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+(/home/pan/Projects/machine_learning/pan_integration/latex/out/source.lot
+LaTeX Info: Redefining \rmfamily on input line 4.
+LaTeX Info: Redefining \sffamily on input line 4.
+LaTeX Info: Redefining \ttfamily on input line 4.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 6.
+LaTeX Info: Redefining \sffamily on input line 6.
+LaTeX Info: Redefining \ttfamily on input line 6.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 9.
+LaTeX Info: Redefining \sffamily on input line 9.
+LaTeX Info: Redefining \ttfamily on input line 9.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 10.
+LaTeX Info: Redefining \sffamily on input line 10.
+LaTeX Info: Redefining \ttfamily on input line 10.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 11.
+LaTeX Info: Redefining \sffamily on input line 11.
+LaTeX Info: Redefining \ttfamily on input line 11.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 13.
+LaTeX Info: Redefining \sffamily on input line 13.
+LaTeX Info: Redefining \ttfamily on input line 13.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 15.
+LaTeX Info: Redefining \sffamily on input line 15.
+LaTeX Info: Redefining \ttfamily on input line 15.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 16.
+LaTeX Info: Redefining \sffamily on input line 16.
+LaTeX Info: Redefining \ttfamily on input line 16.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 17.
+LaTeX Info: Redefining \sffamily on input line 17.
+LaTeX Info: Redefining \ttfamily on input line 17.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 20.
+LaTeX Info: Redefining \sffamily on input line 20.
+LaTeX Info: Redefining \ttfamily on input line 20.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 21.
+LaTeX Info: Redefining \sffamily on input line 21.
+LaTeX Info: Redefining \ttfamily on input line 21.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 24.
+LaTeX Info: Redefining \sffamily on input line 24.
+LaTeX Info: Redefining \ttfamily on input line 24.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 25.
+LaTeX Info: Redefining \sffamily on input line 25.
+LaTeX Info: Redefining \ttfamily on input line 25.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+LaTeX Info: Redefining \rmfamily on input line 26.
+LaTeX Info: Redefining \sffamily on input line 26.
+LaTeX Info: Redefining \ttfamily on input line 26.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng)
+\tf@lot=\write6
+
+\openout6 = source.lot
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+[3
+
+]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng (/home/pan/Projects/machine_learning/pan_integration/latex/out/source.
+toc
+LaTeX Info: Redefining \rmfamily on input line 2.
+LaTeX Info: Redefining \sffamily on input line 2.
+LaTeX Info: Redefining \ttfamily on input line 2.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+Package polyglossia Info: Option: English, variant=american.
+Package polyglossia Info: Option: English, variant=american.
+LaTeX Info: Redefining \rmfamily on input line 4.
+LaTeX Info: Redefining \sffamily on input line 4.
+LaTeX Info: Redefining \ttfamily on input line 4.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+Package polyglossia Info: Option: English, variant=american.
+Package polyglossia Info: Option: English, variant=american.
+LaTeX Info: Redefining \rmfamily on input line 5.
+LaTeX Info: Redefining \sffamily on input line 5.
+LaTeX Info: Redefining \ttfamily on input line 5.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 46 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+[1
+
+]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng)
+\tf@toc=\write7
+
+\openout7 = source.toc
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [2]
 Chapter 1.
-[2
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+Overfull \hbox (3.71216pt too wide) in paragraph at lines 150--151
+[]\TU/LiberationSerif(0)/m/n/10.95 gen-er-a-tive mod-els in-clud-ing con-tin-u-o
+us nor-mal-is-ing flows and stochas-tic dif-fer-en-tial equa-
+ []
+
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [3
 
 ]
 Chapter 2.
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
 ===== Image 'source-figure0' is up-to-date. ======
-[3
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [4
 
-] [4 <./source-figure0.pdf>] [5]
+]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [5<./source-figure0.pdf>]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [6]
 Chapter 3.
-[6
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [7
 
-] [7] (./resnet_to_node_plot.pgf) [8] [9] [10]
+]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng (./resnet_to_node_plot.pgf
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng)
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [8]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [9]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [10]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [11]
 Chapter 4.
-[11
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 78 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 78 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [12
 
-] [12] [13]
-Overfull \hbox (11.7396pt too wide) in paragraph at lines 531--533
-\OT1/cmr/m/n/10.95 Where $^^H$ is a con-tin-u-ous func-tion on its vari-ables, 
-in the case of for-ward Eu-ler $^^H(\OML/cmm/m/it/10.95 t[]; y[]\OT1/cmr/m/n/10
-.95 ; \OML/cmm/m/it/10.95 h\OT1/cmr/m/n/10.95 ) =
- []
-
-[14] [15] [16] [17]
+]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [13]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [14]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [15]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [16]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [17]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [18]
 Chapter 5.
-[18
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [19
 
-] [19]
-Underfull \hbox (badness 10000) in paragraph at lines 843--847
+]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [20]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+Underfull \hbox (badness 10000) in paragraph at lines 936--940
 
  []
 
-[20] [21] (./sol_regression.pgf)
-Overfull \hbox (47.40184pt too wide) in paragraph at lines 7564--990
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [21]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [22]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng (./sol_regression.pgf)
+Overfull \hbox (47.40184pt too wide) in paragraph at lines 7564--1083
  [] 
  []
 
-[22] [23] [24] [25]
-Overfull \hbox (3.28117pt too wide) in paragraph at lines 1181--1195
-[]\OT1/cmr/m/n/10.95 Comparing pop-u-lar par-al-lel in time ODE solv-ing meth-o
-ds, like PFASST and parareal,
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [23]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [24]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [25]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [26]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [27]
+Overfull \hbox (1.21892pt too wide) in paragraph at lines 1301--1305
+[]\TU/LiberationSerif(0)/m/n/10.95 Sec-ondly, the line search al-go-rithm in-vol
+ves com-put-ing the ob-jec-tive func-tion and it’s deriva-
  []
 
-[26] [27] [28] [29] (./moons.pgf) [30] (./moons_sol.pgf) [31] [32] [33
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [28]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [29]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [30]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng (./moons.pgf)
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng (./moons_sol.pgf)
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [31]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [32]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [33]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+Overfull \hbox (22.2528pt too wide) in paragraph at lines 1508--1508
+[]\TU/LiberationSerif(0)/m/n/10.95 X. Chen, ``Or-di-nary dif-fer-en-tial equa-ti
+ons for deep learn-ing,'' \TU/LiberationSerif(0)/m/it/10.95 arXiv preprint arXiv
+:1911.00502\TU/LiberationSerif(0)/m/n/10.95 ,
+ []
+
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [34
 
 ]
-Overfull \hbox (56.2748pt too wide) in paragraph at lines 1415--1415
-[]\OT1/cmr/m/n/10.95 X. Chen, ``Or-di-nary dif-fer-en-tial equa-tions for deep 
-learn-ing,'' \OT1/cmr/m/it/10.95 arXiv preprint arXiv:1911.00502\OT1/cmr/m/n/10
-.95 ,
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+Overfull \hbox (4.2353pt too wide) in paragraph at lines 1508--1508
+\TU/LiberationSerif(0)/m/n/10.95 in-duc-tive bi-ases in video mod-el-ing through
+ neu-ral cdes,'' \TU/LiberationSerif(0)/m/it/10.95 arXiv preprint arXiv:2311.049
+86\TU/LiberationSerif(0)/m/n/10.95 ,
  []
 
-[34] [35]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [35]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [36]
 Appendix A.
-[36
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [37
 
-] [37]
+]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [38]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
 ===== Image 'source-figure1' is up-to-date. ======
-[38 <./source-figure1.pdf>] [39]
+
+Overfull \hbox (269.74097pt too wide) in paragraph at lines 1657--1665
+\TU/LiberationSerif(0)/m/n/10.95 to [] and the same back-prop-a-ga-tion al-go-ri
+thm is used to train the net-work. [] 
+ []
+
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+Overfull \hbox (16.86629pt too wide) in paragraph at lines 1667--1669
+\TU/LiberationSerif(0)/m/n/10.95 ory, namely ad-joint sen-si-tiv-i-ties. The gov
+-ern-ing equa-tions for neu-ral ODEs are Eqs. [], [], []
+ []
+
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [39<./source-figure1.pdf>]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [40]
 Appendix B.
-[40
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [41
 
-] [41]
+]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [42]
 Appendix C.
-[42
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [43
 
-] [43] [44] [45] [46] [47] [48] [49] [50]
+]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [44]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [45]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [46]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [47]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [48]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [49]
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng
+luaotfload | aux : font no 27 (nil) defines no feature for script latn with lang
+uage eng [50]
 (/home/pan/Projects/machine_learning/pan_integration/latex/out/source.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
 Package logreq Info: Writing requests to 'source.run.xml'.
-\openout1 = `source.run.xml'.
 
- ) 
-Here is how much of TeX's memory you used:
- 35786 strings out of 476106
- 878146 string characters out of 5793933
- 2311286 words of memory out of 5000000
- 57191 multiletter control sequences out of 15000+600000
- 582630 words of font info for 125 fonts, out of 8000000 for 9000
- 59 hyphenation exceptions out of 8191
- 99i,19n,107p,1088b,1240s stack positions out of 10000i,1000n,20000p,200000b,200000s
- </home/pan/.texlive2023/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk
-></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr
-/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share
-/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx8.pfb></usr/share/texliv
-e/texmf-dist/fonts/type1/public/amsfonts/cm/cmbxti10.pfb></usr/share/texlive/te
-xmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-di
-st/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fon
-ts/type1/public/amsfonts/cm/cmmi12.pfb></usr/share/texlive/texmf-dist/fonts/typ
-e1/public/amsfonts/cm/cmmi6.pfb></usr/share/texlive/texmf-dist/fonts/type1/publ
-ic/amsfonts/cm/cmmi7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsf
-onts/cm/cmmi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm
-/cmmib10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr1
-0.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb><
-/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/sh
-are/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/share/texl
-ive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texm
-f-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/f
-onts/type1/public/amsfonts/cm/cmss10.pfb></usr/share/texlive/texmf-dist/fonts/t
-ype1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/p
-ublic/amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/a
-msfonts/cm/cmsy8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts
-/cm/cmti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cm
-tt10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msb
-m10.pfb>
-Output written on /home/pan/Projects/machine_learning/pan_integration/latex/out
-/source.pdf (51 pages, 643232 bytes).
-PDF statistics:
- 331 PDF objects out of 1000 (max. 8388607)
+\openout1 = source.run.xml
+)
+
+Here is how much of LuaTeX's memory you used:
+ 40672 strings out of 476553
+ 477003,2848258 words of node,token memory allocated
+ 1319 words of node memory still in use:
+   7 hlist, 2 vlist, 2 rule, 2 glue, 4 kern, 28 sub_mlist, 1 glyph, 167 attribut
+e, 71 glue_spec, 167 attribute_list, 2 write nodes
+   avail lists: 1:11,2:68764,3:69436,4:100,5:725,6:116,7:8024,8:151,9:1379,10:17
+,11:735
+ 61552 multiletter control sequences out of 65536+600000
+ 145 fonts using 21461319 bytes
+ 99i,19n,102p,1087b,2125s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/share/texmf/fonts/opentype/public/lm/lmmono10-regular.otf></usr/share/texm
+f/fonts/opentype/public/lm/lmsans10-regular.otf></usr/share/fonts/truetype/liber
+ation/LiberationSerif-BoldItalic.ttf></usr/share/fonts/truetype/liberation/Liber
+ationSerif-Italic.ttf></usr/share/texlive/texmf-dist/fonts/opentype/public/gfsar
+temisia/GFSArtemisiaBold.otf></usr/share/fonts/truetype/liberation/LiberationSer
+if-Regular.ttf></usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf></
+home/pan/.local/share/fonts/GFSArtemisia.ttf></usr/share/texlive/texmf-dist/font
+s/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1
+/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public
+/amsfonts/cm/cmmi12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfon
+ts/cm/cmmi6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cm
+mi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pf
+b></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/
+share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/share/tex
+live/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texm
+f-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fo
+nts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmsy8.pfb></usr/share/texlive/texmf-dist/fonts/type1/publi
+c/amsfonts/symbols/msbm10.pfb>
+Output written on source.pdf (55 pages, 995117 bytes).
+
+PDF statistics: 333 PDF objects out of 1000 (max. 8388607)
  219 compressed objects within 3 object streams
- 0 named destinations out of 1000 (max. 500000)
- 23 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 0 named destinations out of 1000 (max. 131072)
+ 16 words of extra memory for PDF output out of 10000 (max. 100000000)
 

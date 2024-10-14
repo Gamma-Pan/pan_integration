@@ -1,6 +1,6 @@
 /wandb/
 /Testing/
-/checkpoints/
+*/checkpoints/
 /lightning_logs/
 /data/
 /.idea/
