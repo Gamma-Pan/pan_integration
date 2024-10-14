@@ -2,6 +2,7 @@ from typing import Any
 
 import lightning
 import torch
+import torch.nn.functional as F
 from IPython.core.profileapp import list_help
 from click import progressbar
 from torch import nn
@@ -16,21 +17,22 @@ import plotly.express as px
 
 from math import pow, ceil
 
+from torch.onnx.symbolic_opset9 import embedding
 from torchmetrics import MeanMetric
 
 from pan_integration.data import MNISTDataModule
 
 from torchdyn.core import NeuralODE
 
+from pan_integration.utils.lightning import LitOdeClassifier
+
 
 # %% plot callback
 class PlotCallback(lightning.Callback):
     def on_test_end(self, trainer, lit_module):
         ds = trainer.test_dataloaders.dataset
-        generator = torch.Generator().manual_seed(torch.randint(0,10_000,(1,)).item())
-        sampler = torch.utils.data.RandomSampler(
-            ds, num_samples=9, generator=generator
-        )
+        generator = torch.Generator().manual_seed(torch.randint(0, 10_000, (1,)).item())
+        sampler = torch.utils.data.RandomSampler(ds, num_samples=9, generator=generator)
         plot_loader = torch.utils.data.DataLoader(ds, batch_size=9, sampler=sampler)
         imgs, labels = next(iter(plot_loader))
         imgs = imgs.to(lit_module.device)
@@ -50,50 +52,86 @@ class PlotCallback(lightning.Callback):
             text1 = f"gred = {y_hat[idx].argmax().item()}"
             text2 = f"true= {labels[idx]}"
             text = text1 + "|" + text2
-            a.update(text =text )
+            a.update(text=text)
 
         fig.for_each_annotation(labelizer)
         fig.show()
 
+
 # %% vanilla vae module
 
 
-class NODEVanilla(LightningModule):
-    def __init__(self, in_dims=(1, 28, 28), f_layers=3, augmentation=10):
+class Augmenter(nn.Module):
+    def __init__(self, channels):
         super().__init__()
+        self.conv1 = nn.Conv2d(1, channels, 3, 1, 1, bias=False)
 
-        channels, height, width = in_dims
-        self.augmenter = nn.Conv2d(channels, augmentation, kernel_size=3, padding=1 )
+    def forward(self, x):
+        x = self.conv1(x)
+        return x
 
-        neural_f = nn.Sequential(
-            *[
-                nn.Sequential(
-                    nn.Conv2d(augmentation, augmentation, kernel_size=3, padding=1, stride=1, bias=False),
-                    nn.BatchNorm2d(augmentation),
-                    nn.Softplus(),
-                )
-                for _ in range(f_layers)
-            ]
-        )
 
-        self.node = NeuralODE(vector_field=neural_f, return_t_eval=False )
+class VF(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.nfe = 0
 
-        self.classifier = nn.Sequential(
-            nn.Conv2d(augmentation, 6, 1),
-            nn.AdaptiveAvgPool2d(4),
-            nn.Flatten(),
-            nn.Linear(6 * 16, 10),
-        )
+        self.norm1 = nn.GroupNorm(channels, channels)
+        self.conv1 = nn.Conv2d(channels, channels, 3, 1, 1, bias=False)
+        self.conv2 = nn.Conv2d(channels, channels, 3, 1, 1, bias=False)
+        self.norm2 = nn.GroupNorm(channels, channels)
+        self.conv3 = nn.Conv2d(channels, channels, 1)
 
-        self.metric = metrics.classification.Accuracy("multiclass", num_classes=10)
-        self.test_mean_acc = MeanMetric()
+    def forward(self, t, x, *args, **kwargs):
+        self.nfe += 1
+        x = self.norm1(x)
+        x = self.conv1(x)
+        x = F.softplus(x)
+        x = self.conv2(x)
+        x = F.softplus(x)
+        x = self.norm2(x)
+        x = self.conv3(x)
+        return x
 
+
+class Classifier(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv1 = nn.Conv2d(channels, 6, 1)
+        self.pool = nn.AdaptiveAvgPool2d(4)
+        self.flatten = nn.Flatten()
+        self.lin1 = nn.Linear(6 * 16, 10)
+
+    def forward(self, x):
+        # x = self.drop(x)
+        x = self.conv1(x)
+        x = self.pool(x)
+        x = self.flatten(x)
+        x = self.lin1(x)
+        return x
+
+
+class LitOdeClassifier(LightningModule):
+    def __init__(
+        self,
+        t_span,
+        embedding: nn.Module,
+        ode_model: nn.Module,
+        classifier: nn.Module,
+    ):
+        super().__init__()
+        self.t_span = t_span
+        self.ode_model = ode_model
+        self.embedding = embedding
+        self.classifier = classifier
 
     def _common_step(self, x):
-        x = self.augmenter(x)
-        x = self.node(x)[-1]
-        x = self.classifier(x)
-        return x
+        x_em = self.embedding(x)
+
+        _, y_hat = self.ode_model(x_em, t_span=self.t_span)
+
+        logits = self.classifier(y_hat[-1])
+        return logits
 
     def forward(self, x):
         return self._common_step(x)
@@ -103,23 +141,20 @@ class NODEVanilla(LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self._common_step(x)
-
-        y_oh = torch.nn.functional.one_hot(y, 10).float()
-        loss = torch.nn.functional.cross_entropy(y_hat, y_oh)
-        self.log("train_loss", loss, prog_bar=True)
+        logits = self._common_step(x)
+        loss = F.cross_entropy(logits, y)
+        self.log("loss", loss, prog_bar=True)
         return loss
 
     def test_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self._common_step(x)
         test_acc = self.metric(y_hat, y)
-        self.log('test_acc', test_acc, prog_bar=True)
         self.test_mean_acc(test_acc)
 
     def on_test_epoch_end(self):
         avg_acc = self.test_mean_acc.compute()
-        self.log('test_acc', avg_acc)
+        self.log("test_acc", avg_acc, prog_bar=True)
 
 
 # %% node vae module
@@ -232,7 +267,9 @@ class NODEVae(LightningModule):
 
         y_oh = torch.nn.functional.one_hot(y, 10).float()
 
-        classification_loss = nn.functional.binary_cross_entropy_with_logits(y_hat, y_oh, reduction='sum')
+        classification_loss = nn.functional.binary_cross_entropy_with_logits(
+            y_hat, y_oh, reduction="sum"
+        )
         kl_divergence = -0.5 * torch.mean(1 + log_var - mu.pow(2) - torch.exp(log_var))
 
         loss = classification_loss + kl_divergence
@@ -249,20 +286,27 @@ class NODEVae(LightningModule):
 
     def on_test_epoch_end(self):
         avg_acc = self.test_mean_acc.compute()
-        self.log('test_acc', avg_acc, prog_bar=True)
+        self.log("test_acc", avg_acc, prog_bar=True)
 
 
 # %% train and test vae
-dmodule = MNISTDataModule(batch_size=64, num_workers=11)
-CHANNELS = [16, 32, 32]
+dmodule = MNISTDataModule(batch_size=64, num_workers=8)
+CHANNELS = [16, 16, 16]
 vae = NODEVae(latent_dim=50, channels=CHANNELS)
 trainer = Trainer(fast_dev_run=False, max_epochs=2, callbacks=[PlotCallback()])
 trainer.fit(vae, datamodule=dmodule)
 trainer.test(vae, datamodule=dmodule)
 
 # %% train and test vanilla
-dmodule = MNISTDataModule(batch_size=64, num_workers=11)
-vae = NODEVanilla(f_layers=3, augmentation=20)
-trainer = Trainer(fast_dev_run=False, max_epochs=10, callbacks=[PlotCallback()])
-trainer.fit(vae, datamodule=dmodule)
-trainer.test(vae, datamodule=dmodule)
+dmodule = MNISTDataModule(batch_size=64, num_workers=8)
+CHANNELS = 64
+augmenter = Augmenter(CHANNELS)
+vf = VF(64)
+node = NeuralODE(vector_field=vf)
+classifier = Classifier(CHANNELS)
+il_ode = LitOdeClassifier(
+    torch.tensor([0.0, 1.0]), embedding=augmenter, ode_model=node, classifier=classifier
+)
+trainer = Trainer(fast_dev_run=False, max_epochs=2, callbacks=[PlotCallback()])
+trainer.fit(il_ode, datamodule=dmodule)
+trainer.test(il_ode, datamodule=dmodule)
