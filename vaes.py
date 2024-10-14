@@ -78,7 +78,12 @@ class NODEVanilla(LightningModule):
 
         self.node = NeuralODE(vector_field=neural_f, return_t_eval=False )
 
-        self.classifier = nn.Linear(augmentation*height*width, 10)
+        self.classifier = nn.Sequential(
+            nn.Conv2d(augmentation, 6, 1),
+            nn.AdaptiveAvgPool2d(4),
+            nn.Flatten(),
+            nn.Linear(6 * 16, 10),
+        )
 
         self.metric = metrics.classification.Accuracy("multiclass", num_classes=10)
         self.test_mean_acc = MeanMetric()
@@ -87,7 +92,6 @@ class NODEVanilla(LightningModule):
     def _common_step(self, x):
         x = self.augmenter(x)
         x = self.node(x)[-1]
-        x = x.view(x.size(0), -1)
         x = self.classifier(x)
         return x
 
@@ -185,9 +189,9 @@ class NODEVae(LightningModule):
 
         neural_f = nn.Sequential(
             nn.Linear(latent_dim, latent_dim),
-            nn.ReLU(),
+            nn.Softplus(),
             nn.Linear(latent_dim, latent_dim),
-            nn.ReLU(),
+            nn.Softplus(),
             nn.Linear(latent_dim, latent_dim),
         )
         self.node = NeuralODE(neural_f, return_t_eval=False)
