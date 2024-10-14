@@ -290,12 +290,12 @@ class NODEVae(LightningModule):
 
 
 # %% train and test vae
-dmodule = MNISTDataModule(batch_size=64, num_workers=8)
-CHANNELS = [16, 16, 16]
-vae = NODEVae(latent_dim=50, channels=CHANNELS)
-trainer = Trainer(fast_dev_run=False, max_epochs=2, callbacks=[PlotCallback()])
-trainer.fit(vae, datamodule=dmodule)
-trainer.test(vae, datamodule=dmodule)
+# dmodule = MNISTDataModule(batch_size=64, num_workers=8)
+# CHANNELS = [16, 16, 16]
+# vae = NODEVae(latent_dim=50, channels=CHANNELS)
+# trainer = Trainer(fast_dev_run=False, max_epochs=2, callbacks=[PlotCallback()])
+# trainer.fit(vae, datamodule=dmodule)
+# trainer.test(vae, datamodule=dmodule)
 
 # %% train and test vanilla
 dmodule = MNISTDataModule(batch_size=64, num_workers=8)
