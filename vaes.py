@@ -3,7 +3,6 @@ from typing import Any
 import lightning
 import torch
 import torch.nn.functional as F
-from IPython.core.profileapp import list_help
 from click import progressbar
 from torch import nn
 
@@ -11,20 +10,15 @@ from lightning import LightningModule, Trainer
 
 import torchmetrics as metrics
 
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import plotly.express as px
 
 from math import pow, ceil
 
-from torch.onnx.symbolic_opset9 import embedding
 from torchmetrics import MeanMetric
 
 from pan_integration.data import MNISTDataModule
 
 from torchdyn.core import NeuralODE
-
-from pan_integration.utils.lightning import LitOdeClassifier
 
 
 # %% plot callback
@@ -124,6 +118,8 @@ class LitOdeClassifier(LightningModule):
         self.ode_model = ode_model
         self.embedding = embedding
         self.classifier = classifier
+        self.metric = metrics.classification.Accuracy("multiclass", num_classes=10)
+        self.test_mean_acc = MeanMetric()
 
     def _common_step(self, x):
         x_em = self.embedding(x)
