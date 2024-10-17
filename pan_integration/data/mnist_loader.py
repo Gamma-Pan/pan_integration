@@ -22,10 +22,12 @@ class MNISTDataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.pin_memory = pin_memory
+
         self.test_transform = transforms.Compose(
             [
                 transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),
+                transforms.Resize((32, 32)),
+                # transforms.Normalize((0.1307,), (0.3081,)),
             ]
         )
         self.train_transform = transforms.Compose(
@@ -34,21 +36,22 @@ class MNISTDataModule(L.LightningDataModule):
                     degrees=10, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10
                 ),
                 transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),
+                transforms.Resize((32, 32)),
+                # transforms.Normalize((0.1307,), (0.3081,)),
             ]
         )
 
     def prepare_data(self):
         MNIST(self.data_dir, train=False, download=True)
+        MNIST(self.data_dir, train=True, download=True)
 
 
     def setup(self, stage: str):
 
         if stage == "fit":
             self.labels = []
-            for sample in MNIST(self.data_dir, train=True, download=True):
+            for sample in MNIST(self.data_dir, train=True):
                 self.labels.append(sample[1])
-
 
             mnist_train = MNIST(
                 self.data_dir, train=True, transform=self.train_transform

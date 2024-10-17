@@ -1,319 +1,273 @@
-import math
+from functools import reduce
+from math import pow
+from typing import Any
+
 import torch
-from torch import nn
-from typing import List
-
-# cheeky way to make calculations more readable
-i = {"channels": 0, "kernel": 1, "stride": 2, "padding": 3}
+from lightning import LightningModule
+from torch import nn, exp
+from torchdyn.core import NeuralODE
 
 
-class _ConvEncoder(nn.Module):
-    def __init__(self, conv_layer_sizes: List, activation_fn):
+class Encoder(nn.Module):
+    def __init__(self, channels, latent_dims, input_size):
         super().__init__()
-        self.blocks = nn.ModuleList()
-        for layer_in, layer_out in zip(conv_layer_sizes, conv_layer_sizes[1::]):
-            self.blocks.append(
-                nn.ModuleDict(
-                    {
-                        "conv": nn.Conv2d(
-                            in_channels=layer_in[i["channels"]],
-                            out_channels=layer_out[i["channels"]],
-                            kernel_size=layer_out[i["kernel"]],
-                            stride=layer_out[i["stride"]],
-                            padding=layer_out[i["padding"]],
-                        ),
-                        "bn": nn.BatchNorm2d(layer_out[i["channels"]]),
-                        "activation": activation_fn,
-                    }
-                )
-            )
 
-        self.blocks[-1]["activation"] = nn.Sigmoid()
+        in_channels, height, width = input_size
+        conv_out_sz = int(channels[-1] * (height / pow(2, len(channels))) ** 2)
+        self.fc = nn.Linear(conv_out_sz, latent_dims)
 
-    def forward(self, x):
-        for block in self.blocks:
-            x = block["conv"](x)
-            x = block["bn"](x)
-            x = block["activation"](x)
-
-        return x
-
-
-class _ConvDecoder(nn.Module):
-    def __init__(self, conv_layer_sizes, activation_fn, conv_out_sizes):
-        super().__init__()
-        self.blocks = nn.ModuleList()
-        self.conv_out_sizes = conv_out_sizes
-
-        for layer_in, layer_out in zip(
-            conv_layer_sizes[-1::-1], conv_layer_sizes[-2::-1]
-        ):
-            self.blocks.append(
-                nn.ModuleDict(
-                    {
-                        "conv": nn.ConvTranspose2d(
-                            in_channels=layer_in[i["channels"]],
-                            out_channels=layer_out[i["channels"]],
-                            kernel_size=layer_in[i["kernel"]],
-                            stride=layer_in[i["stride"]],
-                            padding=layer_in[i["padding"]],
-                        ),
-                        "bn": nn.BatchNorm2d(layer_out[i["channels"]]),
-                        "activation": activation_fn,
-                    }
-                )
-            )
-
-        self.blocks[-1]["activation"] = nn.Sigmoid()
-
-    def forward(self, x):
-        batch_size = x.shape[0]
-        for block, conv_out_size in zip(self.blocks, self.conv_out_sizes[-2::-1]):
-            x = block["conv"](
-                x,
-                output_size=torch.Size(
-                    (
-                        batch_size,
-                        conv_out_size["channels"],
-                        conv_out_size["width"],
-                        conv_out_size["width"],
-                    )
+        enc_modules = []
+        # calculate the size of each encoder layer
+        for ch_in, ch_out in zip([in_channels] + channels, channels):
+            enc_modules.append(
+                nn.Sequential(
+                    nn.Conv2d(ch_in, ch_out, kernel_size=3, padding=1, stride=2),
+                    nn.BatchNorm2d(ch_out),
+                    nn.ReLU(inplace=True),
                 ),
             )
-            x = block["bn"](x)
-            x = block["activation"](x)
+        enc_modules.append(
+            nn.Sequential(
+                nn.Conv2d(
+                    channels[-2], channels[-1], kernel_size=3, padding=1, stride=2
+                ),
+                nn.ReLU(inplace=True),
+                nn.Flatten(),
+            )
+        )
+        self.conv = nn.Sequential(*enc_modules)
 
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.fc(x)
         return x
 
 
-class Autoencoder(nn.Module):
-    def __init__(
-        self,
-        conv_dims: List = None,
-        linear_dims: List = None,
-        width: int = 28,
-        in_channels: int = 1,
-        latent_dim: int = 2,
-    ):
-        super().__init__()
-        self.activation = nn.ReLU()
+class VarEncoder(Encoder):
+    def __init__(self, channels, latent_dims, input_size):
+        super().__init__(channels, latent_dims, input_size)
 
-        if conv_dims is None:
-            conv_dims = [[16, 3, 1, 0], [64, 3, 2, 0], [128, 5, 2, 0]]
+        in_channels, height, width = input_size
+        self.fc = None
+        conv_out_sz = int(channels[-1] * (height / pow(2, len(channels))) ** 2)
 
-        if linear_dims is None:
-            linear_dims = [2048, 16]
-
-        self.last_channel = conv_dims[-1][i["channels"]]
-
-        # calculate the size of tensor after each convolutional layer
-        conv_out_sizes = [{"channels": in_channels, "width": width}]
-
-        conv_out = width
-        for idx, dims in enumerate(conv_dims):
-            conv_out = (
-                conv_out + (2 * dims[i["padding"]]) - (dims[i["kernel"]] - 1) - 1
-            ) / dims[i["stride"]] + 1
-            conv_out = math.floor(conv_out)
-            conv_out_sizes.append({"channels": dims[i["channels"]], "width": conv_out})
-
-        self.conv_out = conv_out
-        conv_dims.insert(0, [in_channels])
-
-        linear_dims.insert(0, int(conv_out * conv_out * self.last_channel))
-        linear_dims.append(latent_dim)
-
-        self.encoder_conv = _ConvEncoder(conv_dims, self.activation)
-
-        self.encoder_linear = nn.Sequential(
-            *[
-                nn.Sequential(
-                    nn.Linear(dim_in, dim_out),
-                    nn.LeakyReLU(),
-                    nn.Dropout(p=0.05),
-                )
-                for dim_in, dim_out in zip(linear_dims, linear_dims[1::])
-            ]
-        )
-        # replace final activation with tanh
-        self.encoder_linear[-1][1] = nn.Tanh()
-
-        self.decoder_linear = nn.Sequential(
-            *[
-                nn.Sequential(
-                    nn.Linear(dim_in, dim_out),
-                    nn.LeakyReLU(),
-                    nn.Dropout(p=0.05),
-                )
-                for dim_in, dim_out in zip(linear_dims[-1::-1], linear_dims[-2::-1])
-            ]
-        )
-
-        self.decoder_conv = _ConvDecoder(conv_dims, self.activation, conv_out_sizes)
-
-    def encoder(self, x):
-        x = self.encoder_conv(x)
-        x = torch.flatten(x, start_dim=1)
-        h = self.encoder_linear(x)
-        return h
-
-    def decoder(self, h):
-        x_hat = self.decoder_linear(h)
-        x_hat = torch.reshape(
-            x_hat, (-1, self.last_channel, self.conv_out, self.conv_out)
-        )
-        x_hat = self.decoder_conv(x_hat)
-        return x_hat
+        self.fc_mu = nn.Linear(conv_out_sz, latent_dims)
+        self.fc_logvar = nn.Linear(conv_out_sz, latent_dims)
 
     def forward(self, x):
-        h = self.encoder(x)
-        x_hat = self.decoder(h)
-        return x_hat
+        x = self.conv(x)
+        mu = self.fc_mu(x)
+        logvar = self.fc_logvar(x)
+
+        # reparametrization trick
+        z = mu + exp(0.5 * logvar) * torch.randn_like(mu)
+
+        return z, (mu, logvar)
 
 
-class VariationalAE(nn.Module):
-    def __init__(
-        self,
-        conv_dims: List = None,
-        linear_dims_encoder: List = None,
-        width: int = 28,
-        in_channels: int = 1,
-        latent_dim: int = 2,
-    ):
+class Decoder(nn.Module):
+    def __init__(self, channels, latent_dims, output_size=(1, 32, 32)):
         super().__init__()
-        self.activation = nn.ReLU()
+        out_channels, height, width = output_size
 
-        if conv_dims is None:
-            conv_dims = [[16, 3, 1, 0], [64, 3, 2, 0], [128, 5, 2, 0]]
+        side = int(height / pow(2, len(channels)))
 
-        if linear_dims_encoder is None:
-            linear_dims_encoder = [[2048, 64], [64, 16]]
-
-
-        self.last_channel = conv_dims[-1][i["channels"]]
-
-        # calculate the size of tensor after each convolutional layer
-        conv_out_sizes = [{"channels": in_channels, "width": width}]
-
-        conv_out = width
-        for idx, dims in enumerate(conv_dims):
-            conv_out = (
-                conv_out + (2 * dims[i["padding"]]) - (dims[i["kernel"]] - 1) - 1
-            ) / dims[i["stride"]] + 1
-            conv_out = math.floor(conv_out)
-            conv_out_sizes.append({"channels": dims[i["channels"]], "width": conv_out})
-
-        self.conv_out = conv_out
-        conv_dims.insert(0, [in_channels])
-
-        # the first list in linear_dims in the common fc network the second the individuals for mean and variance
-        linear_dims_encoder[0].insert(0, int(conv_out * conv_out * self.last_channel))
-        linear_dims_encoder[1].append(latent_dim)
-
-        self.encoder_conv = _ConvEncoder(conv_dims, self.activation)
-
-        self.encoder_linear_common = nn.Sequential(
-            *[
-                nn.Sequential(
-                    nn.Linear(dim_in, dim_out),
-                    nn.LeakyReLU(),
-                    nn.Dropout(p=0.05),
-                )
-                for dim_in, dim_out in zip(linear_dims_encoder[0], linear_dims_encoder[0][1::])
-            ]
+        self.conv_in_size = [channels[0], side, side]
+        self.fc = nn.Linear(
+            latent_dims, int(reduce(lambda a, b: a * b, self.conv_in_size))
         )
 
-        self.encoder_linear_mean = nn.Sequential(
-            *[
+        dec_modules = []
+        # calculate the size of each encoder layer
+        for ch_in, ch_out in zip(channels, channels[1:]):
+            dec_modules.append(
                 nn.Sequential(
-                    nn.Linear(dim_in, dim_out),
-                    nn.LeakyReLU(),
-                    nn.Dropout(p=0.05),
-                )
-                for dim_in, dim_out in zip(linear_dims_encoder[1], linear_dims_encoder[1][1::])
-            ]
+                    nn.ConvTranspose2d(
+                        ch_in,
+                        ch_out,
+                        kernel_size=2,
+                        stride=2,
+                    ),
+                    nn.BatchNorm2d(ch_out),
+                    nn.ReLU(inplace=True),
+                ),
+            )
+        dec_modules.append(
+            nn.Sequential(
+                nn.ConvTranspose2d(
+                    channels[-1],
+                    out_channels,
+                    kernel_size=2,
+                    stride=2,
+                ),
+                nn.Sigmoid(),
+            )
         )
-
-        # restrict means in [-1, 1]
-        self.encoder_linear_mean[-1][1] = nn.Tanh()
-
-        self.encoder_linear_log_var = nn.Sequential(
-            *[
-                nn.Sequential(
-                    nn.Linear(dim_in, dim_out),
-                    nn.LeakyReLU(),
-                    nn.Dropout(p=0.05),
-                )
-                for dim_in, dim_out in zip(linear_dims_encoder[1], linear_dims_encoder[1][1::])
-            ]
-        )
-
-        linear_dims_decoder = linear_dims_encoder[0] + linear_dims_encoder[1]
-        self.decoder_linear = nn.Sequential(
-            *[
-                nn.Sequential(
-                    nn.Linear(dim_in, dim_out),
-                    nn.LeakyReLU(),
-                    nn.Dropout(p=0.05),
-                )
-                for dim_in, dim_out in zip(linear_dims_decoder[-1::-1], linear_dims_decoder[-2::-1])
-            ]
-        )
-
-        self.decoder_conv = _ConvDecoder(conv_dims, self.activation, conv_out_sizes)
-
-    def encoder(self, x):
-        conv_out = self.encoder_conv(x)
-        lin_common_out = self.encoder_linear_common(conv_out)
-
-        mu = self.encoder_linear_mean(lin_common_out)
-        log_var = self.encoder_linear_log_var(lin_common_out)
-
-        return mu, log_var
-
-    def reparametrize(self, mu, log_var):
-        # sigma = e^(log(sigma^2)/2) = e^(log(sigma)) = sigma
-        sigma = torch.exp(log_var/2)
-        # sample from normal distribution
-        eps = torch.randn_like(sigma)
-        z = mu + sigma
-        return z
-
-    def decoder(self,z):
-        lin_out = self.decoder_linear(z)
-        x_hat = self.decoder_conv(lin_out)
-        return x_hat
+        self.conv = nn.Sequential(*dec_modules)
 
     def forward(self, x):
-        mu, log_var = self.encoder(x)
-        z = self.reparametrize(mu, log_var)
+        x = self.fc(x)
+        x = x.reshape(-1, *self.conv_in_size)
+        return self.conv(x)
+
+
+class AutoEncoder(LightningModule):
+    def __init__(self, channels, latent_dim, input_size):
+        super().__init__()
+        self.encoder = Encoder(channels, latent_dim, input_size)
+        self.decoder = Decoder(channels[::-1], latent_dim, input_size)
+
+        self.learning_rate = 1e-3
+        self.loss_fn = torch.nn.BCELoss()
+
+    def configure_optimizers(self):
+        opt = torch.optim.AdamW(
+            self.parameters(), lr=self.learning_rate, weight_decay=5 * 1e-4
+        )
+        lr_scheduler_config = {
+            "scheduler": torch.optim.lr_scheduler.ExponentialLR(
+                opt, gamma=0.9, last_epoch=-1
+            ),
+            "interval": "epoch",
+            "frequency": 5,
+        }
+        out = {"optimizer": opt, "lr_scheduler": lr_scheduler_config}
+        return out
+
+    def _common_step(self, x):
+        enc = self.encoder(x)
+        x_hat = self.decoder(enc)
+        return x_hat, enc
+
+    def forward(self, x):
+        x_hat, _ = self._common_step(x)
+        return x_hat
+
+    def training_step(self, batch, batch_idx):
+        x, label = batch
+        x_hat, enc = self._common_step(x)
+        loss = self.loss_fn(x_hat, x)
+
+        self.log(
+            "train_loss",
+            loss,
+            on_epoch=True,
+            prog_bar=True,
+        )
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, label = batch
+        x_hat, encoding = self._common_step(x)
+        loss = self.loss_fn(x_hat, x)
+
+        self.log(
+            "val_loss",
+            loss,
+            on_epoch=True,
+            prog_bar=True,
+        )
+        return encoding, label
+
+    def test_step(self, batch, batch_idx):
+        x, label = batch
+        x_hat, encoding = self._common_step(x)
+        loss = self.loss_fn(x_hat, x)
+
+        self.val_mean_loss(loss)
+        self.log(
+            "test_loss",
+            loss,
+            on_step=True,
+            prog_bar=True,
+        )
+
+
+class VariationalAutoEncoder(AutoEncoder):
+    def __init__(self, channels, latent_dim, input_size):
+        super().__init__(channels, latent_dim, input_size)
+        self.encoder = VarEncoder(channels, latent_dim, input_size)
+
+    def _common_step(self, x):
+        z, (mu, log_var) = self.encoder(x)
         x_hat = self.decoder(z)
-        return x_hat, z, mu, log_var
+        return x_hat, z, (mu, log_var)
+
+    def forward(self, x):
+        x_hat, z, _ = self._common_step(x)
+        return x_hat
+
+    def training_step(self, batch, batch_idx):
+        x, label = batch
+        x_hat, enc, (mu, log_sigma) = self._common_step(x)
+        reconstruct_loss = torch.nn.functional.binary_cross_entropy(x_hat, x)
+        kl_divergence = -0.5 * torch.sum(1 + log_sigma - mu.pow(2) - log_sigma.exp())
+
+        loss = reconstruct_loss + kl_divergence
+
+        self.log(
+            "train_loss",
+            loss,
+            on_epoch=True,
+            prog_bar=True,
+        )
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, label = batch
+        x_hat, encoding, (mu, log_sigma) = self._common_step(x)
+
+        reconstruct_loss = torch.nn.functional.binary_cross_entropy(x_hat, x)
+        kl_divergence = -0.5 * torch.sum(1 + log_sigma - mu.pow(2) - log_sigma.exp())
+        loss = reconstruct_loss + kl_divergence
+
+        self.log(
+            "val_loss",
+            loss,
+            on_epoch=True,
+            prog_bar=True,
+        )
+        return encoding, label
+
+    def test_step(self, batch, batch_idx):
+        x, label = batch
+        x_hat, encoding, (mu, log_sigma) = self._common_step(x)
+
+        reconstruct_loss = torch.nn.BCELoss(x_hat, x)
+        kl_divergence = -0.5 * torch.sum(1 + log_sigma - mu.pow(2) - log_sigma.exp())
+        loss = reconstruct_loss + kl_divergence
+
+        self.log(
+            "test_loss",
+            loss,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
 
-if __name__ == "__main__":
-    x = torch.rand(1, 1, 28, 28)
-    conv_dims = [[4, 3, 1, 0], [16, 3, 1, 0], [32, 5, 1, 0]]
+class ODEAutoEncoder(AutoEncoder):
+    def __init__(self, channels, latent_dim, input_size):
+        super().__init__(channels, latent_dim, input_size)
 
-    in_channels = 1
-    width = 28
-    # calculate the size of tensor after each convolutional layer
-    conv_out_sizes = [{"channels": in_channels, "width": width}]
+        vf = nn.Linear(latent_dim, latent_dim)
+        self.ode = NeuralODE(vf, return_t_eval=False)
 
-    conv_out = width
-    for idx, dims in enumerate(conv_dims):
-        conv_out = (
-            conv_out + (2 * dims[i["padding"]]) - (dims[i["kernel"]] - 1) - 1
-        ) / dims[i["stride"]] + 1
-        conv_out = math.floor(conv_out)
-        conv_out_sizes.append({"channels": dims[i["channels"]], "width": conv_out})
+    def _common_step(self, x):
+        enc = self.encoder(x)
+        enc_hat = self.ode(enc)[-1]
+        x_hat = self.decoder(enc_hat)
+        return x_hat, enc
 
-    conv_dims.insert(0, [in_channels])
 
-    m = _ConvEncoder(conv_dims, nn.ReLU())
-    mt = _ConvDecoder(conv_dims, nn.ReLU(), conv_out_sizes)
-    y = m(x)
-    print(y.shape)
 
-    k = mt(y)
-    print(k.shape)
+
+
+
+
+
+
+
+
+
+
+

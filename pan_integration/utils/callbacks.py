@@ -1,157 +1,58 @@
-import lightning.pytorch as pl
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-import numpy as np
+from typing import Any
 import torch
-from torch.utils.data import RandomSampler, DataLoader
+
+from lightning import Callback
+from lightning.pytorch.utilities.types import STEP_OUTPUT
+
+import plotly.express as px
+import io
+from PIL import Image
+from sympy.physics.secondquant import wicks
 
 
-class VizEmbeddings(pl.Callback):
-    def __init__(self, plot_interval=20):
-        self.plot_interval = plot_interval
+class AutoEncoderViz(Callback):
+    def __init__(self, batches_for_latent:int =10):
         super().__init__()
+        self.batches_for_latent = batches_for_latent
+        self.encodings = []
+        self.labels = []
 
-    def on_train_start(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
-    ) -> None:
-        pl_module.num_classes = 10
-        pl_module.indices = np.empty((pl_module.num_classes,), dtype=torch.Tensor)
-        # initialize a figure to plot the 2d embeddings of images
-        colors = [
-            "#5733FF",
-            "#FF5733",
-            "#33FF57",
-            "#FF33A6",
-            "#A6FF33",
-            "#33A6FF",
-            "#FF3366",
-            "#3366FF",
-            "#EDD605",
-            "#FF6633",
-        ]
-        pl_module.fig_emb, pl_module.axes_emb = plt.subplots()
-        pl_module.scatters = np.empty(
-            pl_module.num_classes, dtype=mpl.collections.PathCollection
-        )
+    def on_fit_start(self, trainer, pl_module ):
+        self.batch = next(iter(trainer.datamodule.val_dataloader()))
 
-        # get a 1000 random datapoint that will be plotted each epoch/step, they will be more or less evenly distributed
-        dataset = trainer.train_dataloader.dataset
-        random_sampler = RandomSampler(dataset)
-        random_dataloader = DataLoader(dataset, batch_size=1000, sampler=random_sampler)
-        pl_module.imgs, pl_module.classes = next(iter(random_dataloader))
+    def on_validation_start(self, trainer , pl_module ):
+        x, y = self.batch
+        x_hat = pl_module(x.to(pl_module.device))
+        x_hat = x_hat.cpu()
 
-        for idx in range(pl_module.num_classes):
-            # init artists
-            pl_module.scatters[idx] = pl_module.axes_emb.scatter(
-                [], [], c=colors[idx], label=idx
-            )
-            # get indices for each class
-            pl_module.indices[idx] = (pl_module.classes == idx).nonzero().squeeze()
+        imgs = [torch.cat([x_i, x_hat_i], dim=-1)[0] for (x_i,x_hat_i) in  zip(x[:9], x_hat[:9])]
 
-        pl_module.axes_emb.legend(loc="upper left")
+        trainer.logger.log_image(key="reconstruction_samples", images=imgs )
 
-    def on_train_batch_end(
+    def on_validation_epoch_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        self.encodings = []
+        self.labels = []
+
+    def on_validation_batch_end(
         self,
         trainer: "pl.Trainer",
         pl_module: "pl.LightningModule",
-        outputs,
-        batch,
-        batch_idx,
+        outputs: STEP_OUTPUT,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int = 0,
     ) -> None:
-        num_classes, encoder, imgs, indices, scatters = (
-            pl_module.num_classes,
-            pl_module.encoder,
-            pl_module.imgs,
-            pl_module.indices,
-            pl_module.scatters,
-        )
-        if not batch_idx % self.plot_interval:
-            with torch.no_grad():
-                max_steps = len(trainer.train_dataloader)
-                pl_module.fig_emb.suptitle(
-                    f"step: {batch_idx}/{max_steps} "
-                    f" epoch: {trainer.current_epoch} "
-                    f'loss: {trainer.callback_metrics["train_loss"]:2.2f}'
-                )
-                # get the 2D embedding of saved images
-                pl_module.model.int()
-                embeddings = encoder(imgs.cuda()).cpu()
-                pl_module.model.train()
+        if batch_idx < self.batches_for_latent:
+            encodings, label = outputs
+            self.encodings.append(encodings.cpu())
+            self.labels.append(label.cpu())
 
-                # update axes to fit data
-                max = 1  #torch.max(embeddings)
-                min = -1 #torch.min(embeddings)
+    def on_validation_epoch_end(self, trainer, pl_module):
+        points = torch.cat(self.encodings, dim=0)
+        labels = [str(x.item()) for x in torch.cat(self.labels, dim=0)]
 
-                pl_module.axes_emb.set_xlim([min, max])
-                pl_module.axes_emb.set_ylim([min, max])
-
-                for idx in range(num_classes):
-                    # print(embeddings[indices[idx]][:2, ...])
-                    scatters[idx].set_offsets(embeddings[indices[idx]])
-
-                plt.pause(1 / 160)
-
-
-class VizComparison(pl.Callback):
-    def __init__(self, interval: int = 20):
-        super().__init__()
-        self.plot_interval = interval
-
-    def on_train_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
-        # init figure and axes
-        pl_module.fig, pl_module.axes = plt.subplots(3, 3)
-        pl_module.images = np.empty_like(pl_module.axes)
-
-        for idx in range(9):
-            pl_module.axes[idx // 3, idx % 3].xaxis.set_major_locator(
-                ticker.NullLocator()
-            )
-            pl_module.axes[idx // 3, idx % 3].yaxis.set_major_locator(
-                ticker.NullLocator()
-            )
-
-            pl_module.images[idx // 3][idx % 3] = pl_module.axes[
-                idx // 3, idx % 3
-            ].imshow(
-                np.zeros((28, 56, 1), dtype=np.float32),
-                vmin=0,
-                vmax=1.0,
-                cmap="Greys",
-            )
-
-    def on_train_epoch_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
-        # get 9 random images from testing trainer
-        dataset = trainer.train_dataloader.dataset
-        random_sampler = RandomSampler(dataset)
-        random_dataloader = DataLoader(dataset, batch_size=10, sampler=random_sampler)
-        pl_module.img_tensor = next(iter(random_dataloader))[0].detach()
-
-    def on_train_batch_end(
-        self,
-        trainer: pl.Trainer,
-        pl_module: pl.LightningModule,
-        outputs,
-        batch,
-        batch_idx,
-    ):
-        with torch.no_grad():
-            if not batch_idx % self.plot_interval:
-                max_steps = len(trainer.train_dataloader)
-                pl_module.fig.suptitle(
-                    f"step: {batch_idx}/{max_steps} "
-                    f"epoch: {trainer.current_epoch} "
-                    f'loss: {trainer.callback_metrics["train_loss"]:2.2f}'
-                )
-                pl_module.model.int()
-                reconstructions = pl_module.forward(pl_module.img_tensor.cuda()).cpu()
-                pl_module.model.train()
-                appended_imgs = torch.concat(
-                    [reconstructions, pl_module.img_tensor], dim=3
-                )
-
-                for idx in range(9):
-                    out_image = torch.permute(appended_imgs[idx, ...], (1, 2, 0))
-                    pl_module.images[idx // 3][idx % 3].set_data(out_image)
-
-                plt.pause(1 / 160)
+        fig = px.scatter( x=points[:,0], y=points[:,1], color=labels )
+        fig.update_traces(marker=dict(size=10, opacity=0.6))
+        img_bytes = fig.to_image(format="png", width=800, height=600)
+        img = Image.open(io.BytesIO(img_bytes))
+        trainer.logger.log_image(key="latent_space", images=[img])
