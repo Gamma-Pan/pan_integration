@@ -398,8 +398,6 @@ class ODEAutoEncoderConv(LightningModule):
             nn.BatchNorm2d(aug_dim),
             nn.Conv2d(aug_dim, aug_dim, kernel_size=3, padding=1, bias=False),
             nn.Softplus(),
-            nn.Conv2d(aug_dim, aug_dim, kernel_size=3, padding=1, bias=False),
-            nn.Softplus(),
             nn.BatchNorm2d(aug_dim),
             nn.Conv2d(aug_dim, aug_dim, kernel_size=3, padding=1),
         )
@@ -415,8 +413,6 @@ class ODEAutoEncoderConv(LightningModule):
 
         decoder_vf = nn.Sequential(
             nn.BatchNorm2d(aug_dim),
-            nn.Conv2d(aug_dim, aug_dim, kernel_size=3, padding=1, bias=False),
-            nn.Softplus(),
             nn.Conv2d(aug_dim, aug_dim, kernel_size=3, padding=1, bias=False),
             nn.Softplus(),
             nn.BatchNorm2d(aug_dim),
