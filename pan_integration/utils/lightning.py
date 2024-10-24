@@ -226,7 +226,6 @@ class LitOdeClassifier(LightningModule):
         self.log("test_acc", test_acc, prog_bar=True)
 
     def configure_optimizers(self):
-        # TODO: use LR callback
         opt = torch.optim.AdamW(
             self.parameters(), lr=self.learning_rate, weight_decay=5 * 1e-4
         )

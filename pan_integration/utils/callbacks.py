@@ -1,30 +1,48 @@
 from typing import Any
+
 import torch
-
 from lightning import Callback
+import wandb
 from lightning.pytorch.utilities.types import STEP_OUTPUT
-
 import plotly.express as px
-import io
-from PIL import Image
-from sklearn.manifold import TSNE
 
 
-class AutoEncoderViz(Callback):
-    def __init__(self, batches_for_latent:int =10):
+class DigitsReconstruction(Callback):
+    def __init__(self, num_digits: int = 8):
         super().__init__()
-        self.batches_for_latent = batches_for_latent
+
+        self.num_digits = num_digits
+
+    def on_fit_start(self, trainer, pl_module):
+        batch = next(iter(trainer.datamodule.val_dataloader()))
+        self.x = batch[0][: self.num_digits]
+        self.labels = batch[1][: self.num_digits]
+
+    def on_validation_epoch_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+
+        reconstructions = pl_module(self.x.to(pl_module.device))[0].cpu()
+
+        image_tensors = torch.cat([self.x, reconstructions], dim=-1).unbind(0)
+        captions = [
+            f"top: original, bottom: reconstruction, label: {s}" for s in self.labels
+        ]
+
+        images = [wandb.Image(t, caption=s) for (t, s) in zip(image_tensors, captions)]
+
+        trainer.logger.experiment.log({"reconstructions": images}, step = trainer.global_step)
+
+
+class LatentSpace(Callback):
+    def __init__(self, num_batches: int = 10):
+        super().__init__()
+
+        self.num_batches = num_batches
+
+    def on_fit_start(self, trainer, pl_module):
         self.encodings = []
         self.labels = []
-
-    def on_fit_start(self, trainer, pl_module ):
-        self.batch = next(iter(trainer.datamodule.val_dataloader()))
-
-    def on_validation_epoch_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
-
-        self.encodings_in = []
-        self.labels = []
-        self.encodings_out =  []
 
     def on_validation_batch_end(
         self,
@@ -35,29 +53,29 @@ class AutoEncoderViz(Callback):
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
-        if batch_idx < self.batches_for_latent:
-            (node_in, node_out), label = outputs
-            self.encodings_in.append(node_in.cpu())
-            self.encodings_out.append(node_out.cpu())
-            self.labels.append(label.cpu())
+        if batch_idx <= self.num_batches:
+            encoding = outputs["encoding"]
+            self.encodings.append(encoding.cpu())
 
-    def on_validation_epoch_end(self, trainer, pl_module):
-        points_in = torch.cat(self.encodings_in, dim=0)
-        points_out = torch.cat(self.encodings_out, dim=0)
-        labels = [str(x.item()) for x in torch.cat(self.labels, dim=0)]
+            _, labels = batch
+            self.labels.append(labels)
 
-        embeds_in = TSNE(n_components=2).fit_transform(points_in)
-        embeds_out = TSNE(n_components=2).fit_transform(points_out)
+    def on_validation_epoch_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        self.encodings = []
+        self.labels = []
 
-        fig_1 = px.scatter( x=embeds_in[:,0], y=points_in[:,1], color=labels )
-        fig_1.update_traces(marker=dict(size=10, opacity=0.6))
-        img_bytes = fig_1.to_image(format="png", width=1200, height=1000)
-        img = Image.open(io.BytesIO(img_bytes))
-        trainer.logger.log_image(key="latent_in", images=[img])
+    def on_validation_epoch_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
 
-        fig_2 = px.scatter( x=embeds_out[:,0], y=points_out[:,1], color=labels )
-        fig_2.update_traces(marker=dict(size=10, opacity=0.6))
+        points = torch.cat(self.encodings, dim=0).cpu()
+        labels = [str(l.item()) for l in torch.cat(self.labels, dim=0).cpu()]
 
-        img_bytes = fig_2.to_image(format="png", width=1200, height=1000)
-        img = Image.open(io.BytesIO(img_bytes))
-        trainer.logger.log_image(key="latent_out", images=[img])
+
+        fig = px.scatter( x=points[:,0], y=points[:,1], color=labels )
+        fig.update_traces(marker=dict(size=10, opacity=.5))
+
+        # fig.show()
+        trainer.logger.experiment.log({"latent_space": fig}, step =trainer.global_step)
