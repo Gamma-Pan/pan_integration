@@ -28,12 +28,13 @@ if __name__ == "__main__":
 
     # model = AutoEncoder(channels, latent_dim, img_size)
     # model = VarAutoEncoder(channels, latent_dim, img_size)
-    # model = ODEAutoEncoderFC(channels, latent_dim, img_size)
-    model = ODEAutoEncoderConv(channels, 32,latent_dim , img_size)
+    # model = ODEAutoEncoderFC(latent_dim, img_size)
+    # model = ODEAutoEncoderConv(channels, 32,latent_dim , img_size)
+    model = AutoEncoderWODE(channels,latent_dim , img_size)
 
     trainer = Trainer(
         fast_dev_run=False,
-        max_epochs=50,
+        max_epochs=100,
         enable_checkpointing=False,
         logger=wandb_logger,
         callbacks=callbacks,

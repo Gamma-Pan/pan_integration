@@ -5,6 +5,7 @@ from lightning import Callback
 import wandb
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 import plotly.express as px
+import sklearn
 
 
 class DigitsReconstruction(Callback):
@@ -73,6 +74,7 @@ class LatentSpace(Callback):
         points = torch.cat(self.encodings, dim=0).cpu()
         labels = [str(l.item()) for l in torch.cat(self.labels, dim=0).cpu()]
 
+        # points = sklearn.decomposition.PCA().fit_transform(points)
 
         fig = px.scatter( x=points[:,0], y=points[:,1], color=labels )
         fig.update_traces(marker=dict(size=10, opacity=.5))

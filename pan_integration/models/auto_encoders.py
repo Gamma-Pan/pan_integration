@@ -197,7 +197,7 @@ class AutoEncoder(LightningModule):
         decoding, encoding = self._common_step(x)
         loss = self.loss_fn(decoding, x)
 
-        self.log("training_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("training_loss", torch.log10(loss), on_step=True, on_epoch=True, prog_bar=True)
 
         return loss
 
@@ -206,7 +206,7 @@ class AutoEncoder(LightningModule):
         decoding, encoding = self._common_step(x)
         loss = self.loss_fn(decoding, x)
 
-        self.log("validation_loss", loss, on_step=False, on_epoch=True)
+        self.log("validation_loss", torch.log10(loss), on_step=False, on_epoch=True)
 
         return {"deconding": decoding, "encoding": encoding}
 
@@ -465,7 +465,7 @@ class ODEAutoEncoderConv(LightningModule):
             dim=1
         )
         decoder_out = self.decoder(decoder_in)[-1]
-        decoding = self.final(decoder_out)
+        decoding = torch.nn.functional.sigmoid(self.final(decoder_out))
 
         return decoding, encoding
 
@@ -487,6 +487,85 @@ class ODEAutoEncoderConv(LightningModule):
         loss = self.loss_fn(decoding, x)
 
         self.log("validation_loss", loss, on_step=False, on_epoch=True)
+
+        return {"deconding": decoding, "encoding": encoding}
+
+    def test_step(self, batch, batch_idx):
+        x, label = batch
+        decoding, encoding = self._common_step(x)
+        loss = self.loss_fn(decoding, x)
+
+        self.log("test_loss", loss, on_step=False, on_epoch=True)
+
+
+
+
+class AutoEncoderWODE(LightningModule):
+    def __init__(self, channels, latent_dims, output_size):
+        super().__init__()
+        self.encoder = ConvEncoder(channels, latent_dims, output_size)
+        self.decoder = ConvDecoder(channels[::-1], latent_dims, output_size)
+
+        neural_vf = nn.Sequential(
+            nn.Linear(latent_dims, latent_dims),
+            nn.Softplus(),
+            nn.Linear(latent_dims, latent_dims),
+            nn.Softplus(),
+            nn.Linear(latent_dims, latent_dims),
+            nn.Softplus(),
+            nn.Linear(latent_dims, latent_dims),
+            nn.Softplus(),
+            nn.Linear(latent_dims, latent_dims),
+            nn.Softplus(),
+            nn.Linear(latent_dims, latent_dims),
+            nn.Softplus(),
+            nn.Linear(latent_dims, latent_dims),
+            nn.Softplus(),
+        )
+        self.neural_ode = NeuralODE(neural_vf, return_t_eval=False)
+
+        self.loss_fn = nn.MSELoss()
+        self.learning_rate = 1e-3
+
+    def configure_optimizers(self):
+        opt = torch.optim.AdamW(
+            self.parameters(), lr=self.learning_rate, weight_decay=5 * 1e-4
+        )
+        lr_scheduler_config = {
+            "scheduler": torch.optim.lr_scheduler.ExponentialLR(
+                opt, gamma=0.9, last_epoch=-1
+            ),
+            "interval": "epoch",
+            "frequency": 8,
+        }
+        out = {"optimizer": opt, "lr_scheduler": lr_scheduler_config}
+        return out
+
+    def _common_step(self, x):
+        encoding = self.encoder(x)
+        neural = self.neural_ode(encoding)[-1]
+        decoding = self.decoder(neural)
+
+        return decoding, encoding
+
+    def forward(self, x):
+        return self._common_step(x)
+
+    def training_step(self, batch, batch_idx):
+        x, label = batch
+        decoding, encoding = self._common_step(x)
+        loss = self.loss_fn(decoding, x)
+
+        self.log("training_loss", torch.log10(loss), on_step=True, on_epoch=True, prog_bar=True)
+
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, label = batch
+        decoding, encoding = self._common_step(x)
+        loss = self.loss_fn(decoding, x)
+
+        self.log("validation_loss", torch.log10(loss), on_step=False, on_epoch=True)
 
         return {"deconding": decoding, "encoding": encoding}
 
