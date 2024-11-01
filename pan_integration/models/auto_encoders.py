@@ -509,19 +509,8 @@ class AutoEncoderWODE(LightningModule):
         neural_vf = nn.Sequential(
             nn.Linear(latent_dims, latent_dims),
             nn.Softplus(),
-            nn.Linear(latent_dims, latent_dims),
-            nn.Softplus(),
-            nn.Linear(latent_dims, latent_dims),
-            nn.Softplus(),
-            nn.Linear(latent_dims, latent_dims),
-            nn.Softplus(),
-            nn.Linear(latent_dims, latent_dims),
-            nn.Softplus(),
-            nn.Linear(latent_dims, latent_dims),
-            nn.Softplus(),
-            nn.Linear(latent_dims, latent_dims),
-            nn.Softplus(),
         )
+
         self.neural_ode = NeuralODE(neural_vf, return_t_eval=False)
 
         self.loss_fn = nn.MSELoss()
